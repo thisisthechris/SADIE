@@ -10,7 +10,10 @@ import hashlib
 import random
 from datetime import date, timedelta
 
-from django.contrib.gis.geos import Point
+try:
+    from django.contrib.gis.geos import Point as _Point
+except Exception:
+    _Point = None
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
@@ -151,7 +154,7 @@ class Command(BaseCommand):
                     defaults={
                         "address": f"{random.randint(1, 200)} Example Street",
                         "postcode": postcode_entry[0],
-                        "point": Point(lng, lat),
+                        "point": _Point(lng, lat) if _Point else f"{lng},{lat}",
                     },
                 )
         return orgs

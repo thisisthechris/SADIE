@@ -1,5 +1,10 @@
 from django.contrib import admin
-from django.contrib.gis.admin import GISModelAdmin
+
+try:
+    from django.contrib.gis.admin import GISModelAdmin as _LocationAdminBase
+except Exception:
+    _LocationAdminBase = admin.ModelAdmin
+
 from .models import Organisation, Location
 
 
@@ -12,7 +17,7 @@ class OrganisationAdmin(admin.ModelAdmin):
 
 
 @admin.register(Location)
-class LocationAdmin(GISModelAdmin):
+class LocationAdmin(_LocationAdminBase):
     list_display = ["name", "organisation", "postcode", "created_at"]
     list_filter = ["organisation", "created_at"]
     search_fields = ["name", "address", "postcode", "organisation__name"]

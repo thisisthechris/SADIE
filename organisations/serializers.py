@@ -1,13 +1,23 @@
-from rest_framework_gis.serializers import GeoFeatureModelSerializer
 from rest_framework import serializers
+
+try:
+    from rest_framework_gis.serializers import GeoFeatureModelSerializer as _GeoBase
+    _HAS_GIS = True
+except Exception:
+    _GeoBase = serializers.ModelSerializer
+    _HAS_GIS = False
+
 from .models import Organisation, Location
 
 
-class LocationSerializer(GeoFeatureModelSerializer):
+class LocationSerializer(_GeoBase):
     class Meta:
         model = Location
-        geo_field = "point"
         fields = ["id", "name", "address", "postcode", "point", "created_at"]
+
+
+if _HAS_GIS:
+    LocationSerializer.Meta.geo_field = "point"
 
 
 class OrganisationSerializer(serializers.ModelSerializer):

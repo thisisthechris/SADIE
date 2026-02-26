@@ -13,7 +13,7 @@ class UploadTokenPermission(BasePermission):
     """Simple shared-secret permission for upload endpoints."""
 
     def has_permission(self, request, view):
-        token = request.headers.get("X-Upload-Token") or request.data.get("upload_token")
+        token = request.headers.get("X-Upload-Token")
         return token == settings.UPLOAD_API_TOKEN
 
 

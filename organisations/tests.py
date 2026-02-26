@@ -1,7 +1,11 @@
 from django.test import TestCase
-from django.contrib.gis.geos import Point
 from rest_framework.test import APIClient
-from .models import Organisation, Location
+from .models import Organisation, Location, _HAS_GIS
+
+try:
+    from django.contrib.gis.geos import Point
+except Exception:
+    Point = None
 
 
 class OrganisationModelTest(TestCase):
@@ -24,20 +28,24 @@ class OrganisationModelTest(TestCase):
 class LocationModelTest(TestCase):
     def setUp(self):
         self.org = Organisation.objects.create(name="Arts Org")
+        point_value = Point(-0.1, 51.5) if Point else "-0.1,51.5"
         self.location = Location.objects.create(
             organisation=self.org,
             name="Main Gallery",
             address="1 Art Street",
             postcode="EC1A 1BB",
-            point=Point(-0.1, 51.5),
+            point=point_value,
         )
 
     def test_str(self):
         self.assertEqual(str(self.location), "Main Gallery (Arts Org)")
 
     def test_point_field(self):
-        self.assertAlmostEqual(self.location.point.x, -0.1)
-        self.assertAlmostEqual(self.location.point.y, 51.5)
+        if _HAS_GIS and Point:
+            self.assertAlmostEqual(self.location.point.x, -0.1)
+            self.assertAlmostEqual(self.location.point.y, 51.5)
+        else:
+            self.assertIsNotNone(self.location.point)
 
 
 class OrganisationAPITest(TestCase):

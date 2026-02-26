@@ -31,13 +31,23 @@ def home(request):
 def organisations_map(request):
     """Map of all organisations and their locations as GeoJSON."""
     features = []
-    for loc in Location.objects.select_related("organisation").exclude(point=None):
+    for loc in Location.objects.select_related("organisation").exclude(point=None).exclude(point=""):
+        # Support both GeoDjango PointField and plain CharField fallback
+        try:
+            coords = [loc.point.x, loc.point.y]
+        except AttributeError:
+            # CharField fallback: stored as "lng,lat"
+            try:
+                lng, lat = str(loc.point).split(",")
+                coords = [float(lng), float(lat)]
+            except (ValueError, TypeError):
+                continue
         features.append(
             {
                 "type": "Feature",
                 "geometry": {
                     "type": "Point",
-                    "coordinates": [loc.point.x, loc.point.y],
+                    "coordinates": coords,
                 },
                 "properties": {
                     "id": loc.id,

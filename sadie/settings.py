@@ -3,7 +3,11 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-dev-key-change-in-production")
+SECRET_KEY = os.environ.get("SECRET_KEY", "")
+if not SECRET_KEY:
+    if os.environ.get("DEBUG", "True") != "True":
+        raise ValueError("SECRET_KEY environment variable must be set in production.")
+    SECRET_KEY = "django-insecure-dev-key-change-in-production"
 
 DEBUG = os.environ.get("DEBUG", "True") == "True"
 
@@ -99,7 +103,9 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticatedOrReadOnly",
     ],
-    "DEFAULT_AUTHENTICATION_CLASSES": [],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+    ],
     "DEFAULT_FILTER_BACKENDS": [
         "django_filters.rest_framework.DjangoFilterBackend",
         "rest_framework.filters.SearchFilter",
@@ -118,7 +124,11 @@ CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
 
 # Upload API token (simple shared-secret for upload endpoints)
-UPLOAD_API_TOKEN = os.environ.get("UPLOAD_API_TOKEN", "dev-upload-token")
+UPLOAD_API_TOKEN = os.environ.get("UPLOAD_API_TOKEN", "")
+if not UPLOAD_API_TOKEN:
+    if os.environ.get("DEBUG", "True") != "True":
+        raise ValueError("UPLOAD_API_TOKEN environment variable must be set in production.")
+    UPLOAD_API_TOKEN = "dev-upload-token"
 
 # Leaflet / GeoDjango map defaults (centred on UK)
 LEAFLET_CONFIG = {
