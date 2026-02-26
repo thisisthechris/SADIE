@@ -1,6 +1,7 @@
 from django.test import TestCase
 from rest_framework.test import APIClient
-from .models import Organisation, Location, _HAS_GIS
+
+from .models import _HAS_GIS, Location, Organisation
 
 try:
     from django.contrib.gis.geos import Point

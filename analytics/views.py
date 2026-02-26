@@ -1,10 +1,11 @@
-from rest_framework import viewsets, permissions
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
 import django_filters
-from .models import UserHashInteraction, PostcodeAreaInteraction
+from rest_framework import viewsets
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
+
+from .models import PostcodeAreaInteraction, UserHashInteraction
 from .serializers import (
-    UserHashInteractionSerializer,
     PostcodeAreaInteractionSerializer,
+    UserHashInteractionSerializer,
 )
 
 
@@ -27,9 +28,7 @@ class PostcodeInteractionFilter(django_filters.FilterSet):
 
 
 class UserHashInteractionViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = UserHashInteraction.objects.select_related(
-        "organisation", "event", "location"
-    ).all()
+    queryset = UserHashInteraction.objects.select_related("organisation", "event", "location").all()
     serializer_class = UserHashInteractionSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
     filterset_class = UserHashInteractionFilter

@@ -1,6 +1,8 @@
 from rest_framework import serializers
+
+from organisations.serializers import LocationSerializer, OrganisationListSerializer
+
 from .models import Event
-from organisations.serializers import OrganisationListSerializer, LocationSerializer
 
 
 class EventSerializer(serializers.ModelSerializer):

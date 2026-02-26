@@ -1,8 +1,8 @@
 import os
 from pathlib import Path
 
-from celery.schedules import crontab
 import dj_database_url
+from celery.schedules import crontab
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -144,9 +144,7 @@ if not UPLOAD_API_TOKEN:
 
 # CORS – allow browser-based integrations to POST to upload endpoints.
 # Populate CORS_ALLOWED_ORIGINS (comma-separated) via env var in production.
-CORS_ALLOWED_ORIGINS = [
-    o.strip() for o in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",") if o.strip()
-]
+CORS_ALLOWED_ORIGINS = [o.strip() for o in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",") if o.strip()]
 CORS_URLS_REGEX = r"^/api/upload/.*$"
 
 # Leaflet / GeoDjango map defaults (centred on UK)
@@ -226,4 +224,3 @@ LOGGING = {
         },
     },
 }
-

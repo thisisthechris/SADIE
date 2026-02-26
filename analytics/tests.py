@@ -1,9 +1,11 @@
 from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
-from organisations.models import Organisation, Location
+
 from events.models import Event
-from .models import UserHashInteraction, PostcodeAreaInteraction
+from organisations.models import Organisation
+
+from .models import PostcodeAreaInteraction, UserHashInteraction
 
 
 def make_org(name="Test Org"):
@@ -98,29 +100,34 @@ class AnalyticsAPITest(TestCase):
     def test_upload_interaction_requires_token(self):
         response = self.client.post(
             "/api/upload/interactions/",
-            data=[{
-                "user_hash": "d" * 64,
-                "interaction_type": "event",
-                "organisation": self.org.pk,
-                "event": self.event.pk,
-                "interaction_date": str(timezone.now().date()),
-            }],
+            data=[
+                {
+                    "user_hash": "d" * 64,
+                    "interaction_type": "event",
+                    "organisation": self.org.pk,
+                    "event": self.event.pk,
+                    "interaction_date": str(timezone.now().date()),
+                }
+            ],
             format="json",
         )
         self.assertEqual(response.status_code, 403)
 
     def test_upload_interaction_with_token(self):
         from django.conf import settings
+
         self.client.credentials(HTTP_X_UPLOAD_TOKEN=settings.UPLOAD_API_TOKEN)
         response = self.client.post(
             "/api/upload/interactions/",
-            data=[{
-                "user_hash": "e" * 64,
-                "interaction_type": "event",
-                "organisation": self.org.pk,
-                "event": self.event.pk,
-                "interaction_date": str(timezone.now().date()),
-            }],
+            data=[
+                {
+                    "user_hash": "e" * 64,
+                    "interaction_type": "event",
+                    "organisation": self.org.pk,
+                    "event": self.event.pk,
+                    "interaction_date": str(timezone.now().date()),
+                }
+            ],
             format="json",
         )
         self.assertEqual(response.status_code, 201)

@@ -3,6 +3,7 @@ from django.db import models as _db_models
 
 try:
     from django.contrib.gis.db import models
+
     _HAS_GIS = True
 except Exception:
     models = _db_models
@@ -37,9 +38,7 @@ class Organisation(_db_models.Model):
 
 
 class Location(_db_models.Model):
-    organisation = models.ForeignKey(
-        Organisation, on_delete=models.CASCADE, related_name="locations"
-    )
+    organisation = models.ForeignKey(Organisation, on_delete=models.CASCADE, related_name="locations")
     name = models.CharField(max_length=255)
     address = models.TextField(blank=True)
     postcode = _db_models.CharField(max_length=10, blank=True, db_index=True)

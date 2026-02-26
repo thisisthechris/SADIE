@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import UserHashInteraction, PostcodeAreaInteraction
+
+from .models import PostcodeAreaInteraction, UserHashInteraction
 
 
 @admin.register(UserHashInteraction)

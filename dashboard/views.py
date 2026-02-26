@@ -1,13 +1,13 @@
-from datetime import date, timedelta
 from collections import defaultdict
+from datetime import date, timedelta
 
-from django.shortcuts import render
 from django.db.models import Count, Sum
 from django.db.models.functions import TruncMonth
+from django.shortcuts import render
 
-from organisations.models import Organisation, Location
+from analytics.models import PostcodeAreaInteraction, UserHashInteraction
 from events.models import Event
-from analytics.models import UserHashInteraction, PostcodeAreaInteraction
+from organisations.models import Location, Organisation
 
 
 def home(request):
@@ -17,9 +17,7 @@ def home(request):
         "location_count": Location.objects.count(),
         "event_count": Event.objects.count(),
         "interaction_count": UserHashInteraction.objects.count(),
-        "postcode_count": PostcodeAreaInteraction.objects.aggregate(
-            total=Sum("interaction_count")
-        )["total"] or 0,
+        "postcode_count": PostcodeAreaInteraction.objects.aggregate(total=Sum("interaction_count"))["total"] or 0,
         "recent_events": Event.objects.select_related("organisation", "location")
         .order_by("start_datetime")
         .filter(start_datetime__gte=date.today())[:10],
@@ -129,15 +127,10 @@ def user_journeys(request):
 
 def postcode_heatmap(request):
     """Postcode interaction data for heatmap display."""
-    records = (
-        PostcodeAreaInteraction.objects.select_related("organisation")
-        .order_by("-interaction_count")[:200]
-    )
+    records = PostcodeAreaInteraction.objects.select_related("organisation").order_by("-interaction_count")[:200]
     # Build summary by postcode area
     area_totals = (
-        PostcodeAreaInteraction.objects.values("area")
-        .annotate(total=Sum("interaction_count"))
-        .order_by("-total")[:20]
+        PostcodeAreaInteraction.objects.values("area").annotate(total=Sum("interaction_count")).order_by("-total")[:20]
     )
     context = {
         "records": records,

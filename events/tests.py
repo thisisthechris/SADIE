@@ -1,7 +1,9 @@
 from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
-from organisations.models import Organisation, Location
+
+from organisations.models import Organisation
+
 from .models import Event
 
 
@@ -19,9 +21,7 @@ class EventModelTest(TestCase):
 
     def test_ordering(self):
         later = timezone.now() + timezone.timedelta(days=1)
-        Event.objects.create(
-            organisation=self.org, title="Later Event", start_datetime=later
-        )
+        Event.objects.create(organisation=self.org, title="Later Event", start_datetime=later)
         titles = list(Event.objects.values_list("title", flat=True))
         self.assertEqual(titles[0], "Opening Night")
 
@@ -48,9 +48,7 @@ class EventAPITest(TestCase):
 
     def test_filter_by_organisation(self):
         org2 = Organisation.objects.create(name="Other Org")
-        Event.objects.create(
-            organisation=org2, title="Other Event", start_datetime=timezone.now()
-        )
+        Event.objects.create(organisation=org2, title="Other Event", start_datetime=timezone.now())
         response = self.client.get(f"/api/events/?organisation={self.org.pk}")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["count"], 1)

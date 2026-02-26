@@ -1,6 +1,7 @@
+from django.urls import include, path
 from rest_framework.routers import DefaultRouter
-from django.urls import path, include
-from .views import OrganisationViewSet, LocationViewSet
+
+from .views import LocationViewSet, OrganisationViewSet
 
 router = DefaultRouter()
 router.register(r"", OrganisationViewSet, basename="organisation")

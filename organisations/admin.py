@@ -5,7 +5,7 @@ try:
 except Exception:
     _LocationAdminBase = admin.ModelAdmin
 
-from .models import Organisation, Location
+from .models import Location, Organisation
 
 
 @admin.register(Organisation)

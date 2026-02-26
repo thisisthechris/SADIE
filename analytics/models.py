@@ -1,6 +1,7 @@
 from django.db import models
-from organisations.models import Organisation, Location
+
 from events.models import Event
+from organisations.models import Location, Organisation
 
 
 class UserHashInteraction(models.Model):

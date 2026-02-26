@@ -2,12 +2,13 @@ from rest_framework import serializers
 
 try:
     from rest_framework_gis.serializers import GeoFeatureModelSerializer as _GeoBase
+
     _HAS_GIS = True
 except Exception:
     _GeoBase = serializers.ModelSerializer
     _HAS_GIS = False
 
-from .models import Organisation, Location
+from .models import Location, Organisation
 
 
 class LocationSerializer(_GeoBase):

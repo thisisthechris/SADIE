@@ -1,7 +1,8 @@
-from celery import shared_task
+import logging
+
 import requests
 from bs4 import BeautifulSoup
-import logging
+from celery import shared_task
 
 logger = logging.getLogger(__name__)
 
@@ -51,10 +52,11 @@ def scrape_example_org_events(organisation_id):
     Example custom scraper for an organisation whose events page lists
     events in <article class="event"> tags with h2 title and time elements.
     """
-    from organisations.models import Organisation
-    from events.models import Event
-    from django.utils import timezone
     import dateutil.parser
+    from django.utils import timezone
+
+    from events.models import Event
+    from organisations.models import Organisation
 
     try:
         org = Organisation.objects.get(pk=organisation_id)

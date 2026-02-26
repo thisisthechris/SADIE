@@ -1,6 +1,7 @@
+from django.urls import include, path
 from rest_framework.routers import DefaultRouter
-from django.urls import path, include
-from .views import UserHashInteractionViewSet, PostcodeAreaInteractionViewSet
+
+from .views import PostcodeAreaInteractionViewSet, UserHashInteractionViewSet
 
 router = DefaultRouter()
 router.register(r"interactions", UserHashInteractionViewSet, basename="interaction")

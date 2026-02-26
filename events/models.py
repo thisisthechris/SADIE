@@ -1,12 +1,11 @@
 from django.core.exceptions import ValidationError
 from django.db import models
-from organisations.models import Organisation, Location
+
+from organisations.models import Location, Organisation
 
 
 class Event(models.Model):
-    organisation = models.ForeignKey(
-        Organisation, on_delete=models.CASCADE, related_name="events"
-    )
+    organisation = models.ForeignKey(Organisation, on_delete=models.CASCADE, related_name="events")
     title = models.CharField(max_length=500)
     description = models.TextField(blank=True)
     start_datetime = models.DateTimeField()
@@ -30,6 +29,4 @@ class Event(models.Model):
 
     def clean(self):
         if self.end_datetime and self.start_datetime and self.end_datetime <= self.start_datetime:
-            raise ValidationError(
-                {"end_datetime": "End datetime must be after start datetime."}
-            )
+            raise ValidationError({"end_datetime": "End datetime must be after start datetime."})

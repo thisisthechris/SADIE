@@ -1,13 +1,14 @@
+from django.conf import settings
 from django.utils.crypto import constant_time_compare
-from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import BasePermission
+from rest_framework.response import Response
 from rest_framework.throttling import SimpleRateThrottle
-from django.conf import settings
+from rest_framework.views import APIView
+
 from .serializers import (
-    UserHashInteractionUploadSerializer,
     PostcodeAreaInteractionUploadSerializer,
+    UserHashInteractionUploadSerializer,
 )
 
 
@@ -28,9 +29,7 @@ class UploadTokenPermission(BasePermission):
 
     def has_permission(self, request, view):
         token = request.headers.get("X-Upload-Token")
-        return token is not None and constant_time_compare(
-            token, settings.UPLOAD_API_TOKEN
-        )
+        return token is not None and constant_time_compare(token, settings.UPLOAD_API_TOKEN)
 
 
 class UserHashInteractionUploadView(APIView):

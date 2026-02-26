@@ -1,9 +1,9 @@
+import django_filters
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
-from django_filters.rest_framework import DjangoFilterBackend
-import django_filters
+
 from .models import Event
-from .serializers import EventSerializer, EventDetailSerializer
+from .serializers import EventDetailSerializer, EventSerializer
 
 
 class EventFilter(django_filters.FilterSet):

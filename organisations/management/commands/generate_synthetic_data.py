@@ -9,6 +9,7 @@ Usage:
     python manage.py generate_synthetic_data --orgs 5 --events 50 --interactions 200
     python manage.py generate_synthetic_data --clear
 """
+
 import hashlib
 import random
 from datetime import date, timedelta
@@ -20,19 +21,32 @@ except Exception:
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from organisations.models import Organisation, Location
+from analytics.models import PostcodeAreaInteraction, UserHashInteraction
 from events.models import Event
-from analytics.models import UserHashInteraction, PostcodeAreaInteraction
+from organisations.models import Location, Organisation
 
 # Sample data pools
 ORG_NAMES = [
-    "Northern Stage", "Sage Gateshead", "Baltic Centre for Contemporary Art",
-    "Tate Modern", "Royal Exchange Theatre", "HOME Manchester",
-    "Barbican Centre", "Southbank Centre", "Bristol Old Vic",
-    "Leeds Playhouse", "Curve Theatre", "Theatre Royal Plymouth",
-    "Tramway Glasgow", "Edinburgh Fringe Society", "Welsh National Opera",
-    "Birmingham Repertory Theatre", "Nottingham Playhouse",
-    "Sheffield Theatres", "Crucible Theatre", "York Theatre Royal",
+    "Northern Stage",
+    "Sage Gateshead",
+    "Baltic Centre for Contemporary Art",
+    "Tate Modern",
+    "Royal Exchange Theatre",
+    "HOME Manchester",
+    "Barbican Centre",
+    "Southbank Centre",
+    "Bristol Old Vic",
+    "Leeds Playhouse",
+    "Curve Theatre",
+    "Theatre Royal Plymouth",
+    "Tramway Glasgow",
+    "Edinburgh Fringe Society",
+    "Welsh National Opera",
+    "Birmingham Repertory Theatre",
+    "Nottingham Playhouse",
+    "Sheffield Theatres",
+    "Crucible Theatre",
+    "York Theatre Royal",
 ]
 
 ORG_DESCRIPTIONS = [
@@ -44,46 +58,80 @@ ORG_DESCRIPTIONS = [
 ]
 
 LOCATION_NAMES = [
-    "Main Theatre", "Studio Space", "Gallery One", "Concert Hall",
-    "Black Box Theatre", "Rehearsal Room", "Outdoor Amphitheatre",
-    "Cinema Screen", "Exhibition Space", "Workshop Room",
+    "Main Theatre",
+    "Studio Space",
+    "Gallery One",
+    "Concert Hall",
+    "Black Box Theatre",
+    "Rehearsal Room",
+    "Outdoor Amphitheatre",
+    "Cinema Screen",
+    "Exhibition Space",
+    "Workshop Room",
 ]
 
 EVENT_PREFIXES = [
-    "An Evening of", "A Night of", "A Celebration of",
-    "A Festival of", "A Season of", "An Exploration of",
+    "An Evening of",
+    "A Night of",
+    "A Celebration of",
+    "A Festival of",
+    "A Season of",
+    "An Exploration of",
 ]
 
 EVENT_THEMES = [
-    "Contemporary Dance", "Live Music", "Stand-Up Comedy",
-    "Classical Theatre", "Visual Arts", "Poetry & Spoken Word",
-    "Jazz & Blues", "Folk & Roots", "Opera", "Ballet",
-    "Experimental Performance", "Community Drama", "Children's Theatre",
-    "Documentary Film", "World Music",
+    "Contemporary Dance",
+    "Live Music",
+    "Stand-Up Comedy",
+    "Classical Theatre",
+    "Visual Arts",
+    "Poetry & Spoken Word",
+    "Jazz & Blues",
+    "Folk & Roots",
+    "Opera",
+    "Ballet",
+    "Experimental Performance",
+    "Community Drama",
+    "Children's Theatre",
+    "Documentary Film",
+    "World Music",
 ]
 
 UK_POSTCODES = [
-    ("EC1A", "Islington"), ("W1A", "Westminster"), ("SW1A", "Westminster"),
-    ("E1", "Tower Hamlets"), ("SE1", "Southwark"), ("N1", "Islington"),
-    ("NW1", "Camden"), ("WC1", "Camden"), ("WC2", "Westminster"),
-    ("M1", "Manchester"), ("M2", "Manchester"), ("LS1", "Leeds"),
-    ("B1", "Birmingham"), ("B2", "Birmingham"), ("G1", "Glasgow"),
-    ("EH1", "Edinburgh"), ("CF10", "Cardiff"), ("BS1", "Bristol"),
-    ("NE1", "Newcastle"), ("S1", "Sheffield"),
+    ("EC1A", "Islington"),
+    ("W1A", "Westminster"),
+    ("SW1A", "Westminster"),
+    ("E1", "Tower Hamlets"),
+    ("SE1", "Southwark"),
+    ("N1", "Islington"),
+    ("NW1", "Camden"),
+    ("WC1", "Camden"),
+    ("WC2", "Westminster"),
+    ("M1", "Manchester"),
+    ("M2", "Manchester"),
+    ("LS1", "Leeds"),
+    ("B1", "Birmingham"),
+    ("B2", "Birmingham"),
+    ("G1", "Glasgow"),
+    ("EH1", "Edinburgh"),
+    ("CF10", "Cardiff"),
+    ("BS1", "Bristol"),
+    ("NE1", "Newcastle"),
+    ("S1", "Sheffield"),
 ]
 
 # Approximate UK city coordinates for plausible Points
 UK_COORDS = [
-    (51.5074, -0.1278),   # London
-    (53.4808, -2.2426),   # Manchester
-    (53.8008, -1.5491),   # Leeds
-    (52.4862, -1.8904),   # Birmingham
-    (55.8642, -4.2518),   # Glasgow
-    (55.9533, -3.1883),   # Edinburgh
-    (51.4816, -3.1791),   # Cardiff
-    (51.4545, -2.5879),   # Bristol
-    (54.9783, -1.6178),   # Newcastle
-    (53.3811, -1.4701),   # Sheffield
+    (51.5074, -0.1278),  # London
+    (53.4808, -2.2426),  # Manchester
+    (53.8008, -1.5491),  # Leeds
+    (52.4862, -1.8904),  # Birmingham
+    (55.8642, -4.2518),  # Glasgow
+    (55.9533, -3.1883),  # Edinburgh
+    (51.4816, -3.1791),  # Cardiff
+    (51.4545, -2.5879),  # Bristol
+    (54.9783, -1.6178),  # Newcastle
+    (53.3811, -1.4701),  # Sheffield
 ]
 
 
@@ -124,13 +172,15 @@ class Command(BaseCommand):
         self.stdout.write("Creating postcode area interactions…")
         self._create_postcode_interactions(orgs, options["postcodes"])
 
-        self.stdout.write(self.style.SUCCESS(
-            f"\nSynthetic data created: "
-            f"{len(orgs)} orgs, "
-            f"{Event.objects.count()} events, "
-            f"{UserHashInteraction.objects.count()} interactions, "
-            f"{PostcodeAreaInteraction.objects.count()} postcode records."
-        ))
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"\nSynthetic data created: "
+                f"{len(orgs)} orgs, "
+                f"{Event.objects.count()} events, "
+                f"{UserHashInteraction.objects.count()} interactions, "
+                f"{PostcodeAreaInteraction.objects.count()} postcode records."
+            )
+        )
 
     def _create_orgs(self, count):
         org_pool = random.sample(ORG_NAMES, min(count, len(ORG_NAMES)))
@@ -198,9 +248,7 @@ class Command(BaseCommand):
         # produce stable, predictable hashes that are easy to track in test runs.
         # Real data uses SHA-256 hashes of user email addresses.
         # Pool size is max(10, count//5) to simulate realistic repeat visits.
-        fake_users = [
-            hashlib.sha256(f"user_{i}".encode()).hexdigest() for i in range(max(10, count // 5))
-        ]
+        fake_users = [hashlib.sha256(f"user_{i}".encode()).hexdigest() for i in range(max(10, count // 5))]
         for _ in range(count):
             org = random.choice(orgs)
             interaction_type = random.choice(["event", "location"])

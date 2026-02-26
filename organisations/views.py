@@ -1,15 +1,20 @@
 from django.db.models import Count
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
-from .models import Organisation, Location
-from .serializers import OrganisationSerializer, OrganisationListSerializer, LocationSerializer
+
+from .models import Location, Organisation
+from .serializers import LocationSerializer, OrganisationListSerializer, OrganisationSerializer
 
 
 class OrganisationViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Organisation.objects.annotate(
-        location_count=Count("locations", distinct=True),
-        event_count=Count("events", distinct=True),
-    ).prefetch_related("locations").order_by("name")
+    queryset = (
+        Organisation.objects.annotate(
+            location_count=Count("locations", distinct=True),
+            event_count=Count("events", distinct=True),
+        )
+        .prefetch_related("locations")
+        .order_by("name")
+    )
     permission_classes = [IsAuthenticatedOrReadOnly]
     filterset_fields = ["name"]
     search_fields = ["name", "description"]
