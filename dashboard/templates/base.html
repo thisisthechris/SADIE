@@ -40,6 +40,17 @@
         <li class="nav-item"><a class="nav-link" href="/postcodes/"><i class="bi bi-map"></i> Postcodes</a></li>
       </ul>
       <ul class="navbar-nav ms-auto">
+        {% if user.is_authenticated %}
+          <li class="nav-item"><span class="nav-link text-light"><i class="bi bi-person-circle"></i> {{ user.username }}</span></li>
+          <li class="nav-item">
+            <form method="post" action="{% url 'logout' %}" class="d-inline">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-link nav-link text-light"><i class="bi bi-box-arrow-right"></i> Log out</button>
+            </form>
+          </li>
+        {% else %}
+          <li class="nav-item"><a class="nav-link" href="{% url 'login' %}"><i class="bi bi-box-arrow-in-right"></i> Log in</a></li>
+        {% endif %}
         <li class="nav-item"><a class="nav-link" href="/admin/"><i class="bi bi-gear"></i> Admin</a></li>
         <li class="nav-item"><a class="nav-link" href="/api/organisations/"><i class="bi bi-code-slash"></i> API</a></li>
       </ul>

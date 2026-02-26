@@ -1,6 +1,7 @@
 from collections import defaultdict
 from datetime import date, timedelta
 
+from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Sum
 from django.db.models.functions import TruncMonth
 from django.shortcuts import render
@@ -10,6 +11,7 @@ from events.models import Event
 from organisations.models import Location, Organisation
 
 
+@login_required
 def home(request):
     """Dashboard home – high-level stats."""
     context = {
@@ -25,6 +27,7 @@ def home(request):
     return render(request, "dashboard/home.html", context)
 
 
+@login_required
 def organisations_map(request):
     """Map of all organisations and their locations as GeoJSON."""
     # Load everything in two queries via prefetch; build GeoJSON from the
@@ -63,6 +66,7 @@ def organisations_map(request):
     return render(request, "dashboard/map.html", context)
 
 
+@login_required
 def events_calendar(request):
     """Events grouped by month – limited to 3 months past and 12 months ahead."""
     today = date.today()
@@ -92,6 +96,7 @@ def events_calendar(request):
     return render(request, "dashboard/calendar.html", context)
 
 
+@login_required
 def user_journeys(request):
     """Aggregated user-hash journey stats per organisation."""
     org_stats = (
@@ -125,6 +130,7 @@ def user_journeys(request):
     return render(request, "dashboard/journeys.html", context)
 
 
+@login_required
 def postcode_heatmap(request):
     """Postcode interaction data for heatmap display."""
     records = PostcodeAreaInteraction.objects.select_related("organisation").order_by("-interaction_count")[:200]
