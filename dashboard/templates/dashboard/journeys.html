@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}User Journeys – SADIE{% endblock %}
+
+{% block content %}
+<h1 class="mb-3"><i class="bi bi-people"></i> User Journeys</h1>
+<p class="text-muted">
+  All users are identified by anonymised hash only — no personal data is stored or displayed.
+</p>
+
+<div class="row g-3 mb-4">
+  <!-- Monthly trend chart -->
+  <div class="col-lg-8">
+    <div class="card h-100">
+      <div class="card-header"><h6 class="mb-0">Monthly Interaction Trend</h6></div>
+      <div class="card-body">
+        <canvas id="trendChart" height="100"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Unique users per org -->
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header"><h6 class="mb-0">Unique Users per Organisation</h6></div>
+      <div class="card-body p-0">
+        <ul class="list-group list-group-flush">
+          {% for item in unique_users %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            {{ item.organisation__name }}
+            <span class="badge bg-primary rounded-pill">{{ item.unique_users }}</span>
+          </li>
+          {% empty %}
+          <li class="list-group-item text-muted">No data yet.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Interaction breakdown table -->
+<div class="card">
+  <div class="card-header"><h6 class="mb-0">Interaction Breakdown by Organisation &amp; Type</h6></div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr><th>Organisation</th><th>Interaction Type</th><th>Count</th></tr>
+        </thead>
+        <tbody>
+          {% for row in org_stats %}
+          <tr>
+            <td>{{ row.organisation__name }}</td>
+            <td><span class="badge bg-secondary">{{ row.interaction_type }}</span></td>
+            <td>{{ row.count }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3" class="text-muted text-center">No interactions recorded yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const labels = {{ monthly_labels|safe }};
+const data   = {{ monthly_data|safe }};
+
+new Chart(document.getElementById('trendChart'), {
+  type: 'line',
+  data: {
+    labels: labels,
+    datasets: [{
+      label: 'Interactions',
+      data: data,
+      fill: true,
+      borderColor: 'rgb(13, 110, 253)',
+      backgroundColor: 'rgba(13, 110, 253, 0.1)',
+      tension: 0.3
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: { y: { beginAtZero: true } }
+  }
+});
+</script>
+{% endblock %}

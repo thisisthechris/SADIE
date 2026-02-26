@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Postcode Heatmap – SADIE{% endblock %}
+
+{% block content %}
+<h1 class="mb-3"><i class="bi bi-map"></i> Postcode Interaction Heatmap</h1>
+<p class="text-muted">Interaction counts aggregated by postcode area across all organisations.</p>
+
+<div class="row g-3">
+  <!-- Top areas bar chart -->
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header"><h6 class="mb-0">Top 20 Areas by Total Interactions</h6></div>
+      <div class="card-body">
+        <canvas id="areaChart" height="250"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top areas table -->
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header"><h6 class="mb-0">Area Summary</h6></div>
+      <div class="card-body p-0">
+        <div class="table-responsive" style="max-height:400px;overflow-y:auto;">
+          <table class="table table-sm table-hover mb-0">
+            <thead class="table-light sticky-top">
+              <tr><th>#</th><th>Area</th><th>Total Interactions</th></tr>
+            </thead>
+            <tbody>
+              {% for item in area_totals %}
+              <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ item.area|default:"Unknown" }}</td>
+                <td>{{ item.total }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="3" class="text-muted text-center">No data yet.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Detailed records table -->
+<div class="card mt-3">
+  <div class="card-header d-flex justify-content-between">
+    <h6 class="mb-0">Postcode Interaction Records</h6>
+    <small class="text-muted">Top 200 by interaction count</small>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Postcode</th>
+            <th>Area</th>
+            <th>Organisation</th>
+            <th>Count</th>
+            <th>Period</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for rec in records %}
+          <tr>
+            <td><code>{{ rec.postcode }}</code></td>
+            <td>{{ rec.area|default:"–" }}</td>
+            <td>{{ rec.organisation.name }}</td>
+            <td><span class="badge bg-primary">{{ rec.interaction_count }}</span></td>
+            <td class="text-nowrap">{{ rec.period_start|date:"d M Y" }} – {{ rec.period_end|date:"d M Y" }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" class="text-muted text-center">No postcode data yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const areaLabels = [{% for item in area_totals %}"{{ item.area|default:'Unknown'|escapejs }}"{% if not forloop.last %}, {% endif %}{% endfor %}];
+const areaCounts = [{% for item in area_totals %}{{ item.total }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+
+new Chart(document.getElementById('areaChart'), {
+  type: 'bar',
+  data: {
+    labels: areaLabels,
+    datasets: [{
+      label: 'Interactions',
+      data: areaCounts,
+      backgroundColor: 'rgba(32, 201, 151, 0.7)',
+      borderColor: 'rgb(32, 201, 151)',
+      borderWidth: 1
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: { x: { beginAtZero: true } }
+  }
+});
+</script>
+{% endblock %}
