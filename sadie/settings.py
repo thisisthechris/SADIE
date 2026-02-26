@@ -1,15 +1,19 @@
 import os
 from pathlib import Path
 
+from celery.schedules import crontab
+import dj_database_url
+
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Compute DEBUG first so all subsequent validation can reference it directly
+DEBUG = os.environ.get("DEBUG", "True") == "True"
 
 SECRET_KEY = os.environ.get("SECRET_KEY", "")
 if not SECRET_KEY:
-    if os.environ.get("DEBUG", "True") != "True":
+    if not DEBUG:
         raise ValueError("SECRET_KEY environment variable must be set in production.")
     SECRET_KEY = "django-insecure-dev-key-change-in-production"
-
-DEBUG = os.environ.get("DEBUG", "True") == "True"
 
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
@@ -21,6 +25,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.gis",
+    "corsheaders",
     "rest_framework",
     "rest_framework_gis",
     "django_filters",
@@ -34,6 +39,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -62,22 +68,13 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "sadie.wsgi.application"
 
-# Database
-_db_url = os.environ.get("DATABASE_URL", "postgis://sadie:sadie_password@db:5432/sadie")
-# Parse DATABASE_URL manually to avoid dj-database-url dependency
-def _parse_db_url(url):
-    from urllib.parse import urlparse
-    parsed = urlparse(url)
-    return {
-        "ENGINE": "django.contrib.gis.db.backends.postgis",
-        "NAME": parsed.path.lstrip("/"),
-        "USER": parsed.username,
-        "PASSWORD": parsed.password,
-        "HOST": parsed.hostname,
-        "PORT": str(parsed.port or 5432),
-    }
-
-DATABASES = {"default": _parse_db_url(_db_url)}
+# Database – parsed from DATABASE_URL env var via dj-database-url
+DATABASES = {
+    "default": dj_database_url.config(
+        default="postgis://sadie:sadie_password@db:5432/sadie",
+        conn_max_age=600,
+    )
+}
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -111,6 +108,13 @@ REST_FRAMEWORK = {
         "rest_framework.filters.SearchFilter",
         "rest_framework.filters.OrderingFilter",
     ],
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "1000/day",
+        "upload": "200/hour",
+    },
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 50,
 }
@@ -122,13 +126,28 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
+CELERY_BEAT_SCHEDULE = {
+    # Scrape all organisation websites for new events at 2:00 AM daily.
+    # Administrators can also manage schedules via Django Admin (django-celery-beat).
+    "scrape-all-organisations-daily": {
+        "task": "events.tasks.scrape_all_organisations",
+        "schedule": crontab(hour=2, minute=0),
+    },
+}
 
 # Upload API token (simple shared-secret for upload endpoints)
 UPLOAD_API_TOKEN = os.environ.get("UPLOAD_API_TOKEN", "")
 if not UPLOAD_API_TOKEN:
-    if os.environ.get("DEBUG", "True") != "True":
+    if not DEBUG:
         raise ValueError("UPLOAD_API_TOKEN environment variable must be set in production.")
     UPLOAD_API_TOKEN = "dev-upload-token"
+
+# CORS – allow browser-based integrations to POST to upload endpoints.
+# Populate CORS_ALLOWED_ORIGINS (comma-separated) via env var in production.
+CORS_ALLOWED_ORIGINS = [
+    o.strip() for o in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",") if o.strip()
+]
+CORS_URLS_REGEX = r"^/api/upload/.*$"
 
 # Leaflet / GeoDjango map defaults (centred on UK)
 LEAFLET_CONFIG = {
@@ -145,10 +164,66 @@ LEAFLET_CONFIG = {
     ],
 }
 
-# GDAL / GEOS paths (set if auto-detection fails inside Docker)
-GDAL_LIBRARY_PATH = os.environ.get("GDAL_LIBRARY_PATH", "")
-GEOS_LIBRARY_PATH = os.environ.get("GEOS_LIBRARY_PATH", "")
-if not GDAL_LIBRARY_PATH:
-    del GDAL_LIBRARY_PATH  # let Django auto-detect
-if not GEOS_LIBRARY_PATH:
-    del GEOS_LIBRARY_PATH
+# GDAL / GEOS library paths – only set when explicitly provided via env vars;
+# omitting them lets Django auto-detect the installed system libraries.
+_gdal_path = os.environ.get("GDAL_LIBRARY_PATH", "")
+_geos_path = os.environ.get("GEOS_LIBRARY_PATH", "")
+if _gdal_path:
+    GDAL_LIBRARY_PATH = _gdal_path
+if _geos_path:
+    GEOS_LIBRARY_PATH = _geos_path
+
+# Production security settings (disabled in development)
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = "DENY"
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+# Logging
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "WARNING",
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": os.environ.get("DJANGO_LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
+        "celery": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "events.tasks": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "analytics": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+}
+

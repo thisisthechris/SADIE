@@ -9,16 +9,25 @@ logger = logging.getLogger(__name__)
 @shared_task
 def scrape_organisation_events(organisation_id):
     """
-    Base scraping task. Each organisation may require custom logic due to
-    differing website structures; extend or override as needed.
+    Base scraping task. Each organisation requires a custom implementation due to
+    differing website structures — extend or override this task for each org.
+
+    WARNING: This placeholder logs a warning and returns without scraping.
+    Create a custom task (see scrape_example_org_events below) for each
+    organisation and register it instead of calling this base task.
     """
     from organisations.models import Organisation
 
     try:
         org = Organisation.objects.get(pk=organisation_id)
-        logger.info("Scraping events for %s", org.name)
-        # Placeholder: real implementations would parse org.website
-        return f"Scraping task for {org.name} completed"
+        logger.warning(
+            "scrape_organisation_events called for '%s' (id=%s) but no custom "
+            "scraper is implemented. Override this task with an org-specific "
+            "implementation.",
+            org.name,
+            organisation_id,
+        )
+        return f"No scraper implemented for {org.name}"
     except Organisation.DoesNotExist:
         logger.error("Organisation %s not found", organisation_id)
         return None

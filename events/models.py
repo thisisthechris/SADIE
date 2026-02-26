@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 from organisations.models import Organisation, Location
 
@@ -26,3 +27,9 @@ class Event(models.Model):
 
     def __str__(self):
         return f"{self.title} - {self.organisation.name}"
+
+    def clean(self):
+        if self.end_datetime and self.start_datetime and self.end_datetime <= self.start_datetime:
+            raise ValidationError(
+                {"end_datetime": "End datetime must be after start datetime."}
+            )

@@ -65,9 +65,11 @@
 {% endblock %}
 
 {% block extra_js %}
+{{ monthly_labels|json_script:"monthly-labels-data" }}
+{{ monthly_data|json_script:"monthly-data" }}
 <script>
-const labels = {{ monthly_labels|safe }};
-const data   = {{ monthly_data|safe }};
+const labels = JSON.parse(document.getElementById('monthly-labels-data').textContent);
+const data   = JSON.parse(document.getElementById('monthly-data').textContent);
 
 new Chart(document.getElementById('trendChart'), {
   type: 'line',

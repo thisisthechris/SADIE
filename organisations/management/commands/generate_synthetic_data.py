@@ -1,6 +1,9 @@
 """
 Management command to generate synthetic data for development and testing.
 
+NOTE: This command is intended for development and testing only.
+Do NOT run it in a production environment.
+
 Usage:
     python manage.py generate_synthetic_data
     python manage.py generate_synthetic_data --orgs 5 --events 50 --interactions 200
@@ -191,9 +194,12 @@ class Command(BaseCommand):
     def _create_interactions(self, orgs, events, count):
         today = date.today()
         start = today - timedelta(days=180)
-        # Generate a small pool of fake user hashes
+        # Intentionally simplified for synthetic data: sequential counter inputs
+        # produce stable, predictable hashes that are easy to track in test runs.
+        # Real data uses SHA-256 hashes of user email addresses.
+        # Pool size is max(10, count//5) to simulate realistic repeat visits.
         fake_users = [
-            hashlib.sha256(f"user_{i}".encode()).hexdigest() for i in range(max(1, count // 5))
+            hashlib.sha256(f"user_{i}".encode()).hexdigest() for i in range(max(10, count // 5))
         ]
         for _ in range(count):
             org = random.choice(orgs)

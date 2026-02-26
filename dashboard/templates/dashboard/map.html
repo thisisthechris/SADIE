@@ -34,8 +34,9 @@
 {% endblock %}
 
 {% block extra_js %}
+{{ geojson|json_script:"geojson-data" }}
 <script>
-const geojson = {{ geojson|safe }};
+const geojson = JSON.parse(document.getElementById('geojson-data').textContent);
 
 const map = L.map('map').setView([54.0, -2.0], 6);
 

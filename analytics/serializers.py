@@ -1,5 +1,10 @@
+import re
+
 from rest_framework import serializers
+
 from .models import UserHashInteraction, PostcodeAreaInteraction
+
+_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 class UserHashInteractionSerializer(serializers.ModelSerializer):
@@ -36,6 +41,27 @@ class UserHashInteractionUploadSerializer(serializers.ModelSerializer):
             "interaction_date",
         ]
 
+    def validate_user_hash(self, value):
+        """Require exactly 64 lowercase hex characters (SHA-256 hash)."""
+        if not _SHA256_RE.match(value):
+            raise serializers.ValidationError(
+                "user_hash must be a 64-character lowercase hexadecimal SHA-256 hash."
+            )
+        return value
+
+    def validate(self, attrs):
+        """Require event when interaction_type is 'event', location when 'location'."""
+        interaction_type = attrs.get("interaction_type")
+        if interaction_type == "event" and not attrs.get("event"):
+            raise serializers.ValidationError(
+                {"event": "This field is required when interaction_type is 'event'."}
+            )
+        if interaction_type == "location" and not attrs.get("location"):
+            raise serializers.ValidationError(
+                {"location": "This field is required when interaction_type is 'location'."}
+            )
+        return attrs
+
 
 class PostcodeAreaInteractionSerializer(serializers.ModelSerializer):
     organisation_name = serializers.CharField(source="organisation.name", read_only=True)
@@ -66,3 +92,16 @@ class PostcodeAreaInteractionUploadSerializer(serializers.ModelSerializer):
             "period_start",
             "period_end",
         ]
+
+    def validate(self, attrs):
+        """Require period_start to be on or before period_end."""
+        period_start = attrs.get("period_start")
+        period_end = attrs.get("period_end")
+        if period_start is not None and period_end is not None and period_start > period_end:
+            raise serializers.ValidationError(
+                {
+                    "period_start": "period_start must be before or equal to period_end.",
+                    "period_end": "period_end must be after or equal to period_start.",
+                }
+            )
+        return attrs

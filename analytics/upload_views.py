@@ -1,7 +1,9 @@
+from django.utils.crypto import constant_time_compare
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import BasePermission
+from rest_framework.throttling import SimpleRateThrottle
 from django.conf import settings
 from .serializers import (
     UserHashInteractionUploadSerializer,
@@ -9,12 +11,26 @@ from .serializers import (
 )
 
 
+class UploadRateThrottle(SimpleRateThrottle):
+    """Separate throttle scope for upload endpoints (200 requests/hour per IP)."""
+
+    scope = "upload"
+
+    def get_cache_key(self, request, view):
+        return self.cache_format % {
+            "scope": self.scope,
+            "ident": self.get_ident(request),
+        }
+
+
 class UploadTokenPermission(BasePermission):
     """Simple shared-secret permission for upload endpoints."""
 
     def has_permission(self, request, view):
         token = request.headers.get("X-Upload-Token")
-        return token == settings.UPLOAD_API_TOKEN
+        return token is not None and constant_time_compare(
+            token, settings.UPLOAD_API_TOKEN
+        )
 
 
 class UserHashInteractionUploadView(APIView):
@@ -31,6 +47,7 @@ class UserHashInteractionUploadView(APIView):
     """
 
     permission_classes = [UploadTokenPermission]
+    throttle_classes = [UploadRateThrottle]
 
     def post(self, request, *args, **kwargs):
         data = request.data
@@ -61,6 +78,7 @@ class PostcodeAreaInteractionUploadView(APIView):
     """
 
     permission_classes = [UploadTokenPermission]
+    throttle_classes = [UploadRateThrottle]
 
     def post(self, request, *args, **kwargs):
         data = request.data

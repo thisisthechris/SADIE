@@ -1,3 +1,4 @@
+from django.core.validators import RegexValidator
 from django.db import models as _db_models
 
 try:
@@ -7,12 +8,18 @@ except Exception:
     models = _db_models
     _HAS_GIS = False
 
+# Validator used only when the GIS fallback CharField stores coordinates as "lng,lat"
+_POINT_VALIDATOR = RegexValidator(
+    r"^-?\d+(\.\d+)?,-?\d+(\.\d+)?$",
+    "Enter a valid point as 'longitude,latitude' (e.g. '-0.1278,51.5074').",
+)
+
 
 def _point_field():
     """Return a PointField when GeoDjango/GDAL is available, else a plain CharField."""
     if _HAS_GIS:
         return models.PointField(null=True, blank=True, srid=4326)
-    return _db_models.CharField(max_length=100, blank=True)
+    return _db_models.CharField(max_length=100, blank=True, validators=[_POINT_VALIDATOR])
 
 
 class Organisation(_db_models.Model):

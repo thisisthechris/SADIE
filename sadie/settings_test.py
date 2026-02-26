@@ -4,6 +4,8 @@ GIS-specific fields fall back to plain fields when GDAL is unavailable.
 """
 from .settings import *  # noqa: F401, F403
 
+DEBUG = True  # explicitly set so validation logic in settings.py is unambiguous
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",

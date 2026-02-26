@@ -22,7 +22,7 @@ if _HAS_GIS:
 
 class OrganisationSerializer(serializers.ModelSerializer):
     locations = LocationSerializer(many=True, read_only=True)
-    event_count = serializers.SerializerMethodField()
+    event_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Organisation
@@ -37,15 +37,10 @@ class OrganisationSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
-    def get_event_count(self, obj):
-        return obj.events.count()
-
 
 class OrganisationListSerializer(serializers.ModelSerializer):
-    location_count = serializers.IntegerField(
-        source="locations.count", read_only=True
-    )
-    event_count = serializers.IntegerField(source="events.count", read_only=True)
+    location_count = serializers.IntegerField(read_only=True)
+    event_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Organisation
