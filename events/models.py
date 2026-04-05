@@ -1,7 +1,25 @@
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils.text import slugify
 
 from organisations.models import Location, Organisation
+
+
+class Category(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    slug = models.SlugField(max_length=100, unique=True, blank=True)
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name_plural = "categories"
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
 
 
 class Event(models.Model):
@@ -18,6 +36,11 @@ class Event(models.Model):
         on_delete=models.SET_NULL,
         related_name="events",
     )
+    categories = models.ManyToManyField(Category, blank=True, related_name="events")
+    source_tags = models.JSONField(default=list, blank=True)
+    image_url = models.URLField(blank=True, max_length=500)
+    source_url = models.URLField(blank=True, max_length=500)
+    external_id = models.CharField(max_length=100, blank=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

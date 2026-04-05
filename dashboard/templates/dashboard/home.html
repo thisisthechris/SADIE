@@ -2,11 +2,13 @@
 {% block title %}Dashboard – SADIE{% endblock %}
 
 {% block content %}
-<h1 class="mb-4"><i class="bi bi-speedometer2"></i> Dashboard</h1>
+<h1 class="mb-3"><i class="bi bi-speedometer2"></i> Dashboard</h1>
+
+{% include "dashboard/_filters.html" with show_org=True show_period=True show_dates=True %}
 
 <!-- Stats row -->
 <div class="row g-3 mb-4">
-  <div class="col-sm-6 col-xl-2">
+  <div class="col-6 col-xl-2">
     <div class="card stat-card stat-card-blue h-100">
       <div class="card-body">
         <div class="text-muted small mb-1">Organisations</div>
@@ -15,7 +17,7 @@
       </div>
     </div>
   </div>
-  <div class="col-sm-6 col-xl-2">
+  <div class="col-6 col-xl-2">
     <div class="card stat-card stat-card-green h-100">
       <div class="card-body">
         <div class="text-muted small mb-1">Locations</div>
@@ -24,7 +26,7 @@
       </div>
     </div>
   </div>
-  <div class="col-sm-6 col-xl-2">
+  <div class="col-6 col-xl-2">
     <div class="card stat-card stat-card-purple h-100">
       <div class="card-body">
         <div class="text-muted small mb-1">Events</div>
@@ -33,7 +35,7 @@
       </div>
     </div>
   </div>
-  <div class="col-sm-6 col-xl-2">
+  <div class="col-6 col-xl-2">
     <div class="card stat-card stat-card-orange h-100">
       <div class="card-body">
         <div class="text-muted small mb-1">Interactions</div>
@@ -42,12 +44,61 @@
       </div>
     </div>
   </div>
-  <div class="col-sm-6 col-xl-2">
+  <div class="col-6 col-xl-2">
     <div class="card stat-card stat-card-teal h-100">
       <div class="card-body">
-        <div class="text-muted small mb-1">Postcode Interactions</div>
+        <div class="text-muted small mb-1">Unique Visitors</div>
+        <div class="fs-2 fw-bold">{{ unique_visitors }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-2">
+    <div class="card stat-card h-100" style="border-color:#e83e8c">
+      <div class="card-body">
+        <div class="text-muted small mb-1">Postcode Hits</div>
         <div class="fs-2 fw-bold">{{ postcode_count }}</div>
         <a href="/postcodes/" class="stretched-link text-decoration-none small">View Heatmap &rarr;</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Mid row: Top Orgs + Top Categories + Interaction Breakdown -->
+<div class="row g-3 mb-4">
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header"><h6 class="mb-0"><i class="bi bi-building"></i> Top Organisations</h6></div>
+      <div class="card-body p-0">
+        <ul class="list-group list-group-flush">
+          {% for row in top_orgs %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <span class="text-truncate me-2">{{ row.organisation__name }}</span>
+            <span class="badge bg-primary rounded-pill">{{ row.n }} events</span>
+          </li>
+          {% empty %}
+          <li class="list-group-item text-muted">No data for this period.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header"><h6 class="mb-0"><i class="bi bi-tags"></i> Top Categories</h6></div>
+      <div class="card-body">
+        {% for cat in top_cats %}
+          <span class="badge bg-secondary me-1 mb-1 fs-6">{{ cat.name }} <span class="badge bg-light text-dark">{{ cat.n }}</span></span>
+        {% empty %}
+          <span class="text-muted">No categories for this period.</span>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header"><h6 class="mb-0"><i class="bi bi-pie-chart"></i> Interaction Breakdown</h6></div>
+      <div class="card-body">
+        <canvas id="typeChart" height="200"></canvas>
       </div>
     </div>
   </div>
@@ -81,7 +132,7 @@
             </td>
             <td>{{ event.organisation.name }}</td>
             <td>{{ event.location.name|default:"–" }}</td>
-            <td>{{ event.start_datetime|date:"d M Y, H:i" }}</td>
+            <td class="text-nowrap">{{ event.start_datetime|date:"d M Y, H:i" }}</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -92,4 +143,24 @@
     {% endif %}
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{{ type_breakdown|json_script:"type-data" }}
+<script>
+const typeData = JSON.parse(document.getElementById('type-data').textContent);
+if (typeData.length) {
+  new Chart(document.getElementById('typeChart'), {
+    type: 'doughnut',
+    data: {
+      labels: typeData.map(d => d.interaction_type),
+      datasets: [{
+        data: typeData.map(d => d.n),
+        backgroundColor: ['#0d6efd', '#198754', '#fd7e14', '#6f42c1', '#20c997']
+      }]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+  });
+}
+</script>
 {% endblock %}

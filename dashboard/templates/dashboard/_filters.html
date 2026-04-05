@@ -1,0 +1,80 @@
+{# Shared filter bar – include with: show_org show_cat show_dates show_search show_period show_itype #}
+<div class="card mb-3 shadow-sm border-0 bg-light">
+  <div class="card-body py-2 px-3">
+    <form method="get" id="filter-form" class="row g-2 align-items-end">
+      {% if show_org %}
+      <div class="col-auto">
+        <label class="form-label small mb-0 text-muted">Organisation</label>
+        <select name="org" class="form-select form-select-sm" style="min-width:170px">
+          <option value="">All organisations</option>
+          {% for org in all_organisations %}
+          <option value="{{ org.id }}" {% if f_org == org.id|stringformat:"d" %}selected{% endif %}>{{ org.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+
+      {% if show_cat %}
+      <div class="col-auto">
+        <label class="form-label small mb-0 text-muted">Category</label>
+        <select name="category" class="form-select form-select-sm" style="min-width:140px">
+          <option value="">All categories</option>
+          {% for cat in all_categories %}
+          <option value="{{ cat.id }}" {% if f_cat == cat.id|stringformat:"d" %}selected{% endif %}>{{ cat.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+
+      {% if show_dates %}
+      <div class="col-auto">
+        <label class="form-label small mb-0 text-muted">From</label>
+        <input type="date" name="date_from" value="{{ f_from }}" class="form-control form-control-sm">
+      </div>
+      <div class="col-auto">
+        <label class="form-label small mb-0 text-muted">To</label>
+        <input type="date" name="date_to" value="{{ f_to }}" class="form-control form-control-sm">
+      </div>
+      {% endif %}
+
+      {% if show_search %}
+      <div class="col-auto">
+        <label class="form-label small mb-0 text-muted">Search</label>
+        <input type="text" name="search" value="{{ f_search }}" placeholder="Search events…" class="form-control form-control-sm" style="min-width:150px">
+      </div>
+      {% endif %}
+
+      {% if show_itype %}
+      <div class="col-auto">
+        <label class="form-label small mb-0 text-muted">Type</label>
+        <select name="itype" class="form-select form-select-sm">
+          <option value="">All types</option>
+          <option value="event" {% if f_itype == "event" %}selected{% endif %}>Event</option>
+          <option value="location" {% if f_itype == "location" %}selected{% endif %}>Location</option>
+        </select>
+      </div>
+      {% endif %}
+
+      {% if show_period %}
+      <div class="col-auto">
+        <label class="form-label small mb-0 text-muted">Quick</label>
+        <div class="btn-group btn-group-sm" role="group">
+          <input type="radio" class="btn-check" name="period" id="p7d" value="7d"{% if f_period == "7d" %} checked{% endif %} autocomplete="off" onchange="this.form.submit()">
+          <label class="btn btn-outline-secondary" for="p7d">7 d</label>
+          <input type="radio" class="btn-check" name="period" id="p30d" value="30d"{% if f_period == "30d" %} checked{% endif %} autocomplete="off" onchange="this.form.submit()">
+          <label class="btn btn-outline-secondary" for="p30d">30 d</label>
+          <input type="radio" class="btn-check" name="period" id="p90d" value="90d"{% if f_period == "90d" %} checked{% endif %} autocomplete="off" onchange="this.form.submit()">
+          <label class="btn btn-outline-secondary" for="p90d">90 d</label>
+          <input type="radio" class="btn-check" name="period" id="p1y" value="1y"{% if f_period == "1y" %} checked{% endif %} autocomplete="off" onchange="this.form.submit()">
+          <label class="btn btn-outline-secondary" for="p1y">1 yr</label>
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="col-auto ms-auto">
+        <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-funnel"></i> Filter</button>
+        <a href="{{ request.path }}" class="btn btn-outline-secondary btn-sm ms-1" title="Clear filters"><i class="bi bi-x-circle"></i></a>
+      </div>
+    </form>
+  </div>
+</div>

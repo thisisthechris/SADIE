@@ -15,7 +15,7 @@ if not SECRET_KEY:
         raise ValueError("SECRET_KEY environment variable must be set in production.")
     SECRET_KEY = "django-insecure-dev-key-change-in-production"
 
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "*" if DEBUG else "localhost,127.0.0.1").split(",")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -35,10 +35,12 @@ INSTALLED_APPS = [
     "events",
     "analytics",
     "dashboard",
+    "scraping",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -131,10 +133,10 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_BEAT_SCHEDULE = {
-    # Scrape all organisation websites for new events at 2:00 AM daily.
+    # Scrape all enabled sources for new events at 2:00 AM daily.
     # Administrators can also manage schedules via Django Admin (django-celery-beat).
-    "scrape-all-organisations-daily": {
-        "task": "events.tasks.scrape_all_organisations",
+    "scrape-all-sources-daily": {
+        "task": "scraping.tasks.scrape_all_sources",
         "schedule": crontab(hour=2, minute=0),
     },
 }
@@ -217,6 +219,11 @@ LOGGING = {
             "propagate": False,
         },
         "events.tasks": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "scraping": {
             "handlers": ["console"],
             "level": "INFO",
             "propagate": False,

@@ -34,7 +34,8 @@
     <div class="collapse navbar-collapse" id="navContent">
       <ul class="navbar-nav me-auto">
         <li class="nav-item"><a class="nav-link" href="/"><i class="bi bi-house"></i> Home</a></li>
-        <li class="nav-item"><a class="nav-link" href="/map/"><i class="bi bi-geo-alt"></i> Map</a></li>
+        <li class="nav-item"><a class="nav-link" href="/map/"><i class="bi bi-geo-alt"></i> Venues</a></li>
+        <li class="nav-item"><a class="nav-link" href="/events-map/"><i class="bi bi-pin-map"></i> Events Map</a></li>
         <li class="nav-item"><a class="nav-link" href="/calendar/"><i class="bi bi-calendar3"></i> Calendar</a></li>
         <li class="nav-item"><a class="nav-link" href="/journeys/"><i class="bi bi-people"></i> Journeys</a></li>
         <li class="nav-item"><a class="nav-link" href="/postcodes/"><i class="bi bi-map"></i> Postcodes</a></li>
@@ -51,7 +52,7 @@
         {% else %}
           <li class="nav-item"><a class="nav-link" href="{% url 'login' %}"><i class="bi bi-box-arrow-in-right"></i> Log in</a></li>
         {% endif %}
-        <li class="nav-item"><a class="nav-link" href="/admin/"><i class="bi bi-gear"></i> Admin</a></li>
+        <li class="nav-item"><a class="nav-link" href="/herebedragons/"><i class="bi bi-gear"></i> Admin</a></li>
         <li class="nav-item"><a class="nav-link" href="/api/organisations/"><i class="bi bi-code-slash"></i> API</a></li>
       </ul>
     </div>
@@ -72,7 +73,7 @@
 </div>
 
 <footer class="text-center text-muted py-4 mt-5 border-top">
-  <small>SADIE &mdash; Arts Organisation Analytics &copy; {% now "Y" %}</small>
+  <small>SADIE &copy; {% now "Y" %}</small>
 </footer>
 
 <!-- Bootstrap JS -->
