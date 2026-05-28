@@ -1,3 +1,10 @@
+FROM node:20-alpine AS frontend
+WORKDIR /frontend
+COPY frontend/package.json frontend/package-lock.json* ./
+RUN npm install --no-audit --no-fund
+COPY frontend/ ./
+RUN npm run build
+
 FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -18,6 +25,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
+
+# Pull the SPA build output in so Django can serve it under /app/* and /static/spa/.
+COPY --from=frontend /frontend/dist ./frontend/dist
 
 RUN python manage.py collectstatic --noinput
 

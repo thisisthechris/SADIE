@@ -2,7 +2,9 @@ version: "3.9"
 
 services:
   db:
-    image: postgis/postgis:15-3.3
+    # Postgres 15 + PostGIS 3.3 + pgvector + pg_trgm/unaccent.
+    build: ./db
+    image: sadie-db:pg15-postgis33-pgvector
     environment:
       POSTGRES_DB: sadie
       POSTGRES_USER: sadie
@@ -37,6 +39,7 @@ services:
       - .:/app
       - static_volume:/app/staticfiles
       - media_volume:/app/mediafiles
+      - embeddings_cache:/root/.cache/fastembed
     ports:
       - "8000:8000"
     env_file:
@@ -52,6 +55,7 @@ services:
     command: celery -A sadie worker --loglevel=info
     volumes:
       - .:/app
+      - embeddings_cache:/root/.cache/fastembed
     env_file:
       - .env
     depends_on:
@@ -77,3 +81,4 @@ volumes:
   postgres_data:
   static_volume:
   media_volume:
+  embeddings_cache:
