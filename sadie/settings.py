@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     "analytics",
     "dashboard",
     "scraping",
+    "embeddings",
 ]
 
 MIDDLEWARE = [
@@ -92,6 +93,13 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 STATIC_ROOT = os.environ.get("STATIC_ROOT", BASE_DIR / "staticfiles")
+# Serve the Vite-built SPA bundle (frontend/dist/assets/*) under /static/spa/.
+# The directory may not exist before the first `npm run build`; gate it so
+# `collectstatic` doesn't blow up in dev.
+STATICFILES_DIRS = []
+_spa_dist = BASE_DIR / "frontend" / "dist"
+if _spa_dist.exists():
+    STATICFILES_DIRS.append(("spa", _spa_dist))
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.environ.get("MEDIA_ROOT", BASE_DIR / "mediafiles")
 
@@ -121,7 +129,7 @@ REST_FRAMEWORK = {
         "anon": "1000/day",
         "upload": "200/hour",
     },
-    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "DEFAULT_PAGINATION_CLASS": "sadie.pagination.StandardPagination",
     "PAGE_SIZE": 50,
 }
 
@@ -152,6 +160,15 @@ if not UPLOAD_API_TOKEN:
 # Populate CORS_ALLOWED_ORIGINS (comma-separated) via env var in production.
 CORS_ALLOWED_ORIGINS = [o.strip() for o in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",") if o.strip()]
 CORS_URLS_REGEX = r"^/api/upload/.*$"
+
+# MapTiler key surfaced to the SPA at runtime via /api/config/.
+# Never bake this into the JS bundle so it can be rotated without a rebuild.
+MAPTILER_API_KEY = os.environ.get("MAPTILER_API_KEY", "")
+
+# Embeddings (Phase 2 search). fastembed loads the ONNX model lazily.
+EMBEDDING_PROVIDER = os.environ.get("EMBEDDING_PROVIDER", "fastembed")
+EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5")
+EMBEDDING_DIM = int(os.environ.get("EMBEDDING_DIM", "384"))
 
 # Leaflet / GeoDjango map defaults (centred on UK)
 LEAFLET_CONFIG = {

@@ -2,7 +2,24 @@
 {% block title %}Events Calendar – SADIE{% endblock %}
 
 {% block content %}
-<h1 class="mb-3"><i class="bi bi-calendar3"></i> Events Calendar</h1>
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+  <h1 class="mb-0"><i class="bi bi-calendar3"></i> Events Calendar</h1>
+  <div class="btn-group" role="group" aria-label="Subscribe to calendar">
+    <a class="btn btn-outline-primary" href="{{ webcal_url }}" title="Subscribe in your calendar app">
+      <i class="bi bi-calendar-plus"></i> Subscribe
+    </a>
+    <a class="btn btn-outline-secondary" href="{{ ics_url }}" download>
+      <i class="bi bi-download"></i> Download .ics
+    </a>
+    <button type="button" class="btn btn-outline-secondary" id="copy-ics-url" data-url="{{ ics_url }}" title="Copy feed URL to clipboard">
+      <i class="bi bi-clipboard"></i> Copy link
+    </button>
+  </div>
+</div>
+<p class="text-muted small mb-3">
+  Add to Google Calendar, Apple Calendar or Outlook by subscribing to the URL above.
+  Subscribing reflects current filters and updates automatically.
+</p>
 
 {% include "dashboard/_filters.html" with show_org=True show_cat=True show_dates=True show_search=True %}
 
@@ -40,7 +57,14 @@
                   {{ event.title }}
                 {% endif %}
               </td>
-              <td>{{ event.organisation.name }}</td>
+              <td>
+                {{ event.organisation.name }}
+                <a href="{% url 'dashboard-org-events-ics' event.organisation.slug %}"
+                   class="text-muted small text-decoration-none ms-1"
+                   title="Subscribe to {{ event.organisation.name }} events">
+                  <i class="bi bi-rss"></i>
+                </a>
+              </td>
               <td>{{ event.location.name|default:"–" }}</td>
               <td>
                 {% for cat in event.categories.all %}
@@ -58,4 +82,22 @@
 {% else %}
   <div class="alert alert-info">No events found for this period. Try adjusting the filters or run <code>manage.py generate_synthetic_data</code>.</div>
 {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function () {
+    var btn = document.getElementById('copy-ics-url');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+      var url = btn.getAttribute('data-url');
+      if (!url) return;
+      navigator.clipboard.writeText(url).then(function () {
+        var original = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-check2"></i> Copied!';
+        setTimeout(function () { btn.innerHTML = original; }, 1500);
+      });
+    });
+  })();
+</script>
 {% endblock %}
