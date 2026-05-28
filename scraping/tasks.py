@@ -575,6 +575,11 @@ def _extract_box_event_data(html_text: str, source_url: str) -> dict | None:
     except (json.JSONDecodeError, ValueError):
         return None
 
+    # The Box sometimes serialises slots as a dict keyed by slot id rather
+    # than a JSON array. Normalise to a list to keep downstream code simple.
+    if isinstance(slots, dict):
+        slots = list(slots.values())
+
     if not slots:
         return None
 
@@ -808,6 +813,289 @@ def scrape_the_box(self, source_id: int):
         run.events_found = events_found
         run.save()
         logger.exception("The Box Plymouth scrape error: %s", exc)
+        raise
+
+
+# ---------------------------------------------------------------------------
+#  Real Ideas scraper (Webflow CMS — server-rendered listing)
+# ---------------------------------------------------------------------------
+
+# Heuristic venue lookup. The Real Ideas /whats-on listing exposes title,
+# date, time, image and short description per card but no explicit venue tag,
+# so we infer the venue by scanning the title + description for keywords.
+# Order matters — the first matching entry wins.
+_REAL_IDEAS_VENUES = [
+    {
+        "keywords": ["liskeard library", "liskeard"],
+        "venue_name": "Liskeard Library",
+        "venue_address": "Barras Street, Liskeard",
+        "venue_postcode": "PL14 6AB",
+        "org_name": "Real Ideas",
+    },
+    {
+        "keywords": ["devonport guildhall", "guildhall", "print studio", "mayor's parlour", "mayors parlour"],
+        "venue_name": "Devonport Guildhall",
+        "venue_address": "Ker Street, Devonport, Plymouth",
+        "venue_postcode": "PL1 4EL",
+        "org_name": "Devonport Guildhall",
+    },
+    {
+        "keywords": [
+            "market hall",
+            "immersive dome",
+            "the dome",
+            "duke st",
+            "duke street",
+        ],
+        "venue_name": "Market Hall",
+        "venue_address": "Duke Street, Devonport, Plymouth",
+        "venue_postcode": "PL1 4PS",
+        "org_name": "Real Ideas",
+    },
+]
+
+# Default fallback when no keyword matches — Market Hall is Real Ideas' HQ.
+_REAL_IDEAS_DEFAULT_VENUE = _REAL_IDEAS_VENUES[-1]
+
+# Lightweight category inference from title + description text.
+_REAL_IDEAS_CATEGORY_KEYWORDS = [
+    ("Immersive Dome", ["immersive dome", "the dome", "dome experience"]),
+    ("Print Studio", ["print studio", "screen print", "screen-print", "screenprint", "lino"]),
+    ("Workshop", ["workshop", "short course", "make your own", "learn to"]),
+    ("Wellness", ["sound bath", "yoga", "meditation", "wellness", "wellbeing", "breathwork"]),
+    ("Home Education", ["home education", "home-educat", "home ed "]),
+    ("Family", ["family", "children", "kids ", "toddler"]),
+    ("Talk", ["talk ", " talk", "lecture", "panel", "conversation", "in conversation"]),
+    ("Market", ["market", "fair", "makers market"]),
+    ("Film", ["screening", "film ", " film", "cinema"]),
+    ("Music", ["live music", "gig", "concert", "open mic"]),
+    ("Quiz", ["quiz"]),
+    ("Coding", ["coding club", "coding", "code club"]),
+    ("Exhibition", ["exhibition", "exhibit"]),
+    ("Community", ["community", "drop-in", "drop in"]),
+]
+
+
+def _infer_real_ideas_venue(text: str) -> dict:
+    """Return the best-matching venue dict for the given combined text."""
+    haystack = text.lower()
+    for venue in _REAL_IDEAS_VENUES:
+        if any(kw in haystack for kw in venue["keywords"]):
+            return venue
+    return _REAL_IDEAS_DEFAULT_VENUE
+
+
+def _infer_real_ideas_categories(text: str) -> list[str]:
+    """Return category names whose keywords appear in the text."""
+    haystack = text.lower()
+    found: list[str] = []
+    for category, keywords in _REAL_IDEAS_CATEGORY_KEYWORDS:
+        if any(kw in haystack for kw in keywords) and category not in found:
+            found.append(category)
+    return found
+
+
+def _parse_real_ideas_datetime(date_text: str, time_text: str) -> datetime | None:
+    """Parse a card's "DD Mon YY" + "HH:MM" pair into a UTC datetime.
+
+    The site presents UK local times. We attach UK local timezone via
+    Django's current timezone if possible, then convert to UTC; falling
+    back to a naive UTC interpretation if anything looks off.
+    """
+    if not date_text or not time_text:
+        return None
+    try:
+        naive = datetime.strptime(f"{date_text.strip()} {time_text.strip()}", "%d %b %y %H:%M")
+    except ValueError:
+        return None
+    # Treat as UK local time. timezone.make_aware uses settings.TIME_ZONE.
+    try:
+        aware = timezone.make_aware(naive)
+    except Exception:
+        aware = naive.replace(tzinfo=dt_tz.utc)
+    return aware
+
+
+def _extract_real_ideas_card(card, base_url: str) -> dict | None:
+    """Extract a normalised event dict from a single .event_block card."""
+    title_a = card.select_one(".event_block-heading")
+    if not title_a:
+        return None
+    title = title_a.get_text(strip=True)
+    href = title_a.get("href", "")
+    if not href:
+        return None
+    source_url = href if href.startswith("http") else f"{base_url}{href}"
+
+    # external_id = last path segment of the detail URL
+    external_id = href.rstrip("/").rsplit("/", 1)[-1]
+
+    img_el = card.select_one("img")
+    image_url = (img_el.get("src") if img_el else "") or ""
+
+    desc_el = card.select_one("p.cc-event-summary, p.u-ellipis-3, .event_block-description")
+    description = desc_el.get_text(" ", strip=True) if desc_el else ""
+
+    # The first two .event_block-date_detail blocks contain "DD Mon YY" and "HH:MM".
+    detail_blocks = card.select(".event_block-date_detail")
+    date_text = detail_blocks[0].get_text(strip=True) if len(detail_blocks) > 0 else ""
+    time_text = detail_blocks[1].get_text(strip=True) if len(detail_blocks) > 1 else ""
+    start_datetime = _parse_real_ideas_datetime(date_text, time_text)
+
+    venue = _infer_real_ideas_venue(f"{title}\n{description}")
+    categories = _infer_real_ideas_categories(f"{title}\n{description}")
+
+    return {
+        "external_id": external_id,
+        "title": title,
+        "description": description,
+        "start_datetime": start_datetime,
+        "end_datetime": None,
+        "source_url": source_url,
+        "image_url": image_url,
+        "venue_name": venue["venue_name"],
+        "venue_address": venue["venue_address"],
+        "venue_postcode": venue["venue_postcode"],
+        "venue_lat": None,
+        "venue_lng": None,
+        "categories_raw": categories,
+        "tags_raw": [],
+        "_org_name": venue["org_name"],
+    }
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=300)
+def scrape_real_ideas(self, source_id: int):
+    """Scrape events from Real Ideas' /whats-on listing page.
+
+    The site is a Webflow CMS that server-renders up to 100 event cards on
+    a single page. Each card includes title, date, time, image and a short
+    description; the venue is inferred via keyword matching since the
+    listing markup does not expose a structured venue field.
+    """
+    try:
+        source = ScrapeSource.objects.get(pk=source_id)
+    except ScrapeSource.DoesNotExist:
+        logger.error("ScrapeSource %s does not exist", source_id)
+        return
+
+    run = ScrapeRun.objects.create(source=source)
+    base_url = source.base_url.rstrip("/")
+    api_path = source.api_path or "/whats-on"
+    listing_url = f"{base_url}{api_path}"
+
+    session = requests.Session()
+    session.headers.update({"User-Agent": "SADIE Event Scraper/1.0"})
+
+    events_found = 0
+    events_created = 0
+    events_updated = 0
+    events_skipped = 0
+
+    try:
+        logger.info("Fetching %s", listing_url)
+        resp = session.get(listing_url, timeout=20)
+        resp.raise_for_status()
+
+        soup = BeautifulSoup(resp.text, "html.parser")
+        cards = soup.select(".event_block")
+        events_found = len(cards)
+        logger.info("Real Ideas listing returned %d cards", events_found)
+
+        seen_ids: set[str] = set()
+
+        for card in cards:
+            extracted = _extract_real_ideas_card(card, base_url)
+            if not extracted or not extracted["title"] or not extracted["start_datetime"]:
+                events_skipped += 1
+                continue
+
+            ext_id = extracted["external_id"]
+            if ext_id in seen_ids:
+                # Listing pages occasionally repeat series cards; skip dupes.
+                events_skipped += 1
+                continue
+            seen_ids.add(ext_id)
+
+            org_name = extracted.pop("_org_name", "Real Ideas")
+
+            raw_data = {
+                k: (v.isoformat() if isinstance(v, datetime) else v)
+                for k, v in extracted.items()
+            }
+
+            ie, created = ImportedEvent.objects.update_or_create(
+                source=source,
+                external_id=ext_id,
+                defaults={
+                    "scrape_run": run,
+                    "raw_data": raw_data,
+                    "title": extracted["title"],
+                    "description": extracted["description"],
+                    "start_datetime": extracted["start_datetime"],
+                    "end_datetime": extracted["end_datetime"],
+                    "source_url": extracted["source_url"],
+                    "image_url": extracted["image_url"],
+                    "venue_name": extracted["venue_name"],
+                    "venue_address": extracted["venue_address"],
+                    "venue_postcode": extracted["venue_postcode"],
+                    "categories_raw": extracted["categories_raw"],
+                    "tags_raw": [],
+                },
+            )
+
+            if created:
+                events_created += 1
+                ie.matched_organisation = match_organisation(org_name)
+                ie.matched_location = match_location(
+                    extracted["venue_name"],
+                    extracted["venue_postcode"],
+                    ie.matched_organisation,
+                )
+                ie.matched_event = match_existing_event(ext_id, source.pk)
+                if ie.matched_event or ie.matched_organisation:
+                    ie.status = "auto_matched"
+                ie.save()
+            else:
+                events_updated += 1
+                if ie.status == "pending":
+                    ie.matched_organisation = match_organisation(org_name)
+                    if ie.matched_organisation:
+                        ie.status = "auto_matched"
+                        ie.save()
+
+        run.status = "success"
+        run.events_found = events_found
+        run.events_created = events_created
+        run.events_updated = events_updated
+        run.events_skipped = events_skipped
+        run.finished_at = timezone.now()
+        run.save()
+
+        source.last_scraped_at = timezone.now()
+        source.save(update_fields=["last_scraped_at"])
+
+        logger.info(
+            "Real Ideas scrape complete: %d found, %d new, %d updated, %d skipped",
+            events_found, events_created, events_updated, events_skipped,
+        )
+
+    except requests.RequestException as exc:
+        run.status = "failed"
+        run.error_message = str(exc)
+        run.finished_at = timezone.now()
+        run.events_found = events_found
+        run.save()
+        logger.exception("Real Ideas scrape failed: %s", exc)
+        raise self.retry(exc=exc)
+
+    except Exception as exc:
+        run.status = "failed"
+        run.error_message = str(exc)
+        run.finished_at = timezone.now()
+        run.events_found = events_found
+        run.save()
+        logger.exception("Real Ideas scrape error: %s", exc)
         raise
 
 

@@ -61,6 +61,13 @@ KNOWN_VENUES = [
         ],
     },
     {
+        "org_name": "Real Ideas",
+        "locations": [
+            {"name": "Market Hall", "address": "Duke Street, Devonport, Plymouth", "postcode": "PL1 4PS"},
+            {"name": "Liskeard Library", "address": "Barras Street, Liskeard", "postcode": "PL14 6AB"},
+        ],
+    },
+    {
         "org_name": "Plymouth City Council",
         "locations": [],
     },
@@ -94,6 +101,15 @@ KNOWN_CATEGORIES = [
     "Displays",
     "Talks and Tours",
     "Super Saturdays",
+    # Real Ideas categories
+    "Wellness",
+    "Home Education",
+    "Talk",
+    "Market",
+    "Quiz",
+    "Coding",
+    "Immersive Dome",
+    "Print Studio",
 ]
 
 
@@ -152,6 +168,20 @@ class Command(BaseCommand):
             )
             verb3 = "Created" if created3 else "Updated"
             self.stdout.write(self.style.SUCCESS(f"{verb3} ScrapeSource: {source3.name}"))
+
+            # Real Ideas (Webflow CMS HTML scraper)
+            source4, created4 = ScrapeSource.objects.update_or_create(
+                name="Real Ideas",
+                defaults={
+                    "base_url": "https://www.realideas.org",
+                    "api_path": "/whats-on",
+                    "scraper_task_name": "scraping.tasks.scrape_real_ideas",
+                    "enabled": True,
+                    "scrape_interval_hours": 24,
+                },
+            )
+            verb4 = "Created" if created4 else "Updated"
+            self.stdout.write(self.style.SUCCESS(f"{verb4} ScrapeSource: {source4.name}"))
 
         # Seed organisations and locations
         for venue_data in KNOWN_VENUES:
