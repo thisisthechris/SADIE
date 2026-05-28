@@ -4,6 +4,24 @@ from django.utils.text import slugify
 
 from organisations.models import Location, Organisation
 
+try:
+    from django.contrib.postgres.search import SearchVectorField
+    from django.contrib.postgres.indexes import GinIndex
+
+    _HAS_PG_SEARCH = True
+except Exception:  # pragma: no cover
+    SearchVectorField = None
+    GinIndex = None
+    _HAS_PG_SEARCH = False
+
+try:
+    from pgvector.django import VectorField
+
+    _HAS_PGVECTOR = True
+except Exception:  # pragma: no cover
+    VectorField = None
+    _HAS_PGVECTOR = False
+
 
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
@@ -44,8 +62,18 @@ class Event(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    if _HAS_PG_SEARCH:
+        search_vector = SearchVectorField(null=True, blank=True)
+    if _HAS_PGVECTOR:
+        embedding = VectorField(dimensions=384, null=True, blank=True)
+
     class Meta:
         ordering = ["start_datetime"]
+        indexes = (
+            [GinIndex(fields=["search_vector"], name="event_search_vector_gin")]
+            if _HAS_PG_SEARCH
+            else []
+        )
 
     def __str__(self):
         return f"{self.title} - {self.organisation.name}"
