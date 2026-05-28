@@ -1,0 +1,381 @@
+"""
+Phase 3 — 3D-visualisation data endpoints.
+
+These views return compact, deck.gl/three.js-friendly payloads. They
+share the standard analytics filter schema (see
+``analytics.queries.parse_filter_params``) so each viz respects the
+global FilterBar in the SPA.
+
+Endpoints (mounted at /api/analytics/viz/):
+
+    GET event-points/        flat array of [lng, lat, count] per venue
+    GET postcode-bars/       postcode centroids with totals (3D columns)
+    GET network/             org ↔ category ↔ user-cluster graph
+    GET spatiotemporal/      flat events array for the time-space cube
+"""
+
+from __future__ import annotations
+
+import hashlib
+from datetime import date, timedelta
+
+from django.db.models import Count, Sum
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.request import Request
+from rest_framework.response import Response
+
+from events.models import Category
+from organisations.models import Location, Organisation
+
+from .queries import (
+    events_qs,
+    interactions_qs,
+    location_coords,
+    parse_filter_params,
+    postcode_qs,
+)
+
+# Approx. centroids for Plymouth-area postcode districts (lng, lat).
+# Mirrors POSTCODE_CENTROIDS in dashboard/views.py but ordered (lng, lat)
+# for direct deck.gl consumption.
+POSTCODE_CENTROIDS = {
+    "PL1": [-4.1427, 50.3714],
+    "PL2": [-4.1620, 50.3680],
+    "PL3": [-4.1520, 50.3830],
+    "PL4": [-4.1300, 50.3760],
+    "PL5": [-4.1700, 50.3950],
+    "PL6": [-4.1350, 50.4050],
+    "PL7": [-4.0850, 50.3850],
+    "PL8": [-4.0650, 50.3480],
+    "PL9": [-4.0900, 50.3580],
+    "PL10": [-4.2050, 50.3650],
+    "PL11": [-4.2200, 50.3620],
+    "PL12": [-4.2000, 50.3850],
+    "PL13": [-4.4700, 50.3600],
+    "PL14": [-4.3800, 50.4500],
+    "PL15": [-4.3500, 50.5400],
+    "PL20": [-4.0800, 50.5100],
+    "PL21": [-3.9600, 50.3870],
+}
+
+
+def _district(postcode: str) -> str:
+    """Extract the postcode district (e.g. 'PL4 0AB' → 'PL4')."""
+    if not postcode:
+        return ""
+    return postcode.strip().split()[0].upper() if " " in postcode else postcode.strip().upper()
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticatedOrReadOnly])
+def event_points(request: Request) -> Response:
+    """One row per venue with coords + filtered event count.
+
+    Powers the HexagonLayer on /app/map3d/. Output is intentionally flat:
+    each row is ``{lng, lat, event_count, location_id, name, organisation}``
+    so deck.gl can aggregate client-side.
+    """
+    p = parse_filter_params(request)
+    events = (
+        events_qs(p)
+        .select_related("location", "organisation")
+        .filter(location__isnull=False)
+    )
+    counts: dict[int, int] = {}
+    for row in (
+        events.order_by()
+        .values("location_id")
+        .annotate(n=Count("id", distinct=True))
+    ):
+        counts[row["location_id"]] = row["n"]
+
+    locs = Location.objects.select_related("organisation").filter(
+        id__in=counts.keys()
+    )
+    rows = []
+    for loc in locs:
+        coords = location_coords(loc)
+        if not coords:
+            continue
+        rows.append(
+            {
+                "location_id": loc.id,
+                "name": loc.name,
+                "organisation_id": loc.organisation_id,
+                "organisation": loc.organisation.name,
+                "lng": coords[0],
+                "lat": coords[1],
+                "event_count": counts.get(loc.id, 0),
+            }
+        )
+    return Response({"filters": p, "results": rows})
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticatedOrReadOnly])
+def postcode_bars(request: Request) -> Response:
+    """Postcode-area totals with centroid coords for ColumnLayer extrusion."""
+    p = parse_filter_params(request)
+    rows = list(
+        postcode_qs(p)
+        .order_by()
+        .values("postcode", "area")
+        .annotate(total=Sum("interaction_count"))
+        .order_by("-total")
+    )
+    out = []
+    for r in rows:
+        district = _district(r["postcode"]) or _district(r["area"])
+        coords = POSTCODE_CENTROIDS.get(district)
+        if not coords:
+            continue
+        out.append(
+            {
+                "postcode": r["postcode"],
+                "district": district,
+                "area": r["area"],
+                "lng": coords[0],
+                "lat": coords[1],
+                "total": int(r["total"] or 0),
+            }
+        )
+    return Response({"filters": p, "results": out})
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticatedOrReadOnly])
+def network(request: Request) -> Response:
+    """Tripartite org ↔ category ↔ user-cluster graph for 3d-force-graph.
+
+    Users are bucketed (MD5(user_hash) mod ``buckets``) to avoid exposing
+    per-user activity and to keep the node count bounded.
+    """
+    p = parse_filter_params(request)
+    buckets = max(4, min(int(request.GET.get("buckets", "16")), 64))
+
+    interactions = interactions_qs(p)
+
+    # Org → category edges (via filtered events).
+    cat_edges = list(
+        events_qs(p)
+        .filter(categories__isnull=False)
+        .order_by()
+        .values("organisation_id", "categories__id")
+        .annotate(n=Count("id", distinct=True))
+    )
+    # Org → user-cluster edges.
+    user_rows = list(
+        interactions.order_by().values("organisation_id", "user_hash").annotate(n=Count("id"))
+    )
+
+    org_ids = {row["organisation_id"] for row in cat_edges} | {
+        row["organisation_id"] for row in user_rows
+    }
+    cat_ids = {row["categories__id"] for row in cat_edges if row["categories__id"]}
+
+    org_lookup = {o.id: o.name for o in Organisation.objects.filter(id__in=org_ids)}
+    cat_lookup = {c.id: c.name for c in Category.objects.filter(id__in=cat_ids)}
+
+    nodes = []
+    for oid, name in org_lookup.items():
+        nodes.append({"id": f"o{oid}", "type": "organisation", "label": name})
+    for cid, name in cat_lookup.items():
+        nodes.append({"id": f"c{cid}", "type": "category", "label": name})
+
+    # Bucket users.
+    bucket_weight: dict[int, int] = {}
+    bucket_org_links: dict[tuple[int, int], int] = {}
+    for row in user_rows:
+        h = hashlib.md5(row["user_hash"].encode("utf-8")).hexdigest()
+        b = int(h[:8], 16) % buckets
+        bucket_weight[b] = bucket_weight.get(b, 0) + row["n"]
+        key = (row["organisation_id"], b)
+        bucket_org_links[key] = bucket_org_links.get(key, 0) + row["n"]
+    for b, w in bucket_weight.items():
+        nodes.append(
+            {"id": f"u{b}", "type": "user_cluster", "label": f"Cluster {b}", "weight": w}
+        )
+
+    links = []
+    for row in cat_edges:
+        if not row["categories__id"]:
+            continue
+        links.append(
+            {
+                "source": f"o{row['organisation_id']}",
+                "target": f"c{row['categories__id']}",
+                "type": "org_category",
+                "value": row["n"],
+            }
+        )
+    for (oid, b), w in bucket_org_links.items():
+        links.append(
+            {
+                "source": f"o{oid}",
+                "target": f"u{b}",
+                "type": "org_user",
+                "value": w,
+            }
+        )
+
+    return Response(
+        {
+            "filters": p,
+            "buckets": buckets,
+            "node_count": len(nodes),
+            "link_count": len(links),
+            "nodes": nodes,
+            "links": links,
+        }
+    )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticatedOrReadOnly])
+def spatiotemporal(request: Request) -> Response:
+    """Flat ``[lng, lat, t_days, cat_id, event_id]`` array for the time cube.
+
+    ``t_days`` is days since the earliest event in the result set; the
+    SPA uses it as the Y axis. Limited to 5 000 rows to bound payload.
+    """
+    p = parse_filter_params(request)
+    if not p.get("dfrom"):
+        p["dfrom"] = (date.today() - timedelta(days=180)).isoformat()
+    if not p.get("dto"):
+        p["dto"] = (date.today() + timedelta(days=180)).isoformat()
+
+    events = (
+        events_qs(p)
+        .select_related("location")
+        .prefetch_related("categories")
+        .filter(location__isnull=False)
+        .order_by("start_datetime")[:5000]
+    )
+
+    rows = []
+    earliest = None
+    cat_lookup: dict[int, str] = {}
+    for ev in events:
+        coords = location_coords(ev.location) if ev.location_id else None
+        if not coords:
+            continue
+        if earliest is None or ev.start_datetime < earliest:
+            earliest = ev.start_datetime
+        cats = list(ev.categories.all())
+        primary = cats[0] if cats else None
+        cat_id = primary.id if primary else 0
+        if primary and primary.id not in cat_lookup:
+            cat_lookup[primary.id] = primary.name
+        rows.append(
+            {
+                "id": ev.id,
+                "lng": coords[0],
+                "lat": coords[1],
+                "ts": ev.start_datetime.isoformat(),
+                "cat": cat_id,
+                "title": ev.title,
+            }
+        )
+
+    if earliest:
+        for r in rows:
+            # Re-parse just to compute day offset; cheap because n ≤ 5k.
+            from django.utils.dateparse import parse_datetime
+
+            dt = parse_datetime(r["ts"])
+            r["t"] = (dt - earliest).days if dt else 0
+    else:
+        for r in rows:
+            r["t"] = 0
+
+    return Response(
+        {
+            "filters": p,
+            "earliest": earliest.isoformat() if earliest else None,
+            "categories": [{"id": cid, "name": name} for cid, name in cat_lookup.items()],
+            "count": len(rows),
+            "results": rows,
+        }
+    )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticatedOrReadOnly])
+def event_list(request: Request) -> Response:
+    """Flat per-event list with venue coords for the 2D events map.
+
+    Honours the standard FilterBar params and an optional ``limit``
+    (default 500, max 2000). Powers the "Events" mode on /app/map/,
+    which adds a client-side time slider on top of the returned set.
+    """
+    p = parse_filter_params(request)
+    try:
+        limit = max(1, min(int(request.GET.get("limit", "500")), 2000))
+    except (TypeError, ValueError):
+        limit = 500
+
+    events = (
+        events_qs(p)
+        .select_related("organisation", "location")
+        .filter(location__isnull=False)
+        .order_by("start_datetime")[:limit]
+    )
+
+    rows = []
+    for ev in events:
+        coords = location_coords(ev.location) if ev.location_id else None
+        if not coords:
+            continue
+        rows.append(
+            {
+                "id": ev.id,
+                "title": ev.title,
+                "lng": coords[0],
+                "lat": coords[1],
+                "start": ev.start_datetime.isoformat() if ev.start_datetime else None,
+                "end": ev.end_datetime.isoformat() if ev.end_datetime else None,
+                "url": ev.url or "",
+                "organisation": ev.organisation.name if ev.organisation_id else "",
+                "organisation_id": ev.organisation_id,
+                "location_name": ev.location.name if ev.location_id else "",
+                "location_id": ev.location_id,
+            }
+        )
+    return Response({"filters": p, "count": len(rows), "limit": limit, "results": rows})
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticatedOrReadOnly])
+def postcode_records(request: Request) -> Response:
+    """Top-N raw PostcodeAreaInteraction rows under the current filters.
+
+    Powers the "Postcode records" table on /app/postcodes/. Honours the
+    standard FilterBar params and an optional ``limit`` (default 200,
+    max 1000), ordered by ``-interaction_count``.
+    """
+    p = parse_filter_params(request)
+    try:
+        limit = max(1, min(int(request.GET.get("limit", "200")), 1000))
+    except (TypeError, ValueError):
+        limit = 200
+
+    qs = (
+        postcode_qs(p)
+        .select_related("organisation")
+        .order_by("-interaction_count")[:limit]
+    )
+    rows = [
+        {
+            "id": r.id,
+            "postcode": r.postcode,
+            "area": r.area or "",
+            "organisation": r.organisation.name if r.organisation_id else "",
+            "organisation_id": r.organisation_id,
+            "interaction_count": r.interaction_count,
+            "period_start": r.period_start.isoformat() if r.period_start else None,
+            "period_end": r.period_end.isoformat() if r.period_end else None,
+        }
+        for r in qs
+    ]
+    return Response({"filters": p, "count": len(rows), "limit": limit, "results": rows})
