@@ -25,6 +25,7 @@
 </head>
 <body>
 
+{% if user.is_authenticated %}
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
   <div class="container-fluid">
     <a class="navbar-brand" href="/">&#127912; SADIE</a>
@@ -39,25 +40,23 @@
         <li class="nav-item"><a class="nav-link" href="/calendar/"><i class="bi bi-calendar3"></i> Calendar</a></li>
         <li class="nav-item"><a class="nav-link" href="/journeys/"><i class="bi bi-people"></i> Journeys</a></li>
         <li class="nav-item"><a class="nav-link" href="/postcodes/"><i class="bi bi-map"></i> Postcodes</a></li>
+        <li class="nav-item"><a class="nav-link text-warning" href="/app/"><i class="bi bi-stars"></i> New UI</a></li>
       </ul>
       <ul class="navbar-nav ms-auto">
-        {% if user.is_authenticated %}
-          <li class="nav-item"><span class="nav-link text-light"><i class="bi bi-person-circle"></i> {{ user.username }}</span></li>
-          <li class="nav-item">
-            <form method="post" action="{% url 'logout' %}" class="d-inline">
-              {% csrf_token %}
-              <button type="submit" class="btn btn-link nav-link text-light"><i class="bi bi-box-arrow-right"></i> Log out</button>
-            </form>
-          </li>
-        {% else %}
-          <li class="nav-item"><a class="nav-link" href="{% url 'login' %}"><i class="bi bi-box-arrow-in-right"></i> Log in</a></li>
-        {% endif %}
+        <li class="nav-item"><span class="nav-link text-light"><i class="bi bi-person-circle"></i> {{ user.username }}</span></li>
+        <li class="nav-item">
+          <form method="post" action="{% url 'logout' %}" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-link nav-link text-light"><i class="bi bi-box-arrow-right"></i> Log out</button>
+          </form>
+        </li>
         <li class="nav-item"><a class="nav-link" href="/herebedragons/"><i class="bi bi-gear"></i> Admin</a></li>
         <li class="nav-item"><a class="nav-link" href="/api/organisations/"><i class="bi bi-code-slash"></i> API</a></li>
       </ul>
     </div>
   </div>
 </nav>
+{% endif %}
 
 <div class="container-fluid px-4">
   {% if messages %}

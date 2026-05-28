@@ -2,12 +2,18 @@ from collections import defaultdict
 from datetime import date, timedelta
 
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, Q, Sum
+from django.db.models import Count, Sum
 from django.db.models.functions import TruncMonth
 from django.shortcuts import render
 
-from analytics.models import PostcodeAreaInteraction, UserHashInteraction
-from events.models import Category, Event
+from analytics.queries import (
+    events_qs as _events_qs,
+    interactions_qs as _interactions_qs,
+    location_coords as _loc_coords,
+    parse_filter_params as _filter_params,
+    postcode_qs as _postcode_qs,
+)
+from events.models import Category
 from organisations.models import Location, Organisation
 
 # Approximate centroids for Plymouth-area postcode districts (lat, lng).
@@ -33,25 +39,13 @@ POSTCODE_CENTROIDS = {
 
 
 # ── Filter helpers ────────────────────────────────────────────────────────
-
-
-def _filter_params(request):
-    """Extract common filter parameters from GET query string."""
-    p = {
-        "org": request.GET.get("org", ""),
-        "cat": request.GET.get("category", ""),
-        "dfrom": request.GET.get("date_from", ""),
-        "dto": request.GET.get("date_to", ""),
-        "search": request.GET.get("search", ""),
-        "period": request.GET.get("period", ""),
-        "itype": request.GET.get("itype", ""),
-    }
-    # Resolve period shortcut → date_from
-    if p["period"] and not p["dfrom"]:
-        days = {"7d": 7, "30d": 30, "90d": 90, "1y": 365}.get(p["period"])
-        if days:
-            p["dfrom"] = (date.today() - timedelta(days=days)).isoformat()
-    return p
+#
+# The queryset / parameter helpers used to live here. They have moved to
+# ``analytics.queries`` so the new DRF stats endpoints share one source of
+# truth. The dashboard imports them as their original underscore-prefixed
+# names so the view bodies below can stay unchanged.
+#
+# Only ``_filter_ctx`` remains here because it produces template-context only.
 
 
 def _filter_ctx(p):
@@ -67,64 +61,6 @@ def _filter_ctx(p):
         "f_period": p["period"],
         "f_itype": p["itype"],
     }
-
-
-def _events_qs(p, base=None):
-    """Return a filtered Event queryset."""
-    qs = base if base is not None else Event.objects.all()
-    if p["org"]:
-        qs = qs.filter(organisation_id=p["org"])
-    if p["cat"]:
-        qs = qs.filter(categories__id=p["cat"])
-    if p["dfrom"]:
-        qs = qs.filter(start_datetime__date__gte=p["dfrom"])
-    if p["dto"]:
-        qs = qs.filter(start_datetime__date__lte=p["dto"])
-    if p["search"]:
-        qs = qs.filter(
-            Q(title__icontains=p["search"]) | Q(description__icontains=p["search"])
-        )
-    return qs.distinct()
-
-
-def _interactions_qs(p, base=None):
-    """Return a filtered UserHashInteraction queryset."""
-    qs = base if base is not None else UserHashInteraction.objects.all()
-    if p["org"]:
-        qs = qs.filter(organisation_id=p["org"])
-    if p["dfrom"]:
-        qs = qs.filter(interaction_date__gte=p["dfrom"])
-    if p["dto"]:
-        qs = qs.filter(interaction_date__lte=p["dto"])
-    if p["itype"]:
-        qs = qs.filter(interaction_type=p["itype"])
-    return qs
-
-
-def _postcode_qs(p, base=None):
-    """Return a filtered PostcodeAreaInteraction queryset."""
-    qs = base if base is not None else PostcodeAreaInteraction.objects.all()
-    if p["org"]:
-        qs = qs.filter(organisation_id=p["org"])
-    if p["dfrom"]:
-        qs = qs.filter(period_start__gte=p["dfrom"])
-    if p["dto"]:
-        qs = qs.filter(period_end__lte=p["dto"])
-    return qs
-
-
-def _loc_coords(loc):
-    """Return [lng, lat] for a Location, or None."""
-    if not loc or not loc.point:
-        return None
-    try:
-        return [loc.point.x, loc.point.y]
-    except AttributeError:
-        try:
-            lng, lat = str(loc.point).split(",")
-            return [float(lng), float(lat)]
-        except (ValueError, TypeError):
-            return None
 
 
 # ── Views ─────────────────────────────────────────────────────────────────
@@ -307,6 +243,10 @@ def events_calendar(request):
         "total_events": events.count(),
         **_filter_ctx(p),
     }
+    # Subscribe links (filter-aware) for the calendar page.
+    from .ics_feed import calendar_subscribe_urls
+
+    context.update(calendar_subscribe_urls(request))
     return render(request, "dashboard/calendar.html", context)
 
 
