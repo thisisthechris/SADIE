@@ -1,0 +1,69 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Light theme defaults — calm slate. */
+  --bg: 248 250 252;        /* slate-50 */
+  --fg: 15 23 42;           /* slate-900 */
+  --muted: 100 116 139;     /* slate-500 */
+  --card: 255 255 255;
+  --border: 226 232 240;    /* slate-200 */
+  --accent: 14 116 144;     /* cyan-700 */
+  color-scheme: light;
+}
+
+.dark {
+  --bg: 2 6 23;             /* slate-950 */
+  --fg: 226 232 240;        /* slate-200 */
+  --muted: 148 163 184;     /* slate-400 */
+  --card: 15 23 42;         /* slate-900 */
+  --border: 30 41 59;       /* slate-800 */
+  --accent: 34 211 238;     /* cyan-400 */
+  color-scheme: dark;
+}
+
+@layer base {
+  body {
+    @apply min-h-screen;
+  }
+
+  /* Better focus ring for keyboard users. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-bg;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-card border border-border rounded-lg shadow-soft;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-3 py-1.5
+           text-sm font-medium transition-colors disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply btn bg-accent text-white hover:opacity-90;
+  }
+
+  .btn-ghost {
+    @apply btn hover:bg-border/40;
+  }
+
+  .input {
+    @apply w-full rounded-md border border-border bg-card px-3 py-1.5 text-sm
+           placeholder:text-muted focus:border-accent;
+  }
+
+  .stat {
+    @apply card p-4;
+  }
+  .stat-label {
+    @apply text-xs uppercase tracking-wide text-muted;
+  }
+  .stat-value {
+    @apply mt-1 text-2xl font-semibold tabular-nums;
+  }
+}
