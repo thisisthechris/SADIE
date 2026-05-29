@@ -29,7 +29,6 @@ from analytics.models import PostcodeAreaInteraction, UserHashInteraction
 from events.models import Category, Event
 from organisations.models import Location, Organisation
 
-
 # ---------------------------------------------------------------------------
 #  Plymouth-specific data pools
 # ---------------------------------------------------------------------------
@@ -42,9 +41,27 @@ PLYMOUTH_VENUES = [
         "website": "https://theatreroyal.com",
         "description": "The largest and best-attended regional producing theatre in the UK.",
         "locations": [
-            {"name": "Theatre Royal Plymouth", "address": "Royal Parade, Plymouth", "postcode": "PL1 2TR", "lat": 50.3712, "lng": -4.1416},
-            {"name": "The Lyric", "address": "Royal Parade, Plymouth", "postcode": "PL1 2TR", "lat": 50.3714, "lng": -4.1413},
-            {"name": "The Drum", "address": "Royal Parade, Plymouth", "postcode": "PL1 2TR", "lat": 50.3710, "lng": -4.1419},
+            {
+                "name": "Theatre Royal Plymouth",
+                "address": "Royal Parade, Plymouth",
+                "postcode": "PL1 2TR",
+                "lat": 50.3712,
+                "lng": -4.1416,
+            },
+            {
+                "name": "The Lyric",
+                "address": "Royal Parade, Plymouth",
+                "postcode": "PL1 2TR",
+                "lat": 50.3714,
+                "lng": -4.1413,
+            },
+            {
+                "name": "The Drum",
+                "address": "Royal Parade, Plymouth",
+                "postcode": "PL1 2TR",
+                "lat": 50.3710,
+                "lng": -4.1419,
+            },
         ],
     },
     {
@@ -52,7 +69,13 @@ PLYMOUTH_VENUES = [
         "website": "https://www.theboxplymouth.com",
         "description": "One of the UK's largest museum and gallery spaces, telling the story of Plymouth.",
         "locations": [
-            {"name": "The Box", "address": "Tavistock Place, Plymouth", "postcode": "PL4 8AX", "lat": 50.3749, "lng": -4.1353},
+            {
+                "name": "The Box",
+                "address": "Tavistock Place, Plymouth",
+                "postcode": "PL4 8AX",
+                "lat": 50.3749,
+                "lng": -4.1353,
+            },
         ],
     },
     {
@@ -60,7 +83,13 @@ PLYMOUTH_VENUES = [
         "website": "https://www.plymouthpavilions.com",
         "description": "Plymouth's premier entertainment venue for live music, comedy, and arena events.",
         "locations": [
-            {"name": "Plymouth Pavilions", "address": "Millbay Road, Plymouth", "postcode": "PL1 3LF", "lat": 50.3674, "lng": -4.1534},
+            {
+                "name": "Plymouth Pavilions",
+                "address": "Millbay Road, Plymouth",
+                "postcode": "PL1 3LF",
+                "lat": 50.3674,
+                "lng": -4.1534,
+            },
         ],
     },
     {
@@ -68,7 +97,13 @@ PLYMOUTH_VENUES = [
         "website": "https://barbicantheatre.co.uk",
         "description": "Independent theatre in the heart of Plymouth's historic Barbican quarter.",
         "locations": [
-            {"name": "Barbican Theatre", "address": "Castle Street, Plymouth", "postcode": "PL1 2NJ", "lat": 50.3663, "lng": -4.1328},
+            {
+                "name": "Barbican Theatre",
+                "address": "Castle Street, Plymouth",
+                "postcode": "PL1 2NJ",
+                "lat": 50.3663,
+                "lng": -4.1328,
+            },
         ],
     },
     {
@@ -76,7 +111,13 @@ PLYMOUTH_VENUES = [
         "website": "https://plymouthartscinema.org",
         "description": "Independent cinema showing arthouse, world, and classic films.",
         "locations": [
-            {"name": "Plymouth Arts Cinema", "address": "38 Looe Street, Plymouth", "postcode": "PL4 0EB", "lat": 50.3716, "lng": -4.1362},
+            {
+                "name": "Plymouth Arts Cinema",
+                "address": "38 Looe Street, Plymouth",
+                "postcode": "PL4 0EB",
+                "lat": 50.3716,
+                "lng": -4.1362,
+            },
         ],
     },
     {
@@ -84,7 +125,13 @@ PLYMOUTH_VENUES = [
         "website": "https://www.oceanstudios.org.uk",
         "description": "Artist studios and creative workspace at Royal William Yard.",
         "locations": [
-            {"name": "Ocean Studios", "address": "Royal William Yard, Plymouth", "postcode": "PL1 3RP", "lat": 50.3651, "lng": -4.1655},
+            {
+                "name": "Ocean Studios",
+                "address": "Royal William Yard, Plymouth",
+                "postcode": "PL1 3RP",
+                "lat": 50.3651,
+                "lng": -4.1655,
+            },
         ],
     },
     {
@@ -92,7 +139,13 @@ PLYMOUTH_VENUES = [
         "website": "https://plymouthmusiczone.org.uk",
         "description": "Community music charity bringing music to people across Plymouth.",
         "locations": [
-            {"name": "Plymouth Music Zone", "address": "Millbridge, Plymouth", "postcode": "PL1 3LQ", "lat": 50.3686, "lng": -4.1528},
+            {
+                "name": "Plymouth Music Zone",
+                "address": "Millbridge, Plymouth",
+                "postcode": "PL1 3LQ",
+                "lat": 50.3686,
+                "lng": -4.1528,
+            },
         ],
     },
     {
@@ -100,7 +153,13 @@ PLYMOUTH_VENUES = [
         "website": "https://www.devonportguildhall.org",
         "description": "Grade I listed building hosting arts, culture, and community events in Devonport.",
         "locations": [
-            {"name": "Devonport Guildhall", "address": "Ker Street, Plymouth", "postcode": "PL1 4EL", "lat": 50.3691, "lng": -4.1718},
+            {
+                "name": "Devonport Guildhall",
+                "address": "Ker Street, Plymouth",
+                "postcode": "PL1 4EL",
+                "lat": 50.3691,
+                "lng": -4.1718,
+            },
         ],
     },
     {
@@ -108,7 +167,13 @@ PLYMOUTH_VENUES = [
         "website": "https://realideas.org",
         "description": "Social enterprise supporting creative and community projects in Plymouth.",
         "locations": [
-            {"name": "Market Hall", "address": "Devonport Market, Plymouth", "postcode": "PL1 4AU", "lat": 50.3688, "lng": -4.1700},
+            {
+                "name": "Market Hall",
+                "address": "Devonport Market, Plymouth",
+                "postcode": "PL1 4AU",
+                "lat": 50.3688,
+                "lng": -4.1700,
+            },
         ],
     },
     {
@@ -116,9 +181,27 @@ PLYMOUTH_VENUES = [
         "website": "https://www.plymouth.gov.uk",
         "description": "Local authority delivering public events, festivals, and civic celebrations.",
         "locations": [
-            {"name": "Plymouth Hoe", "address": "Hoe Road, Plymouth", "postcode": "PL1 2PA", "lat": 50.3642, "lng": -4.1426},
-            {"name": "Central Park", "address": "Central Park Avenue, Plymouth", "postcode": "PL2 3DQ", "lat": 50.3885, "lng": -4.1429},
-            {"name": "The Piazza", "address": "Armada Way, Plymouth", "postcode": "PL1 1LE", "lat": 50.3717, "lng": -4.1424},
+            {
+                "name": "Plymouth Hoe",
+                "address": "Hoe Road, Plymouth",
+                "postcode": "PL1 2PA",
+                "lat": 50.3642,
+                "lng": -4.1426,
+            },
+            {
+                "name": "Central Park",
+                "address": "Central Park Avenue, Plymouth",
+                "postcode": "PL2 3DQ",
+                "lat": 50.3885,
+                "lng": -4.1429,
+            },
+            {
+                "name": "The Piazza",
+                "address": "Armada Way, Plymouth",
+                "postcode": "PL1 1LE",
+                "lat": 50.3717,
+                "lng": -4.1424,
+            },
         ],
     },
 ]
@@ -312,7 +395,11 @@ class Command(BaseCommand):
         parser.add_argument("--events", type=int, default=80, help="Number of events to create")
         parser.add_argument("--interactions", type=int, default=500, help="Number of user-hash interactions")
         parser.add_argument("--postcodes", type=int, default=100, help="Number of postcode interaction records")
-        parser.add_argument("--clear", action="store_true", help="Delete all existing synthetic data before generating (preserves scraped data)")
+        parser.add_argument(
+            "--clear",
+            action="store_true",
+            help="Delete all existing synthetic data before generating (preserves scraped data)",
+        )
 
     def handle(self, *args, **options):
         if options["clear"]:
@@ -390,20 +477,10 @@ class Command(BaseCommand):
         """Derive date range from events already in the database."""
         from django.db.models import Max, Min
 
-        agg = Event.objects.aggregate(
-            earliest=Min("start_datetime"), latest=Max("start_datetime")
-        )
+        agg = Event.objects.aggregate(earliest=Min("start_datetime"), latest=Max("start_datetime"))
         today = date.today()
-        cal_start = (
-            agg["earliest"].date()
-            if agg["earliest"]
-            else today - timedelta(days=180)
-        )
-        cal_end = (
-            agg["latest"].date()
-            if agg["latest"]
-            else today + timedelta(days=180)
-        )
+        cal_start = agg["earliest"].date() if agg["earliest"] else today - timedelta(days=180)
+        cal_end = agg["latest"].date() if agg["latest"] else today + timedelta(days=180)
         # Ensure at least a 6-month span
         if (cal_end - cal_start).days < 180:
             cal_end = cal_start + timedelta(days=180)
@@ -416,9 +493,7 @@ class Command(BaseCommand):
         # Spread events across the full calendar range
         past_start = cal_start
         future_end = cal_end
-        self.stdout.write(
-            f"  Event date range: {past_start} → {future_end}"
-        )
+        self.stdout.write(f"  Event date range: {past_start} → {future_end}")
 
         # Load or create categories
         categories = {}
@@ -505,16 +580,11 @@ class Command(BaseCommand):
         start = cal_start
         end = min(cal_end, today)  # interactions can't be in the future
         span_days = max((end - start).days, 1)
-        self.stdout.write(
-            f"  Interaction date range: {start} → {end} ({span_days} days)"
-        )
+        self.stdout.write(f"  Interaction date range: {start} → {end} ({span_days} days)")
 
         # Create user pool — simulate ~200 unique visitors with varying activity
         num_users = max(50, count // 5)
-        fake_users = [
-            hashlib.sha256(f"plymouth_user_{i}".encode()).hexdigest()
-            for i in range(num_users)
-        ]
+        fake_users = [hashlib.sha256(f"plymouth_user_{i}".encode()).hexdigest() for i in range(num_users)]
         # Some users are frequent, most are occasional
         user_weights = [random.paretovariate(1.5) for _ in fake_users]
 
@@ -562,9 +632,7 @@ class Command(BaseCommand):
         cal_start, cal_end = self._get_calendar_range()
         range_end = min(cal_end, today)
         range_start = cal_start
-        self.stdout.write(
-            f"  Postcode date range: {range_start} → {range_end}"
-        )
+        self.stdout.write(f"  Postcode date range: {range_start} → {range_end}")
         postcodes_with_weights = [(p[0], p[1], p[2]) for p in PLYMOUTH_POSTCODES]
         codes = [p[0] for p in postcodes_with_weights]
         areas = [p[1] for p in postcodes_with_weights]

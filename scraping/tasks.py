@@ -1,12 +1,13 @@
 """
 Celery tasks for scraping external event sources.
 """
+
 import html as html_module
 import json
 import logging
 import re
 import time
-from datetime import datetime, timezone as dt_tz
+from datetime import UTC, datetime
 
 import requests
 from bs4 import BeautifulSoup
@@ -29,7 +30,7 @@ def _ms_to_datetime(ms: int | None) -> datetime | None:
     if ms is None:
         return None
     try:
-        return datetime.fromtimestamp(ms / 1000, tz=dt_tz.utc)
+        return datetime.fromtimestamp(ms / 1000, tz=UTC)
     except (ValueError, TypeError, OSError):
         return None
 
@@ -285,7 +286,7 @@ def _parse_trp_date_range(date_text: str) -> tuple[datetime | None, datetime | N
     year = m.group("year")
     start_str = f"{m.group('start_day')} {m.group('start_mon')} {year}"
     try:
-        start_dt = dateutil_parser.parse(start_str).replace(tzinfo=dt_tz.utc)
+        start_dt = dateutil_parser.parse(start_str).replace(tzinfo=UTC)
     except (ValueError, TypeError):
         return None, None
 
@@ -293,7 +294,7 @@ def _parse_trp_date_range(date_text: str) -> tuple[datetime | None, datetime | N
     if m.group("end_day") and m.group("end_mon"):
         end_str = f"{m.group('end_day')} {m.group('end_mon')} {year}"
         try:
-            end_dt = dateutil_parser.parse(end_str).replace(tzinfo=dt_tz.utc)
+            end_dt = dateutil_parser.parse(end_str).replace(tzinfo=UTC)
         except (ValueError, TypeError):
             pass
 
@@ -444,10 +445,7 @@ def scrape_theatre_royal(self, source_id: int):
                 time.sleep(0.5)
 
                 # Build a JSON-safe copy of extracted for raw_data storage
-                raw_data = {
-                    k: (v.isoformat() if isinstance(v, datetime) else v)
-                    for k, v in extracted.items()
-                }
+                raw_data = {k: (v.isoformat() if isinstance(v, datetime) else v) for k, v in extracted.items()}
 
                 ie, created = ImportedEvent.objects.update_or_create(
                     source=source,
@@ -471,9 +469,7 @@ def scrape_theatre_royal(self, source_id: int):
 
                 if created:
                     events_created += 1
-                    ie.matched_organisation = match_organisation(
-                        extracted["venue_name"] or "Theatre Royal Plymouth"
-                    )
+                    ie.matched_organisation = match_organisation(extracted["venue_name"] or "Theatre Royal Plymouth")
                     ie.matched_location = match_location(
                         extracted["venue_name"] or "Theatre Royal Plymouth",
                         "PL1 2TR",
@@ -508,7 +504,10 @@ def scrape_theatre_royal(self, source_id: int):
 
         logger.info(
             "Theatre Royal Plymouth scrape complete: %d found, %d new, %d updated, %d skipped",
-            events_found, events_created, events_updated, events_skipped,
+            events_found,
+            events_created,
+            events_updated,
+            events_skipped,
         )
 
     except requests.RequestException as exc:
@@ -629,16 +628,12 @@ def _extract_box_event_data(html_text: str, source_url: str) -> dict | None:
     for slot in slots:
         if slot.get("start_date"):
             try:
-                start_dates.append(
-                    datetime.fromisoformat(slot["start_date"].replace("Z", "+00:00"))
-                )
+                start_dates.append(datetime.fromisoformat(slot["start_date"].replace("Z", "+00:00")))
             except ValueError:
                 pass
         if slot.get("end_date"):
             try:
-                end_dates.append(
-                    datetime.fromisoformat(slot["end_date"].replace("Z", "+00:00"))
-                )
+                end_dates.append(datetime.fromisoformat(slot["end_date"].replace("Z", "+00:00")))
             except ValueError:
                 pass
 
@@ -726,10 +721,7 @@ def scrape_the_box(self, source_id: int):
                 continue
 
             # Build JSON-safe raw_data
-            raw_data = {
-                k: (v.isoformat() if isinstance(v, datetime) else v)
-                for k, v in extracted.items()
-            }
+            raw_data = {k: (v.isoformat() if isinstance(v, datetime) else v) for k, v in extracted.items()}
 
             ie, created = ImportedEvent.objects.update_or_create(
                 source=source,
@@ -753,9 +745,7 @@ def scrape_the_box(self, source_id: int):
 
             if created:
                 events_created += 1
-                ie.matched_organisation = match_organisation(
-                    extracted["venue_name"] or "The Box Plymouth"
-                )
+                ie.matched_organisation = match_organisation(extracted["venue_name"] or "The Box Plymouth")
                 ie.matched_location = match_location(
                     extracted["venue_name"] or "The Box",
                     "PL4 8AX",
@@ -768,9 +758,7 @@ def scrape_the_box(self, source_id: int):
             else:
                 events_updated += 1
                 if ie.status == "pending":
-                    ie.matched_organisation = match_organisation(
-                        extracted["venue_name"] or "The Box Plymouth"
-                    )
+                    ie.matched_organisation = match_organisation(extracted["venue_name"] or "The Box Plymouth")
                     if ie.matched_organisation:
                         ie.status = "auto_matched"
                         ie.save()
@@ -912,7 +900,7 @@ def _parse_real_ideas_datetime(date_text: str, time_text: str) -> datetime | Non
     try:
         aware = timezone.make_aware(naive)
     except Exception:
-        aware = naive.replace(tzinfo=dt_tz.utc)
+        aware = naive.replace(tzinfo=UTC)
     return aware
 
 
@@ -1019,10 +1007,7 @@ def scrape_real_ideas(self, source_id: int):
 
             org_name = extracted.pop("_org_name", "Real Ideas")
 
-            raw_data = {
-                k: (v.isoformat() if isinstance(v, datetime) else v)
-                for k, v in extracted.items()
-            }
+            raw_data = {k: (v.isoformat() if isinstance(v, datetime) else v) for k, v in extracted.items()}
 
             ie, created = ImportedEvent.objects.update_or_create(
                 source=source,
@@ -1077,7 +1062,10 @@ def scrape_real_ideas(self, source_id: int):
 
         logger.info(
             "Real Ideas scrape complete: %d found, %d new, %d updated, %d skipped",
-            events_found, events_created, events_updated, events_skipped,
+            events_found,
+            events_created,
+            events_updated,
+            events_skipped,
         )
 
     except requests.RequestException as exc:

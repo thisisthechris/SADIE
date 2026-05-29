@@ -10,7 +10,6 @@ from django.db import transaction
 
 from .services import event_text, get_provider, organisation_text
 
-
 logger = logging.getLogger(__name__)
 
 

@@ -141,10 +141,37 @@ def interactions_timeseries(request: Request) -> Response:
 def interactions_by_type(request: Request) -> Response:
     """Breakdown of interactions by ``interaction_type``."""
     p, _, interactions, _ = _filtered(request)
-    rows = list(
-        interactions.values("interaction_type").annotate(n=Count("id")).order_by("-n")
-    )
+    rows = list(interactions.values("interaction_type").annotate(n=Count("id")).order_by("-n"))
     return Response({"filters": p, "results": rows})
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticatedOrReadOnly])
+def event_stats(request: Request, event_id: int) -> Response:
+    """Per-event interaction analytics: unique visitors, total count, monthly series."""
+    from .models import UserHashInteraction
+
+    qs = UserHashInteraction.objects.filter(event_id=event_id)
+    unique_users = qs.values("user_hash").distinct().count()
+    total = qs.count()
+    by_month = (
+        qs.annotate(month=TruncMonth("interaction_date")).values("month").annotate(count=Count("id")).order_by("month")
+    )
+    series = [
+        {
+            "month": r["month"].date().isoformat() if hasattr(r["month"], "date") else r["month"].isoformat(),
+            "count": r["count"],
+        }
+        for r in by_month
+    ]
+    return Response(
+        {
+            "event_id": event_id,
+            "unique_users": unique_users,
+            "total_interactions": total,
+            "by_month": series,
+        }
+    )
 
 
 @api_view(["GET"])
@@ -157,15 +184,9 @@ def postcode_aggregates(request: Request) -> Response:
     SPA can do its own district-prefix grouping if needed.
     """
     p, _, _, postcodes = _filtered(request)
-    by_area = list(
-        postcodes.values("area")
-        .annotate(total=Sum("interaction_count"))
-        .order_by("-total")
-    )
+    by_area = list(postcodes.values("area").annotate(total=Sum("interaction_count")).order_by("-total"))
     by_postcode = list(
-        postcodes.values("postcode", "area")
-        .annotate(total=Sum("interaction_count"))
-        .order_by("-total")
+        postcodes.values("postcode", "area").annotate(total=Sum("interaction_count")).order_by("-total")
     )
     return Response(
         {

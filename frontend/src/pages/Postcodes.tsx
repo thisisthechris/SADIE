@@ -1,12 +1,14 @@
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { ColumnLayer } from "@deck.gl/layers";
+import type maplibregl from "maplibre-gl";
 import { api } from "../lib/api";
 import { useFilters } from "../lib/filters";
 import { useConfig } from "../lib/auth";
-import FilterBar from "../components/FilterBar";
 import ExportMenu from "../components/ExportMenu";
 import Map2D, { type MapPoint } from "../viz/Map2D";
-import { downloadCsv } from "../lib/export";
+import Deck3DMap from "../viz/Deck3DMap";
+import { downloadCanvasPng, downloadCsv } from "../lib/export";
 
 interface Bar {
   postcode: string;
@@ -43,6 +45,8 @@ export default function Postcodes() {
   const cfg = useConfig();
   const key = cfg.data?.maptiler_api_key ?? "";
   const q = f.asQuery();
+  const [dim, setDim] = useState<"2d" | "3d">("2d");
+  const mapRef = useRef<maplibregl.Map | null>(null);
 
   const bars = useQuery({
     queryKey: ["viz-postcode-bars", q],
@@ -94,55 +98,127 @@ export default function Postcodes() {
     [bars.data],
   );
 
+  const columnLayers = useMemo(() => {
+    const data = bars.data?.results ?? [];
+    const max = Math.max(1, ...data.map((d) => d.total));
+    return [
+      new ColumnLayer<Bar>({
+        id: "postcode-bars",
+        data,
+        getPosition: (d) => [d.lng, d.lat],
+        getElevation: (d) => d.total,
+        getFillColor: (d) => {
+          const t = d.total / max;
+          return [60 + Math.round(195 * t), 80, 200 - Math.round(150 * t), 220];
+        },
+        elevationScale: 5,
+        radius: 600,
+        extruded: true,
+        pickable: true,
+        material: { ambient: 0.5, diffuse: 0.7, shininess: 16 },
+      }),
+    ];
+  }, [bars.data]);
+
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">Postcode Interactions</h1>
-        <p className="text-sm text-muted">
-          Interaction counts aggregated by Plymouth postcode area.
-        </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-semibold">Postcodes</h1>
+          <p className="text-sm text-muted">
+            Interaction counts aggregated by Plymouth postcode area.
+          </p>
+        </div>
+        <div className="inline-flex rounded-full border border-border overflow-hidden text-sm">
+          <DimButton current={dim} value="2d" set={setDim}>2D</DimButton>
+          <DimButton current={dim} value="3d" set={setDim}>3D</DimButton>
+        </div>
       </div>
-
-      <FilterBar />
 
       <div className="flex justify-end">
         <ExportMenu
-          items={[
-            {
-              label: "CSV districts",
-              disabled: !districts.length,
-              onClick: () =>
-                downloadCsv(
-                  "postcode-districts.csv",
-                  districts,
-                  [
-                    { key: "area", label: "District" },
-                    { key: "total", label: "Total" },
-                  ],
-                ),
-            },
-            {
-              label: "CSV records",
-              disabled: !records.data?.results.length,
-              onClick: () =>
-                downloadCsv(
-                  "postcode-records.csv",
-                  records.data?.results ?? [],
-                  [
-                    { key: "postcode", label: "Postcode" },
-                    { key: "area", label: "Area" },
-                    { key: "organisation", label: "Organisation" },
-                    { key: "interaction_count", label: "Count" },
-                    { key: "period_start", label: "Period start" },
-                    { key: "period_end", label: "Period end" },
-                  ],
-                ),
-            },
-          ]}
+          items={
+            dim === "3d"
+              ? [
+                  {
+                    label: "PNG snapshot",
+                    disabled: !mapRef.current,
+                    onClick: () => {
+                      const canvas = mapRef.current?.getCanvas();
+                      if (canvas) downloadCanvasPng(canvas, "postcode-bars.png");
+                    },
+                  },
+                  {
+                    label: "CSV data",
+                    disabled: !bars.data?.results.length,
+                    onClick: () =>
+                      downloadCsv(
+                        "postcode-bars.csv",
+                        bars.data?.results ?? [],
+                        [
+                          { key: "postcode", label: "Postcode" },
+                          { key: "district", label: "District" },
+                          { key: "area", label: "Area" },
+                          { key: "total", label: "Total" },
+                        ],
+                      ),
+                  },
+                ]
+              : [
+                  {
+                    label: "CSV districts",
+                    disabled: !districts.length,
+                    onClick: () =>
+                      downloadCsv(
+                        "postcode-districts.csv",
+                        districts,
+                        [
+                          { key: "area", label: "District" },
+                          { key: "total", label: "Total" },
+                        ],
+                      ),
+                  },
+                  {
+                    label: "CSV records",
+                    disabled: !records.data?.results.length,
+                    onClick: () =>
+                      downloadCsv(
+                        "postcode-records.csv",
+                        records.data?.results ?? [],
+                        [
+                          { key: "postcode", label: "Postcode" },
+                          { key: "area", label: "Area" },
+                          { key: "organisation", label: "Organisation" },
+                          { key: "interaction_count", label: "Count" },
+                          { key: "period_start", label: "Period start" },
+                          { key: "period_end", label: "Period end" },
+                        ],
+                      ),
+                  },
+                ]
+          }
         />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      {dim === "3d" && (
+        !key ? (
+          <div className="card p-6 text-sm text-muted">
+            MapTiler key missing — set <code className="font-mono">MAPTILER_API_KEY</code> and restart.
+          </div>
+        ) : (
+          <div className="card overflow-hidden">
+            <Deck3DMap
+              layers={columnLayers}
+              maptilerKey={key}
+              pitch={55}
+              zoom={10}
+              onMapReady={(m) => (mapRef.current = m)}
+            />
+          </div>
+        )
+      )}
+
+      {dim === "2d" && <div className="grid gap-4 lg:grid-cols-2">
         <div className="card overflow-hidden">
           <div className="px-4 py-2 border-b text-sm font-medium">
             Postcode area map
@@ -194,7 +270,7 @@ export default function Postcodes() {
             )}
           </div>
         </div>
-      </div>
+      </div>}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="card lg:col-span-1">
@@ -289,6 +365,34 @@ export default function Postcodes() {
           : `${districts.length} districts · ${totalInteractions.toLocaleString()} total interactions`}
       </div>
     </div>
+  );
+}
+
+function DimButton({
+  current,
+  value,
+  set,
+  children,
+}: {
+  current: "2d" | "3d";
+  value: "2d" | "3d";
+  set: (d: "2d" | "3d") => void;
+  children: React.ReactNode;
+}) {
+  const active = current === value;
+  return (
+    <button
+      type="button"
+      onClick={() => set(value)}
+      className={
+        "px-3 py-1.5 " +
+        (active
+          ? "bg-accent text-white font-medium"
+          : "text-muted hover:bg-border/20")
+      }
+    >
+      {children}
+    </button>
   );
 }
 

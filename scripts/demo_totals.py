@@ -1,7 +1,8 @@
 """Demo prep totals."""
+
+from analytics.models import PostcodeAreaInteraction, UserHashInteraction
 from events.models import Event
-from analytics.models import UserHashInteraction, PostcodeAreaInteraction
-from organisations.models import Organisation, Location
+from organisations.models import Location, Organisation
 from scraping.models import ScrapeSource
 
 print(f"Events:                {Event.objects.count()}")

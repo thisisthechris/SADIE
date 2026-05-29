@@ -161,6 +161,11 @@ if not UPLOAD_API_TOKEN:
 CORS_ALLOWED_ORIGINS = [o.strip() for o in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",") if o.strip()]
 CORS_URLS_REGEX = r"^/api/upload/.*$"
 
+# CSRF trusted origins – required for Django 4.x when the app is served over
+# HTTPS via a reverse proxy (Traefik, Nginx Proxy Manager, etc.).
+# Set to a comma-separated list of origins, e.g. https://yourdomain.com
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()]
+
 # MapTiler key surfaced to the SPA at runtime via /api/config/.
 # Never bake this into the JS bundle so it can be rotated without a rebuild.
 MAPTILER_API_KEY = os.environ.get("MAPTILER_API_KEY", "")
@@ -196,7 +201,13 @@ if _geos_path:
 
 # Production security settings (disabled in development)
 if not DEBUG:
-    SECURE_SSL_REDIRECT = True
+    # Trust the X-Forwarded-Proto header set by reverse proxies (Traefik, NPM).
+    # This lets Django correctly detect HTTPS without SECURE_SSL_REDIRECT,
+    # which would cause infinite redirect loops when the proxy terminates TLS.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    # Do not redirect to HTTPS at the Django layer — the reverse proxy handles it.
+    # Re-enable SECURE_SSL_REDIRECT = True only if exposing gunicorn directly
+    # without a TLS-terminating proxy in front of it.
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_CONTENT_TYPE_NOSNIFF = True

@@ -115,10 +115,7 @@ def users_search(request: Request) -> Response:
     qs = User.objects.all()
     if q:
         qs = qs.filter(
-            Q(username__icontains=q)
-            | Q(email__icontains=q)
-            | Q(first_name__icontains=q)
-            | Q(last_name__icontains=q)
+            Q(username__icontains=q) | Q(email__icontains=q) | Q(first_name__icontains=q) | Q(last_name__icontains=q)
         )
     qs = qs.order_by("username")[:20]
     return Response(

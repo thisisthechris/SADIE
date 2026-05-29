@@ -3,7 +3,6 @@ import { lazy, Suspense } from "react";
 import Layout from "./components/Layout";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
-import Search from "./pages/Search";
 import MapPage from "./pages/Map";
 import CalendarPage from "./pages/Calendar";
 import OrganisationsPage from "./pages/Organisations";
@@ -11,8 +10,7 @@ import OrganisationDetailPage from "./pages/OrganisationDetail";
 import Postcodes from "./pages/Postcodes";
 import { useMe } from "./lib/auth";
 
-const Map3D = lazy(() => import("./pages/Map3D"));
-const Postcodes3D = lazy(() => import("./pages/Postcodes3D"));
+const EventDetail = lazy(() => import("./pages/EventDetail"));
 const Network = lazy(() => import("./pages/Network"));
 const TimeCube = lazy(() => import("./pages/TimeCube"));
 const SavedViews = lazy(() => import("./pages/SavedViews"));
@@ -44,20 +42,17 @@ export default function App() {
         }
       >
         <Route index element={<Home />} />
-        <Route path="search" element={<Search />} />
+        <Route
+          path="events/:id"
+          element={<Suspense fallback={VizFallback}><EventDetail /></Suspense>}
+        />
         <Route path="map" element={<MapPage />} />
         <Route path="calendar" element={<CalendarPage />} />
         <Route path="organisations" element={<OrganisationsPage />} />
         <Route path="organisations/:slug" element={<OrganisationDetailPage />} />
         <Route path="postcodes" element={<Postcodes />} />
-        <Route
-          path="map3d"
-          element={<Suspense fallback={VizFallback}><Map3D /></Suspense>}
-        />
-        <Route
-          path="postcodes3d"
-          element={<Suspense fallback={VizFallback}><Postcodes3D /></Suspense>}
-        />
+        <Route path="map3d" element={<Navigate to="/map" replace />} />
+        <Route path="postcodes3d" element={<Navigate to="/postcodes" replace />} />
         <Route
           path="network"
           element={<Suspense fallback={VizFallback}><Network /></Suspense>}

@@ -1,4 +1,5 @@
 """Tests for the journeys analytics summary endpoint."""
+
 from datetime import date, timedelta
 
 from django.contrib.auth.models import User
@@ -61,10 +62,7 @@ class JourneysSummaryTest(TestCase):
         self.assertEqual(types.get("event"), 2)
         self.assertEqual(types.get("location"), 1)
 
-        org_unique = {
-            row["organisation"]: row["unique_users"]
-            for row in body["unique_users_by_org"]
-        }
+        org_unique = {row["organisation"]: row["unique_users"] for row in body["unique_users_by_org"]}
         self.assertEqual(org_unique["Org A"], 2)
         self.assertEqual(org_unique["Org B"], 1)
 

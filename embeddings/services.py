@@ -9,10 +9,9 @@ Django startup and tests stay fast. Swap providers via
 from __future__ import annotations
 
 import logging
-from typing import Iterable, List, Sequence
+from collections.abc import Iterable, Sequence
 
 from django.conf import settings
-
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +22,7 @@ class EmbeddingProvider:
     name: str = ""
     dim: int = 0
 
-    def embed(self, texts: Sequence[str]) -> List[List[float]]:
+    def embed(self, texts: Sequence[str]) -> list[list[float]]:
         raise NotImplementedError
 
 
@@ -35,7 +34,7 @@ class NoopProvider(EmbeddingProvider):
     def __init__(self, dim: int):
         self.dim = dim
 
-    def embed(self, texts: Sequence[str]) -> List[List[float]]:
+    def embed(self, texts: Sequence[str]) -> list[list[float]]:
         return [[0.0] * self.dim for _ in texts]
 
 
@@ -57,7 +56,7 @@ class FastEmbedProvider(EmbeddingProvider):
             self._model = TextEmbedding(model_name=self.model_name)
         return self._model
 
-    def embed(self, texts: Sequence[str]) -> List[List[float]]:
+    def embed(self, texts: Sequence[str]) -> list[list[float]]:
         if not texts:
             return []
         model = self._ensure_model()

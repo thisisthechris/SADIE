@@ -20,7 +20,6 @@ from __future__ import annotations
 import math
 from datetime import timedelta
 
-from django.db.models import F
 from django.db.models.expressions import RawSQL
 from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
@@ -29,7 +28,6 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from events.models import Event
-from organisations.models import Location
 
 from .viz_views import POSTCODE_CENTROIDS
 
@@ -49,9 +47,7 @@ def _serialize(e: Event, extra: dict | None = None) -> dict:
         "start_datetime": e.start_datetime.isoformat() if e.start_datetime else None,
         "end_datetime": e.end_datetime.isoformat() if e.end_datetime else None,
         "organisation": {"id": e.organisation_id, "name": e.organisation.name},
-        "location": (
-            {"id": e.location_id, "name": e.location.name} if e.location_id else None
-        ),
+        "location": ({"id": e.location_id, "name": e.location.name} if e.location_id else None),
         "url": e.url or e.source_url or "",
     }
     if extra:
@@ -84,9 +80,7 @@ def similar_events(request: Request, event_id: int) -> Response:
             )
             .order_by("distance")[:limit]
         )
-        results = [
-            _serialize(e, {"score": float(1.0 - (e.distance or 0))}) for e in qs
-        ]
+        results = [_serialize(e, {"score": float(1.0 - (e.distance or 0))}) for e in qs]
     else:
         # Fallback: same organisation, most recent.
         qs = (
@@ -152,34 +146,26 @@ def near_postcode(request: Request) -> Response:
     if _HAS_GIS:
         try:
             centre = Point(lng, lat, srid=4326)
-            qs = (
-                base.filter(location__point__distance_lte=(centre, D(km=km)))
-                .order_by("start_datetime")[:limit]
-            )
+            qs = base.filter(location__point__distance_lte=(centre, D(km=km))).order_by("start_datetime")[:limit]
             results = [_serialize(e) for e in qs]
-            return Response(
-                {"postcode": pc_key, "km": km, "centre": [lng, lat], "results": results}
-            )
+            return Response({"postcode": pc_key, "km": km, "centre": [lng, lat], "results": results})
         except Exception:
             pass
 
     # Fallback: load candidate locations & filter in Python via haversine.
-    candidates = (
-        base.values(
-            "id",
-            "title",
-            "start_datetime",
-            "end_datetime",
-            "url",
-            "source_url",
-            "organisation_id",
-            "organisation__name",
-            "location_id",
-            "location__name",
-            "location__point",
-        )
-        .order_by("start_datetime")[: limit * 4]
-    )
+    candidates = base.values(
+        "id",
+        "title",
+        "start_datetime",
+        "end_datetime",
+        "url",
+        "source_url",
+        "organisation_id",
+        "organisation__name",
+        "location_id",
+        "location__name",
+        "location__point",
+    ).order_by("start_datetime")[: limit * 4]
     out = []
     for row in candidates:
         coords = row.get("location__point")
@@ -202,9 +188,7 @@ def near_postcode(request: Request) -> Response:
                 "end_datetime": row["end_datetime"].isoformat() if row["end_datetime"] else None,
                 "organisation": {"id": row["organisation_id"], "name": row["organisation__name"]},
                 "location": (
-                    {"id": row["location_id"], "name": row["location__name"]}
-                    if row["location_id"]
-                    else None
+                    {"id": row["location_id"], "name": row["location__name"]} if row["location_id"] else None
                 ),
                 "url": row["url"] or row["source_url"] or "",
                 "distance_km": round(d, 2),
@@ -212,6 +196,4 @@ def near_postcode(request: Request) -> Response:
         )
         if len(out) >= limit:
             break
-    return Response(
-        {"postcode": pc_key, "km": km, "centre": [lng, lat], "results": out}
-    )
+    return Response({"postcode": pc_key, "km": km, "centre": [lng, lat], "results": out})

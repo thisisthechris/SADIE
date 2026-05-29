@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { useFilters } from "../lib/filters";
-import FilterBar from "../components/FilterBar";
 import ExportMenu from "../components/ExportMenu";
 import { downloadCsv } from "../lib/export";
 
@@ -38,8 +37,6 @@ export default function Journeys() {
           Anonymised interaction analytics across organisations and time.
         </p>
       </div>
-
-      <FilterBar />
 
       <section className="grid gap-3 grid-cols-2 md:grid-cols-4">
         <Stat label="Interactions" value={data?.totals.interactions} />

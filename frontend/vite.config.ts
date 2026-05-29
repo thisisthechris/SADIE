@@ -2,19 +2,21 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
 
-// Frontend dev server proxies API calls to the Django backend so the SPA
-// can rely on same-origin cookies / CSRF in development just like prod.
-export default defineConfig({
+// In dev (`vite dev`), base is "/" so the app loads at http://localhost:5173/.
+// In production build (`vite build`), base is "/static/spa/" so Django can serve
+// the assets from its staticfiles directory.
+export default defineConfig(({ command }) => ({
   plugins: [react()],
   resolve: {
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   },
   server: {
+    host: "0.0.0.0",
     port: 5173,
     proxy: {
-      "/api": "http://localhost:8000",
-      "/accounts": "http://localhost:8000",
-      "/media": "http://localhost:8000",
+      "/api": process.env.BACKEND_URL ?? "http://localhost:8000",
+      "/accounts": process.env.BACKEND_URL ?? "http://localhost:8000",
+      "/media": process.env.BACKEND_URL ?? "http://localhost:8000",
     },
   },
   // Production build is consumed by Django: index.html lives at frontend/dist
@@ -25,5 +27,5 @@ export default defineConfig({
     emptyOutDir: true,
     sourcemap: true,
   },
-  base: "/static/spa/",
-});
+  base: command === "serve" ? "/" : "/static/spa/",
+}));

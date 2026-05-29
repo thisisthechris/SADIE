@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
 
@@ -63,7 +64,9 @@ export default function RecommendationsWidget() {
           )}
           {q.data.results.map((e) => (
             <li key={e.id} className="py-2">
-              <div className="font-medium truncate">{e.title}</div>
+              <Link to={`/events/${e.id}`} className="font-medium truncate block hover:text-accent">
+                {e.title}
+              </Link>
               <div className="text-muted truncate">
                 {e.organisation.name}
                 {e.start_datetime && ` · ${new Date(e.start_datetime).toLocaleDateString()}`}

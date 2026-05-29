@@ -2,7 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { api } from "../lib/api";
 import { useFilters } from "../lib/filters";
-import FilterBar from "../components/FilterBar";
 import PartnerBadge from "../components/PartnerBadge";
 import type { OrganisationSummary, Paginated } from "../lib/types";
 
@@ -24,7 +23,6 @@ export default function OrganisationsPage() {
           a row to drill in.
         </p>
       </div>
-      <FilterBar />
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-border/20">

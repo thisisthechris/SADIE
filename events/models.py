@@ -5,8 +5,8 @@ from django.utils.text import slugify
 from organisations.models import Location, Organisation
 
 try:
-    from django.contrib.postgres.search import SearchVectorField
     from django.contrib.postgres.indexes import GinIndex
+    from django.contrib.postgres.search import SearchVectorField
 
     _HAS_PG_SEARCH = True
 except Exception:  # pragma: no cover
@@ -69,11 +69,7 @@ class Event(models.Model):
 
     class Meta:
         ordering = ["start_datetime"]
-        indexes = (
-            [GinIndex(fields=["search_vector"], name="event_search_vector_gin")]
-            if _HAS_PG_SEARCH
-            else []
-        )
+        indexes = [GinIndex(fields=["search_vector"], name="event_search_vector_gin")] if _HAS_PG_SEARCH else []
 
     def __str__(self):
         return f"{self.title} - {self.organisation.name}"

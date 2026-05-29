@@ -7,7 +7,6 @@ from pathlib import Path
 from django.conf import settings
 from django.http import HttpResponse
 
-
 _SPA_INDEX = Path(settings.BASE_DIR) / "frontend" / "dist" / "index.html"
 
 _DEV_FALLBACK = """<!doctype html>

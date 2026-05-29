@@ -55,5 +55,5 @@ def short_link(request, slug: str):
     """Public short-link redirect: /v/<slug>/ → SPA resolver page."""
     view = get_object_or_404(SavedView, slug=slug)
     if not view.is_public and not (request.user.is_authenticated and view.user_id == request.user.id):
-        return redirect("/login/?next=/v/%s/" % slug)
+        return redirect(f"/login/?next=/v/{slug}/")
     return redirect(f"/app/v/{slug}/")

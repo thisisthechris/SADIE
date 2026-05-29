@@ -23,8 +23,9 @@ The helpers accept either a Django ``HttpRequest`` or a plain ``dict`` /
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import date, timedelta
-from typing import Any, Mapping
+from typing import Any
 
 from django.db.models import Q
 
@@ -90,9 +91,7 @@ def events_qs(p: Mapping[str, str], base=None):
     if p.get("dto"):
         qs = qs.filter(start_datetime__date__lte=p["dto"])
     if p.get("search"):
-        qs = qs.filter(
-            Q(title__icontains=p["search"]) | Q(description__icontains=p["search"])
-        )
+        qs = qs.filter(Q(title__icontains=p["search"]) | Q(description__icontains=p["search"]))
     return qs.distinct()
 
 

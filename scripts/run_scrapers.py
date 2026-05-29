@@ -1,9 +1,10 @@
 """One-off demo helper: run all scrapers synchronously."""
+
 from scraping.models import ScrapeSource
 from scraping.tasks import (
     scrape_plymouth_culture,
-    scrape_theatre_royal,
     scrape_the_box,
+    scrape_theatre_royal,
 )
 
 MAPPING = {

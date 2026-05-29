@@ -1,3 +1,7 @@
+from datetime import timezone
+
+UTC = timezone.utc
+
 from django.test import TestCase
 from rest_framework.test import APIClient
 
@@ -100,16 +104,12 @@ class OrganisationPartnerHierarchyTest(TestCase):
             grand.clean()
 
     def test_unauthenticated_cannot_edit(self):
-        r = self.client.patch(
-            f"/api/organisations/{self.parent.slug}/", {"name": "Hacked"}, format="json"
-        )
+        r = self.client.patch(f"/api/organisations/{self.parent.slug}/", {"name": "Hacked"}, format="json")
         self.assertIn(r.status_code, (401, 403))
 
     def test_outsider_cannot_edit(self):
         self.client.force_authenticate(self.outsider)
-        r = self.client.patch(
-            f"/api/organisations/{self.parent.slug}/", {"name": "Nope"}, format="json"
-        )
+        r = self.client.patch(f"/api/organisations/{self.parent.slug}/", {"name": "Nope"}, format="json")
         self.assertEqual(r.status_code, 403)
 
     def test_member_can_edit_basic_fields(self):
@@ -177,22 +177,20 @@ class OrganisationPartnerHierarchyTest(TestCase):
 
     def test_create_requires_staff(self):
         self.client.force_authenticate(self.member)
-        r = self.client.post(
-            "/api/organisations/", {"name": "NewOne"}, format="json"
-        )
+        r = self.client.post("/api/organisations/", {"name": "NewOne"}, format="json")
         self.assertEqual(r.status_code, 403)
 
 
 class AnalyticsRollupTest(TestCase):
     def setUp(self):
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         from events.models import Event
 
         self.parent = Organisation.objects.create(name="ParentRollup")
         self.child = Organisation.objects.create(name="ChildRollup", parent=self.parent)
         self.other = Organisation.objects.create(name="OtherOrg")
-        now = datetime(2025, 1, 1, 12, 0, tzinfo=timezone.utc)
+        now = datetime(2025, 1, 1, 12, 0, tzinfo=UTC)
         Event.objects.create(organisation=self.parent, title="P1", start_datetime=now)
         Event.objects.create(organisation=self.child, title="C1", start_datetime=now)
         Event.objects.create(organisation=self.other, title="O1", start_datetime=now)
@@ -209,4 +207,3 @@ class AnalyticsRollupTest(TestCase):
 
         qs = events_qs({"org": str(self.child.pk)})
         self.assertEqual(list(qs.values_list("title", flat=True)), ["C1"])
-

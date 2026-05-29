@@ -13,7 +13,15 @@ class ScrapeSourceAdmin(admin.ModelAdmin):
 
 @admin.register(ScrapeRun)
 class ScrapeRunAdmin(admin.ModelAdmin):
-    list_display = ("source", "started_at", "finished_at", "status", "events_found", "events_created", "events_updated")
+    list_display = (
+        "source",
+        "started_at",
+        "finished_at",
+        "status",
+        "events_found",
+        "events_created",
+        "events_updated",
+    )
     list_filter = ("source", "status")
     readonly_fields = (
         "source",

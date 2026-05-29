@@ -24,21 +24,23 @@ export default function OrganisationDetailPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { data: me } = useMe();
-  const setFilters = useFilters((s) => s.set);
+  const f = useFilters();
 
   const detail = useQuery({
     queryKey: ["org-detail", slug],
     queryFn: () => api<OrganisationDetail>(`/api/organisations/${slug}/`),
   });
 
-  const orgIdQuery = useMemo(
-    () => (detail.data ? { org: String(detail.data.id) } : undefined),
-    [detail.data]
-  );
+  const orgIdQuery = useMemo(() => {
+    if (!detail.data) return undefined;
+    // Use global filters (date, period, category, itype) but lock org to this page
+    const { org: _ignored, ...globalFilters } = f.asQuery();
+    return { ...globalFilters, org: String(detail.data.id) };
+  }, [detail.data, f]);
 
   const postcodes = useQuery({
     enabled: !!orgIdQuery,
-    queryKey: ["org-detail-postcodes", slug],
+    queryKey: ["org-detail-postcodes", slug, orgIdQuery],
     queryFn: () =>
       api<PostcodeBarsResp>("/api/analytics/viz/postcode-bars/", {
         query: orgIdQuery,
@@ -47,7 +49,7 @@ export default function OrganisationDetailPage() {
 
   const venues = useQuery({
     enabled: !!orgIdQuery,
-    queryKey: ["org-detail-venues", slug],
+    queryKey: ["org-detail-venues", slug, orgIdQuery],
     queryFn: () =>
       api<EventPointsResp>("/api/analytics/viz/event-points/", {
         query: orgIdQuery,
@@ -73,7 +75,7 @@ export default function OrganisationDetailPage() {
   const org = detail.data;
 
   const seedAndGo = (path: string) => {
-    setFilters({ org: String(org.id) });
+    f.set({ org: String(org.id) });
     navigate(path);
   };
 

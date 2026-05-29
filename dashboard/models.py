@@ -34,9 +34,7 @@ class SavedView(models.Model):
     class Meta:
         ordering = ["-updated_at"]
         constraints = [
-            models.UniqueConstraint(
-                fields=["user", "name"], name="unique_savedview_user_name"
-            ),
+            models.UniqueConstraint(fields=["user", "name"], name="unique_savedview_user_name"),
         ]
 
     def save(self, *args, **kwargs):

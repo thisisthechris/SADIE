@@ -1,0 +1,138 @@
+# Production Docker Compose — for use with Portainer (or plain `docker compose`).
+#
+# Uses pre-built images from GHCR rather than building locally.
+# Images are built and pushed automatically by the GitHub Actions deploy workflow
+# (.github/workflows/deploy.yml) on every push to main.
+#
+# Required environment variables (set in Portainer stack env or .env file):
+#   SECRET_KEY, DATABASE_URL, CELERY_BROKER_URL, CELERY_RESULT_BACKEND,
+#   UPLOAD_API_TOKEN, ALLOWED_HOSTS, CSRF_TRUSTED_ORIGINS, DB_PASSWORD
+#   (see .env.example for the full list)
+#
+# Reverse proxy — choose one option and adjust accordingly:
+#
+#   Option A — Traefik
+#     Uncomment the 'labels' and 'networks' blocks on the web service.
+#     Set DOMAIN= in your environment. Remove the 'ports' block from web.
+#     Ensure Traefik's external network name matches below.
+#
+#   Option B — Nginx Proxy Manager / direct port (default)
+#     Leave as-is. web exposes ${WEB_PORT:-8000}:8000.
+#     Point your proxy at http://<host>:${WEB_PORT:-8000}.
+#
+# Portainer setup:
+#   1. Stacks → Add Stack → paste this file (or point to the Git repo).
+#   2. Add environment variables in the Portainer UI.
+#   3. Deploy the stack, then go to Webhooks and copy the redeploy URL.
+#   4. Add the URL as PORTAINER_WEBHOOK_URL in GitHub repo secrets.
+#      The deploy workflow will call it automatically after each build.
+
+version: "3.9"
+
+x-app-image: &app-image ghcr.io/thisisthechris/sadie:latest
+x-db-image:  &db-image  ghcr.io/thisisthechris/sadie-db:latest
+
+services:
+
+  db:
+    image: *db-image
+    environment:
+      POSTGRES_DB: ${DB_NAME:-sadie}
+      POSTGRES_USER: ${DB_USER:-sadie}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-sadie}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # db port is intentionally NOT exposed externally
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # redis port is intentionally NOT exposed externally
+
+  web:
+    image: *app-image
+    # Run migrations at startup, then launch gunicorn.
+    # collectstatic runs at image build time (in the Dockerfile) so no need here.
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             gunicorn sadie.wsgi:application
+               --bind 0.0.0.0:8000
+               --workers 3
+               --timeout 120
+               --access-logfile -"
+    volumes:
+      - static_volume:/app/staticfiles
+      - media_volume:/app/mediafiles
+      - embeddings_cache:/root/.cache/fastembed
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+    # --- Option A: Traefik (uncomment; also remove the 'ports' block below) ---
+    # labels:
+    #   - traefik.enable=true
+    #   - traefik.http.routers.sadie.rule=Host(`${DOMAIN}`)
+    #   - traefik.http.routers.sadie.entrypoints=websecure
+    #   - traefik.http.routers.sadie.tls.certresolver=letsencrypt
+    #   - traefik.http.services.sadie.loadbalancer.server.port=8000
+    # networks:
+    #   - default
+    #   - traefik_proxy
+
+    # --- Option B: direct port / Nginx Proxy Manager (default) ---
+    ports:
+      - "${WEB_PORT:-8000}:8000"
+
+  celery:
+    image: *app-image
+    command: celery -A sadie worker --loglevel=info --concurrency 2
+    volumes:
+      - embeddings_cache:/root/.cache/fastembed
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  celery-beat:
+    image: *app-image
+    command: >
+      celery -A sadie beat
+        --loglevel=info
+        --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  static_volume:
+  media_volume:
+  embeddings_cache:
+
+# Uncomment if using Traefik (Option A):
+# networks:
+#   default:
+#   traefik_proxy:
+#     external: true
