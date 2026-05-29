@@ -39,11 +39,12 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen grid place-items-center px-4">
-      <form onSubmit={submit} className="card p-6 w-full max-w-sm space-y-4">
-        <div>
-          <h1 className="text-xl font-semibold">SADIE</h1>
-          <p className="text-sm text-muted">Sign in to continue.</p>
+    <div className="min-h-screen grid place-items-center px-4 bg-bg">
+      <form onSubmit={submit} className="card p-8 w-full max-w-sm space-y-5">
+        <div className="text-center">
+          <p className="text-[10px] uppercase tracking-widest text-muted font-display mb-1">Plymouth Culture</p>
+          <h1 className="text-4xl font-display font-bold text-accent tracking-tight">SADIE</h1>
+          <p className="text-sm text-muted mt-1">Sign in to continue.</p>
         </div>
         <label className="block">
           <span className="text-xs text-muted">Username</span>

@@ -1,12 +1,14 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { HexagonLayer } from "@deck.gl/aggregation-layers";
+import type maplibregl from "maplibre-gl";
 import { api } from "../lib/api";
 import { useFilters } from "../lib/filters";
 import { useConfig } from "../lib/auth";
-import FilterBar from "../components/FilterBar";
 import ExportMenu from "../components/ExportMenu";
 import Map2D, { type MapPoint } from "../viz/Map2D";
-import { downloadCsv } from "../lib/export";
+import Deck3DMap from "../viz/Deck3DMap";
+import { downloadCanvasPng, downloadCsv } from "../lib/export";
 
 interface VenueRow {
   location_id: number;
@@ -33,6 +35,7 @@ interface EventRow {
 }
 
 type Mode = "venues" | "events";
+type Dim = "2d" | "3d";
 
 export default function MapPage() {
   const f = useFilters();
@@ -40,6 +43,8 @@ export default function MapPage() {
   const key = cfg.data?.maptiler_api_key ?? "";
   const q = f.asQuery();
   const [mode, setMode] = useState<Mode>("venues");
+  const [dim, setDim] = useState<Dim>("2d");
+  const mapRef = useRef<maplibregl.Map | null>(null);
 
   const venues = useQuery({
     queryKey: ["map-venues", q],
@@ -47,7 +52,7 @@ export default function MapPage() {
       api<{ results: VenueRow[] }>("/api/analytics/viz/event-points/", {
         query: q,
       }),
-    enabled: mode === "venues",
+    enabled: mode === "venues" || dim === "3d",
   });
 
   const events = useQuery({
@@ -108,26 +113,48 @@ export default function MapPage() {
     ? Math.max(1, Math.ceil((eventTimes.max - eventTimes.min) / 86_400_000))
     : 0;
 
+  const hexLayers = useMemo(() => [
+    new HexagonLayer<VenueRow>({
+      id: "event-hex",
+      data: venues.data?.results ?? [],
+      getPosition: (d) => [d.lng, d.lat],
+      getElevationWeight: (d) => d.event_count,
+      elevationAggregation: "SUM",
+      radius: 250,
+      elevationScale: 30,
+      extruded: true,
+      coverage: 0.85,
+      pickable: true,
+      material: { ambient: 0.6, diffuse: 0.6, shininess: 32, specularColor: [60, 64, 70] },
+    }),
+  ], [venues.data]);
+
   return (
     <div className="space-y-4">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-semibold">Map</h1>
           <p className="text-sm text-muted">
             Geographic exploration of venues and individual events.
           </p>
         </div>
-        <div className="inline-flex rounded-md border border-border overflow-hidden text-sm">
-          <ModeButton current={mode} value="venues" set={setMode}>
-            Venues
-          </ModeButton>
-          <ModeButton current={mode} value="events" set={setMode}>
-            Events
-          </ModeButton>
+        <div className="flex items-center gap-2">
+          {dim === "2d" && (
+            <div className="inline-flex rounded-full border border-border overflow-hidden text-sm">
+              <ModeButton current={mode} value="venues" set={setMode}>
+                Venues
+              </ModeButton>
+              <ModeButton current={mode} value="events" set={setMode}>
+                Events
+              </ModeButton>
+            </div>
+          )}
+          <div className="inline-flex rounded-full border border-border overflow-hidden text-sm">
+            <DimButton current={dim} value="2d" set={setDim}>2D</DimButton>
+            <DimButton current={dim} value="3d" set={setDim}>3D</DimButton>
+          </div>
         </div>
       </div>
-
-      <FilterBar />
 
       {mode === "events" && eventTimes && (
         <div className="card p-4 space-y-3">
@@ -182,7 +209,34 @@ export default function MapPage() {
       <div className="flex justify-end">
         <ExportMenu
           items={
-            mode === "venues"
+            dim === "3d"
+              ? [
+                  {
+                    label: "PNG snapshot",
+                    disabled: !mapRef.current,
+                    onClick: () => {
+                      const canvas = mapRef.current?.getCanvas();
+                      if (canvas) downloadCanvasPng(canvas, "event-density.png");
+                    },
+                  },
+                  {
+                    label: "CSV venues",
+                    disabled: !venues.data?.results.length,
+                    onClick: () =>
+                      downloadCsv(
+                        "map-venues.csv",
+                        venues.data?.results ?? [],
+                        [
+                          { key: "name", label: "Venue" },
+                          { key: "organisation", label: "Organisation" },
+                          { key: "lat", label: "Lat" },
+                          { key: "lng", label: "Lng" },
+                          { key: "event_count", label: "Events" },
+                        ],
+                      ),
+                  },
+                ]
+              : mode === "venues"
               ? [
                   {
                     label: "CSV venues",
@@ -232,6 +286,14 @@ export default function MapPage() {
           <code className="font-mono">MAPTILER_API_KEY</code> and restart the
           web service.
         </div>
+      ) : dim === "3d" ? (
+        <div className="card overflow-hidden">
+          <Deck3DMap
+            layers={hexLayers}
+            maptilerKey={key}
+            onMapReady={(m) => (mapRef.current = m)}
+          />
+        </div>
       ) : (
         <div className="card overflow-hidden">
           <Map2D
@@ -243,12 +305,16 @@ export default function MapPage() {
       )}
 
       <div className="text-xs text-muted">
-        {mode === "venues" && venues.isLoading && "Loading venues…"}
-        {mode === "events" && events.isLoading && "Loading events…"}
-        {mode === "venues" && venues.data && (
+        {dim === "3d" && venues.isLoading && "Loading venues…"}
+        {dim === "3d" && venues.data && (
           <>{venues.data.results.length} venues for current filters.</>
         )}
-        {mode === "events" && events.data && !eventTimes && (
+        {dim === "2d" && mode === "venues" && venues.isLoading && "Loading venues…"}
+        {dim === "2d" && mode === "events" && events.isLoading && "Loading events…"}
+        {dim === "2d" && mode === "venues" && venues.data && (
+          <>{venues.data.results.length} venues for current filters.</>
+        )}
+        {dim === "2d" && mode === "events" && events.data && !eventTimes && (
           <>No events in current filter window.</>
         )}
       </div>
@@ -275,7 +341,35 @@ function ModeButton({
       className={
         "px-3 py-1.5 " +
         (active
-          ? "bg-border/40 text-fg font-medium"
+          ? "bg-accent text-white font-medium"
+          : "text-muted hover:bg-border/20")
+      }
+    >
+      {children}
+    </button>
+  );
+}
+
+function DimButton({
+  current,
+  value,
+  set,
+  children,
+}: {
+  current: Dim;
+  value: Dim;
+  set: (d: Dim) => void;
+  children: React.ReactNode;
+}) {
+  const active = current === value;
+  return (
+    <button
+      type="button"
+      onClick={() => set(value)}
+      className={
+        "px-3 py-1.5 " +
+        (active
+          ? "bg-accent text-white font-medium"
           : "text-muted hover:bg-border/20")
       }
     >
@@ -291,9 +385,9 @@ function makeEventPoint(r: EventRow): MapPoint {
     lat: r.lat,
     weight: 4,
     color: "#60a5fa",
-    popupHtml: `<div class="text-xs max-w-[220px]"><div class="font-semibold">${escapeHtml(
+    popupHtml: `<div class="text-xs max-w-[220px]"><a href="/events/${r.id}" class="font-semibold hover:underline">${escapeHtml(
       r.title,
-    )}</div><div>${escapeHtml(r.organisation)}${
+    )}</a><div>${escapeHtml(r.organisation)}${
       r.location_name ? " · " + escapeHtml(r.location_name) : ""
     }</div>${
       r.start

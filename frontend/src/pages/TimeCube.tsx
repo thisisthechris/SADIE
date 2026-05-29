@@ -4,7 +4,6 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { api } from "../lib/api";
 import { useFilters } from "../lib/filters";
-import FilterBar from "../components/FilterBar";
 
 interface Row {
   id: number;
@@ -154,7 +153,6 @@ export default function TimeCube() {
           Drag to rotate, scroll to zoom.
         </p>
       </div>
-      <FilterBar />
       <div className="card overflow-hidden" style={{ height: "70vh" }}>
         <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
       </div>

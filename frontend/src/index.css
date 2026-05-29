@@ -3,23 +3,27 @@
 @tailwind utilities;
 
 :root {
-  /* Light theme defaults — calm slate. */
-  --bg: 248 250 252;        /* slate-50 */
-  --fg: 15 23 42;           /* slate-900 */
-  --muted: 100 116 139;     /* slate-500 */
-  --card: 255 255 255;
-  --border: 226 232 240;    /* slate-200 */
-  --accent: 14 116 144;     /* cyan-700 */
+  /* Plymouth Culture brand colours — light theme. */
+  --bg: 245 245 245;        /* #F5F5F5 — Plymouth light grey */
+  --fg: 26 26 26;           /* near-black body text */
+  --muted: 84 84 84;        /* #545454 — Plymouth grey */
+  --card: 255 255 255;      /* pure white */
+  --border: 218 218 230;    /* soft blue-tinted grey */
+  --accent: 0 31 204;       /* #001FCC — Plymouth blue */
+  /* Secondary brand tokens (theme-invariant). */
+  --mint: 40 247 188;       /* #28F7BC — Plymouth mint/turquoise */
+  --amber: 243 192 70;      /* #f3c046 — Plymouth amber */
+  --light-blue: 172 203 249; /* #accbf9 — Plymouth pale blue */
   color-scheme: light;
 }
 
 .dark {
-  --bg: 2 6 23;             /* slate-950 */
-  --fg: 226 232 240;        /* slate-200 */
-  --muted: 148 163 184;     /* slate-400 */
-  --card: 15 23 42;         /* slate-900 */
-  --border: 30 41 59;       /* slate-800 */
-  --accent: 34 211 238;     /* cyan-400 */
+  --bg: 8 10 28;            /* very dark navy */
+  --fg: 245 245 245;        /* #F5F5F5 */
+  --muted: 130 148 195;     /* slate-blue muted */
+  --card: 14 18 46;         /* dark navy card */
+  --border: 28 36 74;       /* dark navy border */
+  --accent: 40 247 188;     /* #28F7BC — mint as dark-mode accent */
   color-scheme: dark;
 }
 
@@ -40,7 +44,7 @@
   }
 
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-md px-3 py-1.5
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-4 py-1.5
            text-sm font-medium transition-colors disabled:opacity-50;
   }
 
@@ -53,7 +57,7 @@
   }
 
   .input {
-    @apply w-full rounded-md border border-border bg-card px-3 py-1.5 text-sm
+    @apply w-full rounded-lg border border-border bg-card px-3 py-1.5 text-sm
            placeholder:text-muted focus:border-accent;
   }
 
@@ -61,9 +65,9 @@
     @apply card p-4;
   }
   .stat-label {
-    @apply text-xs uppercase tracking-wide text-muted;
+    @apply text-xs uppercase tracking-widest font-display text-muted;
   }
   .stat-value {
-    @apply mt-1 text-2xl font-semibold tabular-nums;
+    @apply mt-1 text-2xl font-display font-bold tabular-nums;
   }
 }

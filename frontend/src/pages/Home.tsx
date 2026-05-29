@@ -9,7 +9,6 @@ import type {
   TopCategoriesResponse,
   TimeseriesResponse,
 } from "../lib/types";
-import FilterBar from "../components/FilterBar";
 import ExportMenu from "../components/ExportMenu";
 import RecommendationsWidget from "../components/RecommendationsWidget";
 import PartnerBadge from "../components/PartnerBadge";
@@ -55,8 +54,6 @@ export default function Home() {
           High-level signals across Plymouth&rsquo;s arts &amp; cultural data.
         </p>
       </div>
-
-      <FilterBar />
 
       {myOrgs.length > 0 && (
         <section className="card p-4">
@@ -165,7 +162,12 @@ export default function Home() {
                 {new Date(e.start_datetime).toLocaleString()}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="truncate font-medium">{e.title}</div>
+                <Link
+                  to={`/events/${e.id}`}
+                  className="truncate font-medium hover:text-accent block"
+                >
+                  {e.title}
+                </Link>
                 <div className="text-xs text-muted truncate">
                   {e.organisation__name}
                   {e.location__name ? ` · ${e.location__name}` : ""}

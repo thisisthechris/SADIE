@@ -1,8 +1,8 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { useFilters } from "../lib/filters";
-import FilterBar from "../components/FilterBar";
 import type { EventSummary, Paginated } from "../lib/types";
 
 /**
@@ -87,7 +87,6 @@ export default function CalendarPage() {
           </button>
         </div>
       </div>
-      <FilterBar />
       <div className="space-y-4">
         {grouped.map(([day, items]) => (
           <div key={day} className="card overflow-hidden">
@@ -103,7 +102,12 @@ export default function CalendarPage() {
                       minute: "2-digit",
                     })}
                   </span>
-                  <span className="flex-1 truncate">{e.title}</span>
+                  <Link
+                    to={`/events/${e.id}`}
+                    className="flex-1 truncate hover:text-accent"
+                  >
+                    {e.title}
+                  </Link>
                   <span className="text-xs text-muted truncate">
                     {e.organisation_name}
                   </span>

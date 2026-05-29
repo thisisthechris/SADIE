@@ -14,11 +14,14 @@ const queryClient = new QueryClient({
   },
 });
 
-// SPA is mounted at /app/* (see Django urls). React Router uses /app as basename.
+// SPA is mounted at /app/* in production (Django urls). In dev the Vite
+// dev server runs at the root, so basename is "/" to match.
+const basename = import.meta.env.DEV ? "/" : "/app";
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter basename="/app">
+      <BrowserRouter basename={basename}>
         <App />
       </BrowserRouter>
     </QueryClientProvider>

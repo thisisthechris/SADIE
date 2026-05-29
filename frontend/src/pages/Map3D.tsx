@@ -5,7 +5,6 @@ import type maplibregl from "maplibre-gl";
 import { api } from "../lib/api";
 import { useFilters } from "../lib/filters";
 import { useConfig } from "../lib/auth";
-import FilterBar from "../components/FilterBar";
 import ExportMenu from "../components/ExportMenu";
 import Deck3DMap from "../viz/Deck3DMap";
 import { downloadCanvasPng, downloadCsv } from "../lib/export";
@@ -68,7 +67,6 @@ export default function Map3D() {
           activity; hover for venue totals. Filters apply globally.
         </p>
       </div>
-      <FilterBar />
       <div className="flex justify-end">
         <ExportMenu
           items={[

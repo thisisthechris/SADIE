@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import type { Paginated } from "../lib/savedViews";
@@ -273,7 +274,12 @@ function Drawer({ id, onClose }: { id: number; onClose: () => void }) {
             {q.data.matched_event && (
               <div className="card p-2 text-xs">
                 <div className="text-muted">Matched event</div>
-                <div className="font-medium">{q.data.matched_event.title}</div>
+                <Link
+                  to={`/events/${q.data.matched_event.id}`}
+                  className="font-medium hover:text-accent hover:underline"
+                >
+                  {q.data.matched_event.title}
+                </Link>
               </div>
             )}
             <details>

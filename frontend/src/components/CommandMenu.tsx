@@ -35,7 +35,6 @@ interface SearchResponse {
 
 const STATIC_PAGES: Hit[] = [
   { type: "page", label: "Overview", to: "/" },
-  { type: "page", label: "Search", to: "/search" },
   { type: "page", label: "Map", to: "/map" },
   { type: "page", label: "Calendar", to: "/calendar" },
   { type: "page", label: "Organisations", to: "/organisations" },
@@ -83,7 +82,7 @@ export default function CommandMenu({ open, onClose }: Props) {
         : r.snippet,
     to:
       r.type === "event"
-        ? `/calendar?event=${r.id}`
+        ? `/events/${r.id}`
         : `/organisations?org=${r.id}`,
     score: r.score,
   }));

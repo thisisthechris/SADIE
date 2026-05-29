@@ -5,7 +5,6 @@ import { useQuery } from "@tanstack/react-query";
 import ForceGraph3D from "3d-force-graph";
 import { api } from "../lib/api";
 import { useFilters } from "../lib/filters";
-import FilterBar from "../components/FilterBar";
 
 interface Node {
   id: string;
@@ -108,7 +107,6 @@ export default function Network() {
           user clusters (MD5-bucketed user hashes). Toggle node types below.
         </p>
       </div>
-      <FilterBar />
       <div className="card p-3 flex flex-wrap items-center gap-3 text-sm">
         {TYPES.map((t) => (
           <label key={t} className="flex items-center gap-2 cursor-pointer">

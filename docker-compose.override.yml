@@ -26,19 +26,24 @@ services:
              watchmedo auto-restart --directory=/app --pattern='*.py' --recursive --
              celery -A sadie beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler"
 
-  # Builds the Vite SPA into ./frontend/dist on the host. Because the web
-  # container bind-mounts the repo at /app, that dist folder shows up at
-  # /app/frontend/dist where Django serves it under /app/* and /static/spa/.
-  # `vite build --watch` rebuilds on source changes; refresh the browser.
+  # Runs the Vite HMR dev server at http://localhost:5173.
+  # Proxies /api, /accounts, /media to the Django container (web:8000).
+  # Browse to http://localhost:5173 for hot-reload during development.
   frontend:
     image: node:20-alpine
     working_dir: /frontend
     volumes:
       - ./frontend:/frontend
       - frontend_node_modules:/frontend/node_modules
+    environment:
+      BACKEND_URL: "http://web:8000"
     command: >
       sh -c "npm install --no-audit --no-fund &&
-             npm run build -- --watch"
+             npm run dev -- --host"
+    ports:
+      - "5173:5173"
+    depends_on:
+      - web
 
 volumes:
   frontend_node_modules:

@@ -7,7 +7,8 @@ import {
 } from "react-router-dom";
 import { api } from "../lib/api";
 import { useMe } from "../lib/auth";
-import CommandMenu from "./CommandMenu";
+import SearchModal from "./SearchModal";
+import FilterDropdown from "./FilterDropdown";
 import { useQueryClient } from "@tanstack/react-query";
 
 type NavLeaf = { to: string; label: string; end?: boolean; staff?: boolean };
@@ -16,14 +17,11 @@ type NavEntry = NavLeaf | NavGroup;
 
 const NAV: NavEntry[] = [
   { to: "/", label: "Overview", end: true },
-  { to: "/search", label: "Search" },
   {
     label: "Maps",
     items: [
       { to: "/map", label: "Map" },
-      { to: "/map3d", label: "3D Map" },
       { to: "/postcodes", label: "Postcodes" },
-      { to: "/postcodes3d", label: "Postcodes 3D" },
     ],
   },
   {
@@ -81,6 +79,7 @@ export default function Layout() {
   const nav = useNavigate();
   const location = useLocation();
   const [cmdOpen, setCmdOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
   const [dark, setDark] = useState(
     () =>
       typeof document !== "undefined" &&
@@ -134,6 +133,7 @@ export default function Layout() {
       <header className="sticky top-0 z-30 backdrop-blur bg-bg/85 border-b border-border">
         <div className="mx-auto max-w-7xl px-4 h-14 flex items-center gap-4">
           <MainMenu nav={visibleNav} />
+          <span className="hidden sm:block text-[10px] uppercase tracking-widest text-muted/60 font-display">Plymouth Culture</span>
           {pageTitle && (
             <>
               <span className="text-muted/60 hidden sm:inline" aria-hidden>
@@ -153,6 +153,11 @@ export default function Layout() {
                 ⌘K
               </kbd>
             </button>
+            <FilterDropdown
+              open={filterOpen}
+              onToggle={() => setFilterOpen((v) => !v)}
+              onClose={() => setFilterOpen(false)}
+            />
             <button onClick={toggleDark} className="btn-ghost" aria-label="Toggle theme">
               {dark ? "☼" : "☾"}
             </button>
@@ -173,9 +178,11 @@ export default function Layout() {
         <Outlet />
       </main>
       <footer className="border-t border-border text-xs text-muted py-3 text-center">
-        SADIE · Plymouth arts &amp; cultural analytics
+        <span className="font-display font-bold tracking-wide text-accent">Plymouth Culture</span>
+        {" · "}
+        SADIE analytics platform
       </footer>
-      <CommandMenu open={cmdOpen} onClose={() => setCmdOpen(false)} />
+      <SearchModal open={cmdOpen} onClose={() => setCmdOpen(false)} />
     </div>
   );
 }
@@ -219,7 +226,7 @@ function MainMenu({ nav }: { nav: NavEntry[] }) {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="Open navigation menu"
-        className="font-semibold tracking-tight text-lg shrink-0 inline-flex items-center gap-1.5 rounded-md px-1 -mx-1 hover:bg-border/40"
+        className="font-display font-bold tracking-tight text-xl shrink-0 inline-flex items-center gap-1.5 rounded-md px-1 -mx-1 hover:bg-border/40"
       >
         <span>
           SADIE<span className="text-accent">.</span>
@@ -258,7 +265,7 @@ function MainMenu({ nav }: { nav: NavEntry[] }) {
               {(leaves.length > 0 || gi > 0) && (
                 <div className="my-1 border-t border-border" />
               )}
-              <div className="px-3 pt-1.5 pb-0.5 text-[10px] uppercase tracking-wider text-muted">
+              <div className="px-3 pt-1.5 pb-0.5 text-[10px] uppercase tracking-widest font-display text-muted">
                 {group.label}
               </div>
               {group.items.map((item) => (

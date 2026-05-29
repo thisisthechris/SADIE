@@ -127,7 +127,7 @@ export default function Search() {
 function SearchRow({ hit }: { hit: SearchHit }) {
   const to =
     hit.type === "event"
-      ? `/calendar?event=${hit.id}`
+      ? `/events/${hit.id}`
       : `/organisations?org=${hit.id}`;
   return (
     <Link to={to} className="block p-4 hover:bg-border/30 transition">
