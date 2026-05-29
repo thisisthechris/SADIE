@@ -25,12 +25,8 @@ class VizEndpointsTest(TestCase):
         cls.cat_film = Category.objects.create(name="Film")
 
         # Locations — point may be PointField or "lng,lat" CharField fallback.
-        cls.loc_a = Location.objects.create(
-            organisation=cls.org_a, name="Venue A", postcode="PL1 1AA"
-        )
-        cls.loc_b = Location.objects.create(
-            organisation=cls.org_b, name="Venue B", postcode="PL4 6AB"
-        )
+        cls.loc_a = Location.objects.create(organisation=cls.org_a, name="Venue A", postcode="PL1 1AA")
+        cls.loc_b = Location.objects.create(organisation=cls.org_b, name="Venue B", postcode="PL4 6AB")
         # Set coords via raw assignment to support both backends.
         for loc, lng, lat in [(cls.loc_a, -4.14, 50.37), (cls.loc_b, -4.13, 50.38)]:
             try:
@@ -128,9 +124,7 @@ class VizEndpointsTest(TestCase):
         self.assertIn("category", types)
         self.assertIn("user_cluster", types)
         # Org→category links exist
-        self.assertTrue(
-            any(link["type"] == "org_category" for link in data["links"])
-        )
+        self.assertTrue(any(link["type"] == "org_category" for link in data["links"]))
         self.assertTrue(any(link["type"] == "org_user" for link in data["links"]))
         # Bucketing bound
         clusters = [n for n in data["nodes"] if n["type"] == "user_cluster"]
@@ -157,9 +151,7 @@ class VizEndpointsTest(TestCase):
             self.assertIn(key, first)
 
     def test_event_list_org_filter_and_limit(self):
-        r = self.c.get(
-            f"/api/analytics/viz/event-list/?org={self.org_b.id}&limit=10"
-        )
+        r = self.c.get(f"/api/analytics/viz/event-list/?org={self.org_b.id}&limit=10")
         self.assertEqual(r.status_code, 200)
         data = r.json()
         self.assertEqual(data["count"], 1)
@@ -174,14 +166,11 @@ class VizEndpointsTest(TestCase):
         # ordered by -interaction_count
         self.assertEqual(data["results"][0]["interaction_count"], 10)
         first = data["results"][0]
-        for key in ("id", "postcode", "area", "organisation", "interaction_count",
-                    "period_start", "period_end"):
+        for key in ("id", "postcode", "area", "organisation", "interaction_count", "period_start", "period_end"):
             self.assertIn(key, first)
 
     def test_postcode_records_org_filter_and_limit(self):
-        r = self.c.get(
-            f"/api/analytics/viz/postcode-records/?org={self.org_b.id}&limit=5"
-        )
+        r = self.c.get(f"/api/analytics/viz/postcode-records/?org={self.org_b.id}&limit=5")
         self.assertEqual(r.status_code, 200)
         data = r.json()
         self.assertEqual(data["count"], 1)

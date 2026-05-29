@@ -55,9 +55,7 @@ def journeys_summary(request: Request) -> Response:
         for row in monthly_qs
     ]
 
-    type_breakdown = list(
-        interactions.values("interaction_type").annotate(n=Count("id")).order_by("-n")
-    )
+    type_breakdown = list(interactions.values("interaction_type").annotate(n=Count("id")).order_by("-n"))
 
     unique_users = list(
         interactions.values("organisation__name")
@@ -65,16 +63,11 @@ def journeys_summary(request: Request) -> Response:
         .order_by("-unique_users")
     )
     unique_users = [
-        {"organisation": r["organisation__name"] or "—", "unique_users": r["unique_users"]}
-        for r in unique_users
+        {"organisation": r["organisation__name"] or "—", "unique_users": r["unique_users"]} for r in unique_users
     ]
 
-    top_users_qs = (
-        interactions.values("user_hash").annotate(n=Count("id")).order_by("-n")[:10]
-    )
-    top_users = [
-        {"user_hash": _short_hash(r["user_hash"]), "n": r["n"]} for r in top_users_qs
-    ]
+    top_users_qs = interactions.values("user_hash").annotate(n=Count("id")).order_by("-n")[:10]
+    top_users = [{"user_hash": _short_hash(r["user_hash"]), "n": r["n"]} for r in top_users_qs]
 
     cross_tab = list(
         interactions.values("organisation__name", "interaction_type")

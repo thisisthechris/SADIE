@@ -1,7 +1,7 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from . import stats_views, viz_views, recommendations_views, journeys_views
+from . import journeys_views, recommendations_views, stats_views, viz_views
 from .views import PostcodeAreaInteractionViewSet, UserHashInteractionViewSet
 
 router = DefaultRouter()

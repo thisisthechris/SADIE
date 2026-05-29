@@ -77,22 +77,12 @@ def event_points(request: Request) -> Response:
     so deck.gl can aggregate client-side.
     """
     p = parse_filter_params(request)
-    events = (
-        events_qs(p)
-        .select_related("location", "organisation")
-        .filter(location__isnull=False)
-    )
+    events = events_qs(p).select_related("location", "organisation").filter(location__isnull=False)
     counts: dict[int, int] = {}
-    for row in (
-        events.order_by()
-        .values("location_id")
-        .annotate(n=Count("id", distinct=True))
-    ):
+    for row in events.order_by().values("location_id").annotate(n=Count("id", distinct=True)):
         counts[row["location_id"]] = row["n"]
 
-    locs = Location.objects.select_related("organisation").filter(
-        id__in=counts.keys()
-    )
+    locs = Location.objects.select_related("organisation").filter(id__in=counts.keys())
     rows = []
     for loc in locs:
         coords = location_coords(loc)
@@ -165,13 +155,9 @@ def network(request: Request) -> Response:
         .annotate(n=Count("id", distinct=True))
     )
     # Org → user-cluster edges.
-    user_rows = list(
-        interactions.order_by().values("organisation_id", "user_hash").annotate(n=Count("id"))
-    )
+    user_rows = list(interactions.order_by().values("organisation_id", "user_hash").annotate(n=Count("id")))
 
-    org_ids = {row["organisation_id"] for row in cat_edges} | {
-        row["organisation_id"] for row in user_rows
-    }
+    org_ids = {row["organisation_id"] for row in cat_edges} | {row["organisation_id"] for row in user_rows}
     cat_ids = {row["categories__id"] for row in cat_edges if row["categories__id"]}
 
     org_lookup = {o.id: o.name for o in Organisation.objects.filter(id__in=org_ids)}
@@ -193,9 +179,7 @@ def network(request: Request) -> Response:
         key = (row["organisation_id"], b)
         bucket_org_links[key] = bucket_org_links.get(key, 0) + row["n"]
     for b, w in bucket_weight.items():
-        nodes.append(
-            {"id": f"u{b}", "type": "user_cluster", "label": f"Cluster {b}", "weight": w}
-        )
+        nodes.append({"id": f"u{b}", "type": "user_cluster", "label": f"Cluster {b}", "weight": w})
 
     links = []
     for row in cat_edges:
@@ -360,11 +344,7 @@ def postcode_records(request: Request) -> Response:
     except (TypeError, ValueError):
         limit = 200
 
-    qs = (
-        postcode_qs(p)
-        .select_related("organisation")
-        .order_by("-interaction_count")[:limit]
-    )
+    qs = postcode_qs(p).select_related("organisation").order_by("-interaction_count")[:limit]
     rows = [
         {
             "id": r.id,

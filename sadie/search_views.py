@@ -14,7 +14,7 @@ we silently drop the vector term and use FTS + trigram only.
 from __future__ import annotations
 
 import logging
-from typing import Iterable
+from collections.abc import Iterable
 
 from django.contrib.postgres.search import SearchQuery, SearchRank
 from django.db.models import F, FloatField, Value
@@ -27,7 +27,6 @@ from rest_framework.response import Response
 from embeddings.services import get_provider
 from events.models import Event
 from organisations.models import Organisation
-
 
 logger = logging.getLogger(__name__)
 
@@ -48,15 +47,12 @@ def _embed_query(q: str) -> list[float] | None:
 
 def _search_events(q: str, vec: list[float] | None, limit: int) -> Iterable[dict]:
     sq = SearchQuery(q, config="english")
-    qs = (
-        Event.objects.select_related("organisation", "location")
-        .annotate(
-            fts=Coalesce(SearchRank(F("search_vector"), sq), Value(0.0), output_field=FloatField()),
-            trgm=Greatest(
-                RawSQL("similarity(events_event.title, %s)", (q,), output_field=FloatField()),
-                Value(0.0),
-            ),
-        )
+    qs = Event.objects.select_related("organisation", "location").annotate(
+        fts=Coalesce(SearchRank(F("search_vector"), sq), Value(0.0), output_field=FloatField()),
+        trgm=Greatest(
+            RawSQL("similarity(events_event.title, %s)", (q,), output_field=FloatField()),
+            Value(0.0),
+        ),
     )
     if vec is not None:
         qs = qs.annotate(
@@ -82,9 +78,7 @@ def _search_events(q: str, vec: list[float] | None, limit: int) -> Iterable[dict
             "score": float(e.score or 0),
             "start_datetime": e.start_datetime.isoformat() if e.start_datetime else None,
             "organisation": {"id": e.organisation_id, "name": e.organisation.name},
-            "location": (
-                {"id": e.location_id, "name": e.location.name} if e.location_id else None
-            ),
+            "location": ({"id": e.location_id, "name": e.location.name} if e.location_id else None),
             "url": f"/app/events?focus={e.id}",
         }
 
@@ -141,11 +135,7 @@ def search(request):
     except ValueError:
         limit = 20
 
-    types = {
-        t.strip()
-        for t in (request.query_params.get("types") or "event,organisation").split(",")
-        if t.strip()
-    }
+    types = {t.strip() for t in (request.query_params.get("types") or "event,organisation").split(",") if t.strip()}
 
     vec = _embed_query(q)
 

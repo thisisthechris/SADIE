@@ -1,4 +1,5 @@
 """DRF endpoints for scraping admin: imported events review queue."""
+
 from django.db import transaction
 from django.utils import timezone
 from rest_framework import permissions, status, viewsets
@@ -25,12 +26,9 @@ class IsStaffOrReadOnly(permissions.BasePermission):
 
 
 class ImportedEventViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = (
-        ImportedEvent.objects.select_related(
-            "source", "matched_event", "matched_organisation", "matched_location", "reviewed_by"
-        )
-        .all()
-    )
+    queryset = ImportedEvent.objects.select_related(
+        "source", "matched_event", "matched_organisation", "matched_location", "reviewed_by"
+    ).all()
     permission_classes = [IsStaffOrReadOnly]
     filterset_fields = ["status", "source"]
     search_fields = ["title", "description", "venue_name", "venue_postcode", "external_id"]
@@ -47,8 +45,7 @@ class ImportedEventViewSet(viewsets.ReadOnlyModelViewSet):
         from django.db.models import Count
 
         result = {
-            r["status"]: r["n"]
-            for r in ImportedEvent.objects.order_by().values("status").annotate(n=Count("id"))
+            r["status"]: r["n"] for r in ImportedEvent.objects.order_by().values("status").annotate(n=Count("id"))
         }
         # Ensure all known statuses appear.
         for s, _ in ImportedEvent.STATUS_CHOICES:

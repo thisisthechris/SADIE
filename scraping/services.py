@@ -1,11 +1,11 @@
 """
 Service layer for promoting approved ImportedEvents into the main Event table.
 """
+
 import logging
 
 import requests
 from django.contrib.gis.geos import Point
-from django.utils import timezone
 
 from events.models import Category, Event
 from organisations.models import Location, Organisation

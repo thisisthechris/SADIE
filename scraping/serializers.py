@@ -1,6 +1,5 @@
 from rest_framework import serializers
 
-from events.models import Event
 from organisations.serializers import LocationSerializer, OrganisationListSerializer
 
 from .models import ImportedEvent, ScrapeRun, ScrapeSource
@@ -38,9 +37,7 @@ class ImportedEventListSerializer(serializers.ModelSerializer):
         source="matched_organisation.name", read_only=True, allow_null=True
     )
     matched_event_id = serializers.IntegerField(source="matched_event.id", read_only=True, allow_null=True)
-    reviewed_by_username = serializers.CharField(
-        source="reviewed_by.username", read_only=True, allow_null=True
-    )
+    reviewed_by_username = serializers.CharField(source="reviewed_by.username", read_only=True, allow_null=True)
 
     class Meta:
         model = ImportedEvent

@@ -10,9 +10,12 @@ Two endpoints:
 
 Neither view requires authentication so calendar clients can poll on a schedule.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+
+UTC = timezone.utc
 from hashlib import sha1
 
 from django.http import HttpResponse
@@ -49,7 +52,7 @@ def _build_calendar(events, *, name: str, description: str, host: str) -> bytes:
     cal.add("x-wr-caldesc", description)
     cal.add("x-wr-timezone", "Europe/London")
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     for ev in events:
         ical_event = ICalEvent()
@@ -140,9 +143,9 @@ def webcal_url(request, path: str) -> str:
     """Convert an absolute http(s):// URL to webcal:// for one-click subscribe."""
     abs_url = request.build_absolute_uri(path)
     if abs_url.startswith("https://"):
-        return "webcal://" + abs_url[len("https://"):]
+        return "webcal://" + abs_url[len("https://") :]
     if abs_url.startswith("http://"):
-        return "webcal://" + abs_url[len("http://"):]
+        return "webcal://" + abs_url[len("http://") :]
     return abs_url
 
 

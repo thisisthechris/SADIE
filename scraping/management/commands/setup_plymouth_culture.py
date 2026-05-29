@@ -2,6 +2,7 @@
 Management command to seed the Plymouth Culture ScrapeSource
 and optionally pre-populate known organisations, locations, and categories.
 """
+
 from django.core.management.base import BaseCommand
 
 from events.models import Category

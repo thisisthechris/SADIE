@@ -14,8 +14,8 @@ except Exception:
     _HAS_GIS = False
 
 try:
-    from django.contrib.postgres.search import SearchVectorField
     from django.contrib.postgres.indexes import GinIndex
+    from django.contrib.postgres.search import SearchVectorField
 
     _HAS_PG_SEARCH = True
 except Exception:  # pragma: no cover
@@ -43,6 +43,7 @@ def _unique_slug(instance, source: str) -> str:
         candidate = f"{base}-{n}"
         n += 1
     return candidate
+
 
 # Validator used only when the GIS fallback CharField stores coordinates as "lng,lat"
 _POINT_VALIDATOR = RegexValidator(
@@ -88,11 +89,7 @@ class Organisation(_db_models.Model):
 
     class Meta:
         ordering = ["-is_partner", "name"]
-        indexes = (
-            [GinIndex(fields=["search_vector"], name="org_search_vector_gin")]
-            if _HAS_PG_SEARCH
-            else []
-        )
+        indexes = [GinIndex(fields=["search_vector"], name="org_search_vector_gin")] if _HAS_PG_SEARCH else []
 
     def __str__(self):
         return self.name
@@ -127,9 +124,7 @@ def org_and_descendants_ids(org_id: int) -> list[int]:
     """Return [org_id, *direct_children_ids]. Flat 1-level hierarchy."""
     if not org_id:
         return []
-    child_ids = list(
-        Organisation.objects.filter(parent_id=org_id).values_list("id", flat=True)
-    )
+    child_ids = list(Organisation.objects.filter(parent_id=org_id).values_list("id", flat=True))
     return [org_id, *child_ids]
 
 

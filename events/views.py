@@ -34,11 +34,7 @@ class EventFilter(django_filters.FilterSet):
 
 
 class EventViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = (
-        Event.objects.select_related("organisation", "location")
-        .prefetch_related("categories")
-        .all()
-    )
+    queryset = Event.objects.select_related("organisation", "location").prefetch_related("categories").all()
     permission_classes = [IsAuthenticatedOrReadOnly]
     filterset_class = EventFilter
     search_fields = ["title", "description", "organisation__name"]

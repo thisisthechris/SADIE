@@ -8,9 +8,17 @@ from django.shortcuts import render
 
 from analytics.queries import (
     events_qs as _events_qs,
+)
+from analytics.queries import (
     interactions_qs as _interactions_qs,
+)
+from analytics.queries import (
     location_coords as _loc_coords,
+)
+from analytics.queries import (
     parse_filter_params as _filter_params,
+)
+from analytics.queries import (
     postcode_qs as _postcode_qs,
 )
 from events.models import Category
@@ -74,19 +82,9 @@ def home(request):
     interactions = _interactions_qs(p)
     postcodes = _postcode_qs(p)
 
-    top_orgs = (
-        events.values("organisation__id", "organisation__name")
-        .annotate(n=Count("id"))
-        .order_by("-n")[:6]
-    )
-    top_cats = (
-        Category.objects.filter(events__in=events)
-        .annotate(n=Count("events"))
-        .order_by("-n")[:8]
-    )
-    type_breakdown = list(
-        interactions.values("interaction_type").annotate(n=Count("id")).order_by("-n")
-    )
+    top_orgs = events.values("organisation__id", "organisation__name").annotate(n=Count("id")).order_by("-n")[:6]
+    top_cats = Category.objects.filter(events__in=events).annotate(n=Count("events")).order_by("-n")[:8]
+    type_breakdown = list(interactions.values("interaction_type").annotate(n=Count("id")).order_by("-n"))
 
     context = {
         "org_count": Organisation.objects.count(),
@@ -154,11 +152,7 @@ def organisations_map(request):
 def events_map(request):
     """Map of events grouped by location, with full filtering."""
     p = _filter_params(request)
-    events = (
-        _events_qs(p)
-        .select_related("organisation", "location")
-        .prefetch_related("categories")
-    )
+    events = _events_qs(p).select_related("organisation", "location").prefetch_related("categories")
 
     loc_groups = defaultdict(list)
     for ev in events:
@@ -274,19 +268,12 @@ def user_journeys(request):
         .order_by("month")
     )
     monthly_labels = [
-        str(r["month"].date() if hasattr(r["month"], "date") else r["month"])
-        if r["month"]
-        else ""
-        for r in monthly
+        str(r["month"].date() if hasattr(r["month"], "date") else r["month"]) if r["month"] else "" for r in monthly
     ]
     monthly_data = [r["count"] for r in monthly]
 
-    type_totals = list(
-        interactions.values("interaction_type").annotate(n=Count("id")).order_by("-n")
-    )
-    top_users = list(
-        interactions.values("user_hash").annotate(n=Count("id")).order_by("-n")[:10]
-    )
+    type_totals = list(interactions.values("interaction_type").annotate(n=Count("id")).order_by("-n"))
+    top_users = list(interactions.values("user_hash").annotate(n=Count("id")).order_by("-n")[:10])
 
     context = {
         "org_stats": org_stats,
@@ -309,20 +296,12 @@ def postcode_heatmap(request):
     qs = _postcode_qs(p)
 
     records = qs.select_related("organisation").order_by("-interaction_count")[:200]
-    area_totals = list(
-        qs.values("area")
-        .annotate(total=Sum("interaction_count"))
-        .order_by("-total")[:20]
-    )
+    area_totals = list(qs.values("area").annotate(total=Sum("interaction_count")).order_by("-total")[:20])
 
     # Build map data: circles at postcode-district centroids.
     # area_totals uses friendly names, so resolve via the postcode field instead.
     # Aggregate interaction totals by postcode, then group by district prefix.
-    postcode_rows = (
-        qs.values("postcode")
-        .annotate(total=Sum("interaction_count"))
-        .order_by("-total")
-    )
+    postcode_rows = qs.values("postcode").annotate(total=Sum("interaction_count")).order_by("-total")
     import re as _re
 
     district_totals: dict[str, dict] = {}

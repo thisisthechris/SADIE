@@ -1,4 +1,5 @@
 """Tests for Phase 4 recommendations endpoints."""
+
 from datetime import timedelta
 
 from django.contrib.auth.models import User
@@ -6,7 +7,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from events.models import Event
-from organisations.models import Location, Organisation
+from organisations.models import Organisation
 
 
 class RecommendationsAPITest(TestCase):

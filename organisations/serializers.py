@@ -1,6 +1,5 @@
-from rest_framework import serializers
-
 from django.contrib.auth import get_user_model
+from rest_framework import serializers
 
 try:
     from rest_framework_gis.serializers import GeoFeatureModelSerializer as _GeoBase
@@ -116,9 +115,7 @@ class OrganisationListSerializer(serializers.ModelSerializer):
 class OrganisationWriteSerializer(serializers.ModelSerializer):
     """For PATCH/PUT. ``is_partner``/``parent``/``members`` are staff-only."""
 
-    members = serializers.PrimaryKeyRelatedField(
-        many=True, queryset=get_user_model().objects.all(), required=False
-    )
+    members = serializers.PrimaryKeyRelatedField(many=True, queryset=get_user_model().objects.all(), required=False)
 
     class Meta:
         model = Organisation
@@ -155,15 +152,11 @@ class OrganisationWriteSerializer(serializers.ModelSerializer):
                     current = getattr(instance, f, None) if instance else None
                     changed = current != attrs[f]
                 if changed and not is_staff:
-                    raise serializers.ValidationError(
-                        {f: "Only staff can change this field."}
-                    )
+                    raise serializers.ValidationError({f: "Only staff can change this field."})
         if "parent" in attrs and attrs["parent"] and instance and attrs["parent"].pk == instance.pk:
             raise serializers.ValidationError({"parent": "An organisation cannot be its own parent."})
         if "parent" in attrs and attrs["parent"] and attrs["parent"].parent_id is not None:
-            raise serializers.ValidationError(
-                {"parent": "Parent must itself be top-level (1-level hierarchy)."}
-            )
+            raise serializers.ValidationError({"parent": "Parent must itself be top-level (1-level hierarchy)."})
         # If this org already has children, it cannot become a sub-org.
         if (
             "parent" in attrs
