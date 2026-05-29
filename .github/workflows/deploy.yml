@@ -63,10 +63,10 @@ jobs:
     name: Trigger Portainer redeploy
     runs-on: ubuntu-latest
     needs: build
-    if: ${{ secrets.PORTAINER_WEBHOOK_URL != '' }}
 
     steps:
       - name: Redeploy stack via webhook
+        if: ${{ secrets.PORTAINER_WEBHOOK_URL != '' }}
         run: |
           curl -sS -f -X POST "${{ secrets.PORTAINER_WEBHOOK_URL }}"
           echo "Portainer redeploy triggered."
