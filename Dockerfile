@@ -1,5 +1,8 @@
 FROM node:20-alpine AS frontend
 WORKDIR /frontend
+# Raise the Node.js heap limit so vite + source-map generation doesn't OOM
+# on memory-constrained CI runners (the default ~1.5 GB is too small for this bundle).
+ENV NODE_OPTIONS=--max-old-space-size=4096
 COPY frontend/package.json frontend/package-lock.json* ./
 RUN npm install --no-audit --no-fund
 COPY frontend/ ./

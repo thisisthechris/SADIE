@@ -1,0 +1,30 @@
+# Git
+.git
+.gitignore
+
+# Python cache
+**/__pycache__
+**/*.pyc
+**/*.pyo
+*.egg-info
+
+# Frontend – node_modules must be installed inside the container, not copied
+# from the host (which may have platform-specific native binaries)
+frontend/node_modules
+frontend/dist
+
+# Django generated / runtime files
+staticfiles
+mediafiles
+*.sqlite3
+db.sqlite3
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Editor / OS
+.vscode
+.idea
+**/.DS_Store
