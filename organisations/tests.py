@@ -1,6 +1,4 @@
-from datetime import timezone
-
-UTC = timezone.utc
+from datetime import UTC
 
 from django.test import TestCase
 from rest_framework.test import APIClient
