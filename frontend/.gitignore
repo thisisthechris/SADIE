@@ -2,3 +2,8 @@ node_modules
 dist
 *.local
 .DS_Store
+# TypeScript incremental build cache
+*.tsbuildinfo
+# Files emitted by tsconfig.node.json (composite build for vite.config.ts)
+vite.config.js
+vite.config.d.ts

@@ -12,6 +12,10 @@
 # from the host (which may have platform-specific native binaries)
 frontend/node_modules
 frontend/dist
+# TypeScript incremental build cache — has local absolute paths, would
+# invalidate Docker's cache without being useful inside the container
+frontend/tsconfig.tsbuildinfo
+frontend/tsconfig.node.tsbuildinfo
 
 # Django generated / runtime files
 staticfiles
