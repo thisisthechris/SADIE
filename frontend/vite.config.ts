@@ -25,7 +25,10 @@ export default defineConfig(({ command }) => ({
   build: {
     outDir: "dist",
     emptyOutDir: true,
-    sourcemap: true,
+    // Source maps are generated on demand in dev; keeping them on during
+    // the Docker/CI production build inflates peak memory by ~5-6 GB and
+    // causes the build to be killed by the kernel OOM on GHA runners.
+    sourcemap: false,
   },
   base: command === "serve" ? "/" : "/static/spa/",
 }));

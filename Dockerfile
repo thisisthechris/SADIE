@@ -3,10 +3,14 @@ WORKDIR /frontend
 # Raise the Node.js heap limit so vite + source-map generation doesn't OOM
 # on memory-constrained CI runners (the default ~1.5 GB is too small for this bundle).
 ENV NODE_OPTIONS=--max-old-space-size=4096
+# Put local .bin on PATH so tsc / vite can be called directly in RUN steps.
+ENV PATH=/frontend/node_modules/.bin:$PATH
 COPY frontend/package.json frontend/package-lock.json* ./
 RUN npm install --no-audit --no-fund
 COPY frontend/ ./
-RUN npm run build
+# Split into two layers: if tsc fails you see TypeScript errors; if vite fails you see vite errors.
+RUN tsc -b
+RUN vite build
 
 FROM python:3.11-slim
 
