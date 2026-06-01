@@ -7,7 +7,13 @@ import json
 import logging
 import re
 import time
-from datetime import UTC, datetime
+from datetime import datetime, timezone
+
+# Python 3.11+ has datetime.UTC, Python 3.10 uses timezone.utc
+try:
+    from datetime import UTC
+except ImportError:
+    UTC = timezone.utc  # noqa: UP017
 
 import requests
 from bs4 import BeautifulSoup

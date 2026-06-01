@@ -1,4 +1,10 @@
-from datetime import UTC
+from datetime import timezone
+
+# Python 3.11+ has datetime.UTC, Python 3.10 uses timezone.utc
+try:
+    from datetime import UTC
+except ImportError:
+    UTC = timezone.utc  # noqa: UP017
 
 from django.test import TestCase
 from rest_framework.test import APIClient

@@ -13,8 +13,14 @@ Neither view requires authentication so calendar clients can poll on a schedule.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from hashlib import sha1
+
+# Python 3.11+ has datetime.UTC, Python 3.10 uses timezone.utc
+try:
+    from datetime import UTC
+except ImportError:
+    UTC = timezone.utc  # noqa: UP017
 
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
