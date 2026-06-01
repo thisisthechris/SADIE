@@ -4,7 +4,8 @@ This module is kept for backwards compatibility with ICS feed and short link gen
 It provides helper functions needed by ics_feed.py.
 """
 
-from analytics.queries import parse_filter_params, events_qs as analytics_events_qs
+from analytics.queries import events_qs as analytics_events_qs
+from analytics.queries import parse_filter_params
 
 
 def _filter_params(request):

@@ -1,6 +1,5 @@
 from django.urls import path
 
-from . import views
 from .api_views import short_link
 from .ics_feed import events_ics, org_events_ics
 
