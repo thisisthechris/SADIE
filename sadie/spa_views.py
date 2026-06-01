@@ -39,4 +39,3 @@ def spa_view(request):
 def landing_view(request):
     """Landing page — redirect to the React app."""
     return redirect("spa-root")
-

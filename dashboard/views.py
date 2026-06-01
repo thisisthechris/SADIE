@@ -16,4 +16,3 @@ def _filter_params(request):
 def _events_qs(p):
     """Return filtered Event queryset (consumed by ics_feed.py)."""
     return analytics_events_qs(p)
-
