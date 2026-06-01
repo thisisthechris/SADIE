@@ -1,4 +1,4 @@
-"""Serve the built Vite SPA at /app/* with a graceful dev fallback."""
+"""Serve the built Vite SPA at /app/* with a graceful dev fallback, plus landing page."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ from pathlib import Path
 
 from django.conf import settings
 from django.http import HttpResponse
+from django.shortcuts import redirect
 
 _SPA_INDEX = Path(settings.BASE_DIR) / "frontend" / "dist" / "index.html"
 
@@ -33,3 +34,9 @@ def spa_view(request):
         # without restarting the Django process. The file is small.
         return HttpResponse(_SPA_INDEX.read_bytes(), content_type="text/html")
     return HttpResponse(_DEV_FALLBACK, content_type="text/html", status=200)
+
+
+def landing_view(request):
+    """Landing page — redirect to the React app."""
+    return redirect("spa-root")
+

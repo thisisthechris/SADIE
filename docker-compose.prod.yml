@@ -64,13 +64,7 @@ services:
     image: *app-image
     # Run migrations at startup, then launch gunicorn.
     # collectstatic runs at image build time (in the Dockerfile) so no need here.
-    command: >
-      sh -c "python manage.py migrate --noinput &&
-             gunicorn sadie.wsgi:application
-               --bind 0.0.0.0:8000
-               --workers 3
-               --timeout 120
-               --access-logfile -"
+    command: sh -c "python manage.py migrate --noinput && gunicorn sadie.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 120 --access-logfile -"
     volumes:
       - static_volume:/app/staticfiles
       - media_volume:/app/mediafiles
@@ -82,6 +76,9 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
+    networks:
+      - default
+      - public
 
     # --- Option A: Traefik (uncomment; also remove the 'ports' block below) ---
     # labels:
@@ -131,8 +128,14 @@ volumes:
   media_volume:
   embeddings_cache:
 
+networks:
+  public:
+    external: true  # Unraid host network (or any existing shared network)
+
 # Uncomment if using Traefik (Option A):
 # networks:
 #   default:
+#   public:
+#     external: true
 #   traefik_proxy:
 #     external: true

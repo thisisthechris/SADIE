@@ -5,7 +5,7 @@ from django.urls import include, path, re_path
 
 from . import auth_views
 from .search_views import search as search_view
-from .spa_views import spa_view
+from .spa_views import landing_view, spa_view
 
 admin.site.site_header = "SADIE Admin"
 admin.site.site_title = "SADIE Admin"
@@ -27,8 +27,10 @@ urlpatterns = [
     path("api/upload/", include("analytics.upload_urls")),
     path("api/", include("dashboard.api_urls")),
     path("api/", include("scraping.urls")),
-    # SPA shell — handles client-side routing under /app/*.
+    # Landing page and SPA
+    path("", landing_view, name="landing"),
     path("app/", spa_view, name="spa-root"),
     re_path(r"^app/.*$", spa_view, name="spa-catchall"),
+    # Legacy URL endpoints (ICS feeds, short links)
     path("", include("dashboard.urls")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
