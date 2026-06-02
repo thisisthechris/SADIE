@@ -147,6 +147,12 @@ CELERY_BEAT_SCHEDULE = {
         "task": "scraping.tasks.scrape_all_sources",
         "schedule": crontab(hour=2, minute=0),
     },
+    # Generate synthetic analytics data daily at 3:00 AM (after scraping).
+    # NOTE: Currently enabled in production for testing purposes.
+    "generate-synthetic-analytics-daily": {
+        "task": "organisations.tasks.generate_daily_synthetic_analytics",
+        "schedule": crontab(hour=3, minute=0),
+    },
 }
 
 # Upload API token (simple shared-secret for upload endpoints)
