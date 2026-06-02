@@ -1,0 +1,62 @@
+[
+{
+  "model": "scraping.scrapesource",
+  "pk": 1,
+  "fields": {
+    "name": "Plymouth Culture",
+    "base_url": "https://www.plymouthculture.co.uk",
+    "api_path": "/events-1",
+    "scraper_task_name": "scraping.tasks.scrape_plymouth_culture",
+    "enabled": true,
+    "scrape_interval_hours": 24,
+    "last_scraped_at": "2026-06-01T14:38:24.079Z",
+    "created_at": "2026-02-26T23:14:21.561Z",
+    "updated_at": "2026-05-07T08:21:14.816Z"
+  }
+},
+{
+  "model": "scraping.scrapesource",
+  "pk": 34,
+  "fields": {
+    "name": "Theatre Royal Plymouth",
+    "base_url": "https://theatreroyal.com",
+    "api_path": "/whats-on/",
+    "scraper_task_name": "scraping.tasks.scrape_theatre_royal",
+    "enabled": true,
+    "scrape_interval_hours": 24,
+    "last_scraped_at": "2026-06-01T14:39:26.166Z",
+    "created_at": "2026-02-26T23:32:36.606Z",
+    "updated_at": "2026-05-07T08:21:14.844Z"
+  }
+},
+{
+  "model": "scraping.scrapesource",
+  "pk": 35,
+  "fields": {
+    "name": "The Box Plymouth",
+    "base_url": "https://www.theboxplymouth.com",
+    "api_path": "/events",
+    "scraper_task_name": "scraping.tasks.scrape_the_box",
+    "enabled": true,
+    "scrape_interval_hours": 24,
+    "last_scraped_at": "2026-06-01T14:38:39.301Z",
+    "created_at": "2026-02-26T23:45:53.991Z",
+    "updated_at": "2026-05-07T08:21:14.848Z"
+  }
+},
+{
+  "model": "scraping.scrapesource",
+  "pk": 36,
+  "fields": {
+    "name": "Real Ideas",
+    "base_url": "https://www.realideas.org",
+    "api_path": "/whats-on",
+    "scraper_task_name": "scraping.tasks.scrape_real_ideas",
+    "enabled": true,
+    "scrape_interval_hours": 24,
+    "last_scraped_at": "2026-06-01T14:38:18.006Z",
+    "created_at": "2026-05-07T08:21:14.851Z",
+    "updated_at": "2026-05-07T08:21:14.851Z"
+  }
+}
+]
