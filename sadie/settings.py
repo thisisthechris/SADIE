@@ -92,6 +92,8 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "/static/"
+# In production, staticfiles are baked into the image during build and served directly.
+# The volume mount (if any) is only for runtime-generated files.
 STATIC_ROOT = os.environ.get("STATIC_ROOT", BASE_DIR / "staticfiles")
 # Serve the Vite-built SPA bundle (frontend/dist/assets/*) under /static/spa/.
 # The directory may not exist before the first `npm run build`; gate it so

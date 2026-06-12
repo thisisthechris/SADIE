@@ -36,7 +36,7 @@ COPY . .
 # Pull the SPA build output in so Django can serve it under /app/* and /static/spa/.
 COPY --from=frontend /frontend/dist ./frontend/dist
 
-RUN python manage.py collectstatic --noinput
+RUN python manage.py collectstatic --noinput --verbosity=2
 
 EXPOSE 8000
 

@@ -62,9 +62,8 @@ services:
 
   web:
     image: *app-image
-    # Run migrations and collectstatic at startup, then launch gunicorn.
-    # collectstatic must run at runtime so it can write to the mounted staticfiles volume.
-    command: sh -c "python manage.py migrate --noinput && python manage.py collectstatic --noinput && gunicorn sadie.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 120 --access-logfile -"
+    # Run migrations at startup. collectstatic already ran at build time and is baked into the image.
+    command: sh -c "python manage.py migrate --noinput && gunicorn sadie.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 120 --access-logfile -"
     volumes:
       - static_volume:/app/staticfiles
       - media_volume:/app/mediafiles
