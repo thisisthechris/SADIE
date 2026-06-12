@@ -7,6 +7,7 @@ from pathlib import Path
 from django.conf import settings
 from django.http import HttpResponse
 from django.shortcuts import redirect
+from django.views.decorators.cache import cache_control
 
 _SPA_INDEX = Path(settings.BASE_DIR) / "frontend" / "dist" / "index.html"
 
@@ -28,11 +29,20 @@ automatically) and refresh.</p>
 
 
 def spa_view(request):
-    """Return the built SPA shell, or a friendly placeholder in dev."""
+    """Return the built SPA shell, or a friendly placeholder in dev.
+    
+    Cache-control header ensures the HTML is never cached so new asset hashes
+    are always picked up. Static assets (CSS/JS with content hashes) are cached.
+    """
     if _SPA_INDEX.exists():
         # Read on every request so a fresh `npm run build` is picked up
         # without restarting the Django process. The file is small.
-        return HttpResponse(_SPA_INDEX.read_bytes(), content_type="text/html")
+        response = HttpResponse(_SPA_INDEX.read_bytes(), content_type="text/html")
+        # Ensure HTML is never cached — only the hashed assets are cacheable
+        response["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response["Pragma"] = "no-cache"
+        response["Expires"] = "0"
+        return response
     return HttpResponse(_DEV_FALLBACK, content_type="text/html", status=200)
 
 
