@@ -78,6 +78,20 @@ export default function CalendarPage() {
           >
             Download .ics
           </a>
+          <a
+            href={subscribeUrls.json}
+            download="sadie-events.json"
+            className="btn-ghost text-xs border border-border"
+          >
+            Download .json
+          </a>
+          <a
+            href={subscribeUrls.rss}
+            className="btn-ghost text-xs border border-border"
+            title="Subscribe in your RSS reader"
+          >
+            RSS Feed
+          </a>
           <button
             type="button"
             onClick={onCopy}
@@ -142,8 +156,17 @@ function groupByDay(items: EventSummary[]): Array<[string, EventSummary[]]> {
 
 function buildSubscribeUrls(query: Record<string, string>) {
   const qs = new URLSearchParams(query).toString();
-  const path = qs ? `/calendar.ics?${qs}` : "/calendar.ics";
-  const https = `${window.location.origin}${path}`;
+  const icsPath = qs ? `/calendar.ics?${qs}` : "/calendar.ics";
+  const jsonPath = qs ? `/events.json?${qs}` : "/events.json";
+  const rssPath = qs ? `/events.rss?${qs}` : "/events.rss";
+  
+  const https = `${window.location.origin}${icsPath}`;
   const webcal = https.replace(/^https?:\/\//, "webcal://");
-  return { https, webcal };
+  
+  return {
+    https,
+    webcal,
+    json: `${window.location.origin}${jsonPath}`,
+    rss: `${window.location.origin}${rssPath}`,
+  };
 }

@@ -11,14 +11,21 @@
     <a class="btn btn-outline-secondary" href="{{ ics_url }}" download>
       <i class="bi bi-download"></i> Download .ics
     </a>
+    <a class="btn btn-outline-secondary" href="{{ json_url }}" download>
+      <i class="bi bi-download"></i> Download .json
+    </a>
+    <a class="btn btn-outline-secondary" href="{{ rss_url }}">
+      <i class="bi bi-rss"></i> RSS Feed
+    </a>
     <button type="button" class="btn btn-outline-secondary" id="copy-ics-url" data-url="{{ ics_url }}" title="Copy feed URL to clipboard">
       <i class="bi bi-clipboard"></i> Copy link
     </button>
   </div>
 </div>
 <p class="text-muted small mb-3">
-  Add to Google Calendar, Apple Calendar or Outlook by subscribing to the URL above.
-  Subscribing reflects current filters and updates automatically.
+  Add to Google Calendar, Apple Calendar or Outlook by subscribing to the calendar feed above.
+  Alternatively, use the JSON or RSS feed for programmatic access. Subscribing reflects current 
+  filters and updates automatically.
 </p>
 
 {% include "dashboard/_filters.html" with show_org=True show_cat=True show_dates=True show_search=True %}
