@@ -5,18 +5,21 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
-import { api } from "../lib/api";
+import { useQueryClient } from "@tanstack/react-query";
 import { useMe } from "../lib/auth";
+import { api } from "../lib/api";
 import SearchModal from "./SearchModal";
 import FilterDropdown from "./FilterDropdown";
-import { useQueryClient } from "@tanstack/react-query";
+import Logo from "./Logo";
+import BrandShape from "./BrandShape";
 
 type NavLeaf = { to: string; label: string; end?: boolean; staff?: boolean };
 type NavGroup = { label: string; items: NavLeaf[]; staff?: boolean };
 type NavEntry = NavLeaf | NavGroup;
 
 const NAV: NavEntry[] = [
-  { to: "/", label: "Overview", end: true },
+  { to: "/", label: "Insights", end: true },
+  { to: "/overview", label: "Dashboard" },
   {
     label: "Maps",
     items: [
@@ -25,7 +28,7 @@ const NAV: NavEntry[] = [
     ],
   },
   {
-    label: "Insights",
+    label: "Exploration",
     items: [
       { to: "/network", label: "Network" },
       { to: "/timecube", label: "Time Cube" },
@@ -75,16 +78,9 @@ function pageTitleFor(pathname: string): string {
 
 export default function Layout() {
   const { data: me } = useMe();
-  const qc = useQueryClient();
-  const nav = useNavigate();
   const location = useLocation();
   const [cmdOpen, setCmdOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
-  const [dark, setDark] = useState(
-    () =>
-      typeof document !== "undefined" &&
-      document.documentElement.classList.contains("dark")
-  );
 
   // Cmd-K / Ctrl-K opens the global command menu.
   useEffect(() => {
@@ -97,17 +93,6 @@ export default function Layout() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
-
-  const toggleDark = () => {
-    document.documentElement.classList.toggle("dark");
-    setDark((v) => !v);
-  };
-
-  const handleLogout = async () => {
-    await api("/api/auth/logout/", { method: "POST" });
-    qc.removeQueries({ queryKey: ["me"] });
-    nav("/login");
-  };
 
   const isStaff = !!me?.is_staff;
   const visibleNav: NavEntry[] = NAV.filter((e) => !e.staff || isStaff).map((e) => {
@@ -132,14 +117,13 @@ export default function Layout() {
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-30 backdrop-blur bg-bg/85 border-b border-border">
         <div className="mx-auto max-w-7xl px-4 h-14 flex items-center gap-4">
-          <MainMenu nav={visibleNav} />
-          <span className="hidden sm:block text-[10px] uppercase tracking-widest text-muted/60 font-display">Plymouth Culture</span>
+          <MainMenu nav={visibleNav} me={me} />
           {pageTitle && (
             <>
               <span className="text-muted/60 hidden sm:inline" aria-hidden>
                 /
               </span>
-              <h1 className="text-sm font-medium truncate">{pageTitle}</h1>
+              <h1 className="heading-sub truncate text-base">{pageTitle}</h1>
             </>
           )}
           <div className="ml-auto flex items-center gap-2">
@@ -158,39 +142,28 @@ export default function Layout() {
               onToggle={() => setFilterOpen((v) => !v)}
               onClose={() => setFilterOpen(false)}
             />
-            <button onClick={toggleDark} className="btn-ghost" aria-label="Toggle theme">
-              {dark ? "☼" : "☾"}
-            </button>
-            {me && (
-              <>
-                <span className="text-xs text-muted hidden sm:inline">
-                  {me.username}
-                </span>
-                <button onClick={handleLogout} className="btn-ghost text-xs">
-                  Sign out
-                </button>
-              </>
-            )}
           </div>
         </div>
       </header>
       <main className="flex-1 mx-auto max-w-7xl w-full px-4 py-6">
         <Outlet />
       </main>
-      <footer className="border-t border-border text-xs text-muted py-3 text-center">
-        <span className="font-display font-bold tracking-wide text-accent">Plymouth Culture</span>
-        {" · "}
-        SADIE analytics platform
+      <footer className="border-t border-border text-xs text-muted py-3 text-center flex items-center justify-center gap-2">
+        <div className="h-5">
+          <Logo height={60} />
+        </div>
       </footer>
       <SearchModal open={cmdOpen} onClose={() => setCmdOpen(false)} />
     </div>
   );
 }
 
-function MainMenu({ nav }: { nav: NavEntry[] }) {
+function MainMenu({ nav, me }: { nav: NavEntry[]; me?: ReturnType<typeof useMe>["data"] }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const location = useLocation();
+  const qc = useQueryClient();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!open) return;
@@ -214,6 +187,13 @@ function MainMenu({ nav }: { nav: NavEntry[] }) {
     setOpen(false);
   }, [location.pathname]);
 
+  const handleLogout = async () => {
+    setOpen(false);
+    await api("/api/auth/logout/", { method: "POST" });
+    qc.removeQueries({ queryKey: ["me"] });
+    navigate("/login");
+  };
+
   // Split entries: leaves (top of panel) and groups (sections below).
   const leaves = nav.filter((e): e is NavLeaf => !isGroup(e));
   const groups = nav.filter(isGroup);
@@ -228,6 +208,14 @@ function MainMenu({ nav }: { nav: NavEntry[] }) {
         aria-label="Open navigation menu"
         className="font-display font-bold tracking-tight text-xl shrink-0 inline-flex items-center gap-1.5 rounded-md px-1 -mx-1 hover:bg-border/40"
       >
+        <div 
+          className="w-5 h-5 transition-transform duration-600"
+          style={{
+            transform: open ? "rotate(360deg)" : "rotate(0deg)",
+          }}
+        >
+          <BrandShape name="cog-pink" size={20} opacity={0.8} />
+        </div>
         <span>
           SADIE<span className="text-accent">.</span>
         </span>
@@ -283,6 +271,24 @@ function MainMenu({ nav }: { nav: NavEntry[] }) {
               ))}
             </div>
           ))}
+          {me && (
+            <>
+              <div className="my-1 border-t border-border" />
+              <div className="px-3 py-2">
+                <div className="text-xs uppercase tracking-widest font-display text-muted">
+                  Plymouth Culture
+                </div>
+                <div className="text-sm font-medium text-fg mt-1">{me.username}</div>
+              </div>
+              <button
+                onClick={handleLogout}
+                role="menuitem"
+                className="w-full text-left px-3 py-1.5 text-sm hover:bg-border/40 text-fg transition-colors"
+              >
+                Sign out
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>
