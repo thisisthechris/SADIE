@@ -100,8 +100,16 @@ STATIC_ROOT = os.environ.get("STATIC_ROOT", BASE_DIR / "staticfiles")
 # `collectstatic` doesn't blow up in dev.
 STATICFILES_DIRS = []
 _spa_dist = BASE_DIR / "frontend" / "dist"
+print(f"[SADIE] BASE_DIR={BASE_DIR}")
+print(f"[SADIE] STATIC_ROOT={STATIC_ROOT}")
+print(f"[SADIE] _spa_dist={_spa_dist}")
+print(f"[SADIE] _spa_dist.exists()={_spa_dist.exists()}")
 if _spa_dist.exists():
+    print(f"[SADIE] Adding frontend/dist to STATICFILES_DIRS")
     STATICFILES_DIRS.append(("spa", _spa_dist))
+else:
+    print(f"[SADIE] WARNING: frontend/dist does not exist at {_spa_dist}")
+print(f"[SADIE] STATICFILES_DIRS={STATICFILES_DIRS}")
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.environ.get("MEDIA_ROOT", BASE_DIR / "mediafiles")
 
