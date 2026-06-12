@@ -12,6 +12,7 @@ import type {
 import ExportMenu from "../components/ExportMenu";
 import RecommendationsWidget from "../components/RecommendationsWidget";
 import PartnerBadge from "../components/PartnerBadge";
+import EmptyState from "../components/EmptyState";
 import { downloadCsv } from "../lib/export";
 
 export default function Home() {
@@ -49,7 +50,7 @@ export default function Home() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Overview</h1>
+        <h1 className="heading-small">Overview</h1>
         <p className="text-sm text-muted">
           High-level signals across Plymouth&rsquo;s arts &amp; cultural data.
         </p>
@@ -87,7 +88,7 @@ export default function Home() {
       <section className="grid gap-4 lg:grid-cols-2">
         <div className="card p-4">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-medium">Top organisations</h2>
+            <h2 className="heading-sub">Top organisations</h2>
             <ExportMenu
               items={[
                 {
@@ -116,7 +117,7 @@ export default function Home() {
         </div>
         <div className="card p-4">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-medium">Top categories</h2>
+            <h2 className="heading-sub">Top categories</h2>
             <ExportMenu
               items={[
                 {
@@ -147,14 +148,14 @@ export default function Home() {
 
       <section className="grid gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2 card p-4">
-          <h2 className="font-medium mb-3">Interactions over time</h2>
+          <h2 className="heading-sub mb-3">Interactions over time</h2>
           <Sparkline points={(ts.data?.series ?? []).map((p) => p.count)} />
         </div>
         <RecommendationsWidget />
       </section>
 
       <section className="card p-4">
-        <h2 className="font-medium mb-3">Upcoming events</h2>
+        <h2 className="heading-sub mb-3">Upcoming events</h2>
         <ul className="divide-y divide-border">
           {(s?.upcoming_events ?? []).map((e) => (
             <li key={e.id} className="py-2 flex items-center gap-3">
@@ -225,7 +226,7 @@ function Stat({
 }
 
 function RankList({ rows }: { rows: Array<{ label: string; n: number }> }) {
-  if (!rows.length) return <div className="text-sm text-muted">No data.</div>;
+  if (!rows.length) return <EmptyState message="No data" shape="cog-pink" />;
   const max = Math.max(...rows.map((r) => r.n));
   return (
     <ol className="space-y-1.5">

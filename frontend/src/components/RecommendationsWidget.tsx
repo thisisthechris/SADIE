@@ -31,7 +31,7 @@ export default function RecommendationsWidget() {
   return (
     <div className="card p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="font-medium text-sm">Events near you</h3>
+        <h3 className="heading-sub">Events near you</h3>
       </div>
       <div className="flex items-end gap-2 text-sm">
         <label className="flex flex-col gap-1">

@@ -57,8 +57,8 @@ export default function CalendarPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Calendar</h1>
-          <p className="text-sm text-muted">
+          <h1 className="heading-small">Calendar</h1>
+          <p className="body-lg">
             Upcoming events grouped by day. Subscribe below to sync this filter
             into your calendar app.
           </p>

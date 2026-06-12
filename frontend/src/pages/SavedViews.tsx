@@ -14,7 +14,7 @@ export default function SavedViews() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Saved views</h1>
+        <h1 className="heading-small">Saved views</h1>
         <p className="text-sm text-muted">
           Bookmarked SPA pages with their filter state. Public views get a short shareable link.
         </p>
@@ -41,7 +41,7 @@ function Section({
 }) {
   return (
     <section className="card p-4">
-      <h2 className="font-medium mb-3">{title}</h2>
+      <h2 className="heading-sub mb-3">{title}</h2>
       {!rows?.length ? (
         <p className="text-sm text-muted">None yet.</p>
       ) : (

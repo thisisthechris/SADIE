@@ -149,6 +149,30 @@ class StatsEndpointsTest(TestCase):
         self.assertEqual(by_area.get("PL4"), 4)
         self.assertEqual(len(d["by_postcode"]), 2)
 
+    def test_headline_no_org_filter(self):
+        """Test headline endpoint returns city-wide stats."""
+        r = self.client.get("/api/analytics/stats/headline/")
+        self.assertEqual(r.status_code, 200)
+        d = r.json()
+        self.assertEqual(d["scope_label"], "City (all)")
+        self.assertIn("current_period", d)
+        self.assertIn("previous_period", d)
+        self.assertIn("deltas", d)
+        # Should have some counts (exact values depend on fixture dates)
+        self.assertIsInstance(d["current_period"]["events_count"], int)
+        self.assertIsInstance(d["current_period"]["attendees_count"], int)
+        self.assertIsInstance(d["deltas"]["events_pct_change"], float)
+        self.assertIsInstance(d["deltas"]["attendees_pct_change"], float)
+
+    def test_headline_org_filter(self):
+        """Test headline endpoint respects org filter."""
+        r = self.client.get(f"/api/analytics/stats/headline/?org={self.org_a.pk}")
+        d = r.json()
+        self.assertEqual(d["scope_label"], "Org A")
+        # Org A should have >= 0 events/attendees in the periods
+        self.assertIsInstance(d["current_period"]["events_count"], int)
+        self.assertIsInstance(d["current_period"]["attendees_count"], int)
+
 
 class CategoryEndpointTest(TestCase):
     def setUp(self):

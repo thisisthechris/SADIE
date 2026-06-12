@@ -29,6 +29,11 @@ urlpatterns = [
         stats_views.postcode_aggregates,
         name="stats-postcode-aggregates",
     ),
+    path(
+        "stats/headline/",
+        stats_views.headline,
+        name="stats-headline",
+    ),
     # Phase 3 — 3D visualisation data
     path("viz/event-points/", viz_views.event_points, name="viz-event-points"),
     path("viz/event-list/", viz_views.event_list, name="viz-event-list"),

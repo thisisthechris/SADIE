@@ -1,7 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
-  darkMode: "class",
   theme: {
     extend: {
       colors: {
@@ -13,16 +12,34 @@ export default {
         border: "rgb(var(--border) / <alpha-value>)",
         accent: "rgb(var(--accent) / <alpha-value>)",
         // Secondary Plymouth Culture brand tokens (always the same in both themes).
-        mint: "rgb(var(--mint) / <alpha-value>)",
-        amber: "rgb(var(--amber) / <alpha-value>)",
+        pink: "rgb(var(--pink) / <alpha-value>)",
         "light-blue": "rgb(var(--light-blue) / <alpha-value>)",
       },
       fontFamily: {
-        // "obviously" substitute: Barlow Condensed (bold condensed grotesque)
-        display: ["Barlow Condensed", "ui-sans-serif", "sans-serif"],
-        // "basic-sans" substitute: Plus Jakarta Sans (clean geometric sans)
-        sans: ["Plus Jakarta Sans", "ui-sans-serif", "system-ui", "sans-serif"],
+        // Basic Sans from Adobe Fonts
+        sans: ["basic-sans", "ui-sans-serif", "system-ui", "sans-serif"],
         mono: ["JetBrains Mono", "ui-monospace", "monospace"],
+        display: ["basic-sans", "ui-sans-serif", "system-ui", "sans-serif"],
+      },
+      fontSize: {
+        // Typography scale based on pt conversions (1pt ≈ 1.333px)
+        // Main heading: 80pt / 80pt leading
+        "heading-main": ["5.33rem", { lineHeight: "5.33rem", fontWeight: "700", color: "rgb(var(--light-blue))" }],
+        // Small heading: 30pt / 90pt leading
+        "heading-small": ["2rem", { lineHeight: "6rem", fontWeight: "700", color: "rgb(var(--light-blue))" }],
+        // Subheading: 30pt / 40pt leading, uppercase, bold, black
+        "heading-sub": ["2rem", { lineHeight: "2.67rem", fontWeight: "700", textTransform: "uppercase", color: "rgb(var(--fg))" }],
+        // Body copy: 24pt / 30pt leading, regular weight
+        "body-lg": ["1.6rem", { lineHeight: "2rem", fontWeight: "400" }],
+        // Body light (for normal text)
+        "body-regular": ["1.6rem", { lineHeight: "2rem", fontWeight: "300" }],
+      },
+      fontWeight: {
+        light: "300",
+        normal: "400",
+        medium: "500",
+        semibold: "600",
+        bold: "700",
       },
       boxShadow: {
         soft: "0 1px 2px 0 rgb(0 0 0 / 0.04), 0 1px 3px 0 rgb(0 0 0 / 0.06)",

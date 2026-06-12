@@ -32,7 +32,7 @@ export default function Journeys() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">User Journeys</h1>
+        <h1 className="heading-small">User Journeys</h1>
         <p className="text-sm text-muted">
           Anonymised interaction analytics across organisations and time.
         </p>
@@ -58,12 +58,12 @@ export default function Journeys() {
 
       <section className="grid gap-4 lg:grid-cols-3">
         <div className="card p-4 lg:col-span-2">
-          <h2 className="font-medium mb-3">Monthly trend</h2>
+          <h2 className="heading-sub mb-3">Monthly trend</h2>
           <Sparkline points={(data?.monthly ?? []).map((p) => p.count)} />
         </div>
         <div className="card p-4">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-medium">Type breakdown</h2>
+            <h2 className="heading-sub">Type breakdown</h2>
           </div>
           <Doughnut rows={data?.type_breakdown ?? []} />
         </div>
@@ -72,7 +72,7 @@ export default function Journeys() {
       <section className="grid gap-4 lg:grid-cols-2">
         <div className="card p-4">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-medium">Unique visitors per organisation</h2>
+            <h2 className="heading-sub">Unique visitors per organisation</h2>
             <ExportMenu
               items={[
                 {
@@ -99,7 +99,7 @@ export default function Journeys() {
           />
         </div>
         <div className="card p-4">
-          <h2 className="font-medium mb-3">
+          <h2 className="heading-sub mb-3">
             Top visitors{" "}
             <span className="text-xs text-muted font-normal">
               (anonymised hashes)
@@ -116,7 +116,7 @@ export default function Journeys() {
 
       <section className="card p-4">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-medium">Organisation × type</h2>
+          <h2 className="heading-sub">Organisation × type</h2>
           <ExportMenu
             items={[
               {

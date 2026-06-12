@@ -133,8 +133,8 @@ export default function MapPage() {
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold">Map</h1>
-          <p className="text-sm text-muted">
+          <h1 className="heading-small">Map</h1>
+          <p className="body-lg">
             Geographic exploration of venues and individual events.
           </p>
         </div>

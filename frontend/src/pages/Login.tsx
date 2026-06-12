@@ -3,6 +3,8 @@ import { useNavigate, Navigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "../lib/api";
 import { useMe } from "../lib/auth";
+import Logo from "../components/Logo";
+import BrandShape from "../components/BrandShape";
 
 export default function Login() {
   const { data: me, isLoading } = useMe();
@@ -39,11 +41,20 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen grid place-items-center px-4 bg-bg">
-      <form onSubmit={submit} className="card p-8 w-full max-w-sm space-y-5">
-        <div className="text-center">
-          <p className="text-[10px] uppercase tracking-widest text-muted font-display mb-1">Plymouth Culture</p>
-          <h1 className="text-4xl font-display font-bold text-accent tracking-tight">SADIE</h1>
+    <div className="min-h-screen grid place-items-center px-4 bg-bg relative overflow-hidden">
+      {/* Decorative shapes */}
+      <div className="absolute top-20 right-10 opacity-5">
+        <BrandShape name="cogarm-blue" size={120} rotation={45} />
+      </div>
+      <div className="absolute bottom-20 left-10 opacity-5">
+        <BrandShape name="halfmoon-yellow" size={100} rotation={-30} />
+      </div>
+
+      <form onSubmit={submit} className="card p-8 w-full max-w-sm space-y-5 relative z-10">
+        <div className="text-center mb-4">
+          <div className="flex justify-center mb-4">
+            <Logo height={40} />
+          </div>
           <p className="text-sm text-muted mt-1">Sign in to continue.</p>
         </div>
         <label className="block">

@@ -146,8 +146,8 @@ export default function TimeCube() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold">Time–Space Cube</h1>
-        <p className="text-sm text-muted">
+        <h1 className="heading-small">Time–Space Cube</h1>
+        <p className="body-lg">
           Each sphere is an event positioned by longitude (X), days from the
           earliest event in view (Y), and latitude (Z). Colour encodes category.
           Drag to rotate, scroll to zoom.

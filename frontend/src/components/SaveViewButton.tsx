@@ -58,7 +58,7 @@ export default function SaveViewButton() {
             onSubmit={submit}
             className="card p-5 w-[min(420px,90vw)] space-y-3"
           >
-            <h3 className="font-medium">Save current view</h3>
+            <h3 className="heading-sub">Save current view</h3>
             <p className="text-xs text-muted">
               Captures <code>{loc.pathname}</code> with the active filters.
             </p>

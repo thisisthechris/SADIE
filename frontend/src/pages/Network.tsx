@@ -101,8 +101,8 @@ export default function Network() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold">Network</h1>
-        <p className="text-sm text-muted">
+        <h1 className="heading-small">Network</h1>
+        <p className="body-lg">
           Tripartite graph linking organisations to categories and to anonymised
           user clusters (MD5-bucketed user hashes). Toggle node types below.
         </p>

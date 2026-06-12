@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import type { Paginated } from "../lib/savedViews";
+import EmptyState from "../components/EmptyState";
 
 type ImportedEvent = {
   id: number;
@@ -93,8 +94,8 @@ export default function Imports() {
     <div className="space-y-4">
       <div className="flex items-end justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Import review queue</h1>
-          <p className="text-sm text-muted">
+          <h1 className="heading-small">Import review queue</h1>
+          <p className="body-lg">
             Triage scraped events. Approve to mark for import, then run "Import" to write them
             into the live <code>events</code> table.
           </p>
@@ -218,7 +219,7 @@ function Column({
             )}
           </li>
         ))}
-        {!rows.length && <li className="text-xs text-muted py-3 text-center">Empty</li>}
+        {!rows.length && <li className="text-xs py-3 text-center"><EmptyState message="Empty" shape="circle-aqua" /></li>}
       </ul>
     </div>
   );

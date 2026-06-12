@@ -60,8 +60,8 @@ export default function Search() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold">Search</h1>
-        <p className="text-sm text-muted">
+        <h1 className="heading-small">Search</h1>
+        <p className="body-lg">
           Hybrid keyword + semantic search across events and organisations.
           {search.data?.vector === false && (
             <span className="ml-1 text-amber-500">

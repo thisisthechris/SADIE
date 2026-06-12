@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
+import EmptyState from "./EmptyState";
 
 interface Props {
   open: boolean;
@@ -250,8 +251,8 @@ export default function SearchModal({ open, onClose }: Props) {
 
           {/* Empty states */}
           {q.trim().length > 1 && !search.isFetching && filteredHits.length === 0 && (
-            <li className="px-4 py-6 text-sm text-muted text-center">
-              No results for &ldquo;{q}&rdquo;
+            <li className="px-4 py-6">
+              <EmptyState message={`No results for \"${q}\"`} shape="halfmoon-yellow" />
             </li>
           )}
           {q.trim().length <= 1 && staticMatches.length === 0 && (

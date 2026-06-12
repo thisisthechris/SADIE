@@ -22,7 +22,8 @@ Endpoints (mounted at /api/analytics/stats/):
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
+from calendar import monthrange
 
 from django.db.models import Count, Sum
 from django.db.models.functions import TruncMonth
@@ -195,3 +196,115 @@ def postcode_aggregates(request: Request) -> Response:
             "by_postcode": by_postcode,
         }
     )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticatedOrReadOnly])
+def headline(request: Request) -> Response:
+    """Headline stats for org insights: events & attendees last month vs month before.
+    
+    Returns:
+    {
+        "filters": {...},
+        "scope_label": "Plymouth Arts Centre" or "City (all)",
+        "current_period": {
+            "period_start": "2025-12-01",
+            "period_end": "2025-12-31",
+            "events_count": 42,
+            "attendees_count": 1234
+        },
+        "previous_period": {
+            "period_start": "2025-11-01",
+            "period_end": "2025-11-30",
+            "events_count": 38,
+            "attendees_count": 1100
+        },
+        "deltas": {
+            "events_pct_change": 10.5,  # positive means increase
+            "attendees_pct_change": 12.2
+        }
+    }
+    """
+    p = parse_filter_params(request)
+    
+    # Determine scope label (org name or "City (all)").
+    scope_label = "City (all)"
+    if p.get("org"):
+        try:
+            org_id = int(p["org"])
+            org = Organisation.objects.get(pk=org_id)
+            scope_label = org.name
+        except (TypeError, ValueError, Organisation.DoesNotExist):
+            pass
+    
+    # Calculate previous calendar month.
+    today = date.today()
+    # First day of this month
+    first_of_this_month = date(today.year, today.month, 1)
+    # Last day of previous month
+    last_of_prev_month = first_of_this_month - timedelta(days=1)
+    # First day of previous month
+    first_of_prev_month = date(last_of_prev_month.year, last_of_prev_month.month, 1)
+    # First day of month before that
+    first_of_prev_prev_month = date(
+        (first_of_prev_month - timedelta(days=1)).year,
+        (first_of_prev_month - timedelta(days=1)).month,
+        1
+    )
+    last_of_prev_prev_month = first_of_prev_month - timedelta(days=1)
+    
+    # Get filtered querysets.
+    _, events, interactions, _ = _filtered(request)
+    
+    # Current period (previous calendar month).
+    curr_events = events.filter(
+        start_datetime__date__gte=first_of_prev_month,
+        start_datetime__date__lte=last_of_prev_month
+    ).count()
+    curr_attendees = interactions.filter(
+        interaction_date__gte=first_of_prev_month,
+        interaction_date__lte=last_of_prev_month
+    ).values("user_hash").distinct().count()
+    
+    # Previous period (month before that).
+    prev_events = events.filter(
+        start_datetime__date__gte=first_of_prev_prev_month,
+        start_datetime__date__lte=last_of_prev_prev_month
+    ).count()
+    prev_attendees = interactions.filter(
+        interaction_date__gte=first_of_prev_prev_month,
+        interaction_date__lte=last_of_prev_prev_month
+    ).values("user_hash").distinct().count()
+    
+    # Calculate deltas.
+    events_pct_change = (
+        round(((curr_events - prev_events) / max(1, prev_events)) * 100, 1)
+        if prev_events > 0
+        else (100.0 if curr_events > 0 else 0.0)
+    )
+    attendees_pct_change = (
+        round(((curr_attendees - prev_attendees) / max(1, prev_attendees)) * 100, 1)
+        if prev_attendees > 0
+        else (100.0 if curr_attendees > 0 else 0.0)
+    )
+    
+    return Response({
+        "filters": p,
+        "scope_label": scope_label,
+        "current_period": {
+            "period_start": first_of_prev_month.isoformat(),
+            "period_end": last_of_prev_month.isoformat(),
+            "events_count": curr_events,
+            "attendees_count": curr_attendees,
+        },
+        "previous_period": {
+            "period_start": first_of_prev_prev_month.isoformat(),
+            "period_end": last_of_prev_prev_month.isoformat(),
+            "events_count": prev_events,
+            "attendees_count": prev_attendees,
+        },
+        "deltas": {
+            "events_pct_change": events_pct_change,
+            "attendees_pct_change": attendees_pct_change,
+        },
+    })

@@ -17,8 +17,8 @@ export default function OrganisationsPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold">Organisations</h1>
-        <p className="text-sm text-muted">
+        <h1 className="heading-small">Organisations</h1>
+        <p className="body-lg">
           Plymouth&rsquo;s arts &amp; cultural organisations being tracked. Click
           a row to drill in.
         </p>

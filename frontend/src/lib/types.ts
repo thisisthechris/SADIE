@@ -147,3 +147,50 @@ export interface PostcodeAggregatesResponse {
   by_area: Array<{ area: string; total: number }>;
   by_postcode: Array<{ postcode: string; area: string; total: number }>;
 }
+
+export interface HeadlineResponse {
+  filters: Record<string, string>;
+  scope_label: string;
+  current_period: {
+    period_start: string;
+    period_end: string;
+    events_count: number;
+    attendees_count: number;
+  };
+  previous_period: {
+    period_start: string;
+    period_end: string;
+    events_count: number;
+    attendees_count: number;
+  };
+  deltas: {
+    events_pct_change: number;
+    attendees_pct_change: number;
+  };
+}
+
+/** Postcode district GeoJSON feature from pl-postcode-districts.geojson */
+export interface PostcodeDistrictFeature {
+  type: "Feature";
+  properties: {
+    district: string;
+    name: string;
+  };
+  geometry: {
+    type: "Polygon";
+    coordinates: number[][][];
+  };
+}
+
+export interface PostcodeDistrictGeoJSON {
+  type: "FeatureCollection";
+  features: PostcodeDistrictFeature[];
+}
+
+/** Aggregated postcode data enriched with color for choropleth */
+/** Single postcode district aggregation with color for choropleth */
+export interface PostcodeDistrictData {
+  area: string;
+  total: number;
+  color?: string; // RGBA string for choropleth fill
+}

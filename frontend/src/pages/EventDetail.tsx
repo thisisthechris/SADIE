@@ -167,7 +167,7 @@ export default function EventDetailPage() {
           </div>
         )}
 
-        <h1 className="text-2xl font-bold leading-snug">{e.title}</h1>
+        <h1 className="heading-main leading-snug">{e.title}</h1>
 
         {/* Meta row */}
         <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted">
@@ -259,7 +259,7 @@ export default function EventDetailPage() {
       {/* Similar events */}
       {(similar.data?.results ?? []).length > 0 && (
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
+          <h2 className="heading-sub">
             Similar events
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">

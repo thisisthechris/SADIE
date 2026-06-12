@@ -180,7 +180,12 @@ CORS_URLS_REGEX = r"^/api/upload/.*$"
 # CSRF trusted origins – required for Django 4.x when the app is served over
 # HTTPS via a reverse proxy (Traefik, Nginx Proxy Manager, etc.).
 # Set to a comma-separated list of origins, e.g. https://yourdomain.com
-CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()]
+# In development, include http://localhost:5173 (Vite dev server)
+_csrf_origins = os.environ.get("CSRF_TRUSTED_ORIGINS", "")
+if DEBUG and not _csrf_origins:
+    # Development defaults: Vite at 5173 proxies to Django at 8000
+    _csrf_origins = "http://localhost:5173,http://localhost:8000"
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in _csrf_origins.split(",") if o.strip()]
 
 # MapTiler key surfaced to the SPA at runtime via /api/config/.
 # Never bake this into the JS bundle so it can be rotated without a rebuild.

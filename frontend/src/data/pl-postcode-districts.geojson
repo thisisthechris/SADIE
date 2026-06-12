@@ -1,0 +1,294 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "district": "PL1",
+        "name": "Plymouth City Centre"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-4.134, 50.372],
+          [-4.114, 50.372],
+          [-4.114, 50.352],
+          [-4.134, 50.352],
+          [-4.134, 50.372]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "district": "PL2",
+        "name": "Devonport"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-4.2, 50.38],
+          [-4.16, 50.38],
+          [-4.16, 50.35],
+          [-4.2, 50.35],
+          [-4.2, 50.38]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "district": "PL3",
+        "name": "Stonehouse"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-4.14, 50.35],
+          [-4.1, 50.35],
+          [-4.1, 50.32],
+          [-4.14, 50.32],
+          [-4.14, 50.35]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "district": "PL4",
+        "name": "Barbican"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-4.11, 50.365],
+          [-4.07, 50.365],
+          [-4.07, 50.335],
+          [-4.11, 50.335],
+          [-4.11, 50.365]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "district": "PL5",
+        "name": "Plympton"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-4.08, 50.34],
+          [-4.02, 50.34],
+          [-4.02, 50.3],
+          [-4.08, 50.3],
+          [-4.08, 50.34]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "district": "PL6",
+        "name": "Plymstock"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-4.05, 50.32],
+          [4.01, 50.32],
+          [-4.01, 50.28],
+          [-4.05, 50.28],
+          [-4.05, 50.32]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "district": "PL7",
+        "name": "Saltash"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-4.25, 50.34],
+          [-4.2, 50.34],
+          [-4.2, 50.3],
+          [-4.25, 50.3],
+          [-4.25, 50.34]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "district": "PL8",
+        "name": "Liskeard"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-4.47, 50.44],
+          [-4.39, 50.44],
+          [-4.39, 50.38],
+          [-4.47, 50.38],
+          [-4.47, 50.44]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "district": "PL9",
+        "name": "Gunnislake"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-4.4, 50.52],
+          [-4.3, 50.52],
+          [-4.3, 50.45],
+          [-4.4, 50.45],
+          [-4.4, 50.52]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "district": "PL10",
+        "name": "Callington"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-4.36, 50.5],
+          [-4.28, 50.5],
+          [-4.28, 50.44],
+          [-4.36, 50.44],
+          [-4.36, 50.5]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "district": "PL11",
+        "name": "Looe"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-4.46, 50.35],
+          [-4.38, 50.35],
+          [-4.38, 50.28],
+          [-4.46, 50.28],
+          [-4.46, 50.35]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "district": "PL12",
+        "name": "Ivybridge"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-4.02, 50.26],
+          [3.96, 50.26],
+          [-3.96, 50.2],
+          [-4.02, 50.2],
+          [-4.02, 50.26]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "district": "PL13",
+        "name": "Modbury"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-3.98, 50.32],
+          [-3.88, 50.32],
+          [-3.88, 50.25],
+          [-3.98, 50.25],
+          [-3.98, 50.32]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "district": "PL14",
+        "name": "Tavistock"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-4.14, 50.52],
+          [-4.04, 50.52],
+          [-4.04, 50.44],
+          [-4.14, 50.44],
+          [-4.14, 50.52]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "district": "PL15",
+        "name": "Yelverton"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-4.08, 50.51],
+          [-3.98, 50.51],
+          [-3.98, 50.44],
+          [-4.08, 50.44],
+          [-4.08, 50.51]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "district": "PL20",
+        "name": "Torpoint"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-4.23, 50.3],
+          [-4.16, 50.3],
+          [-4.16, 50.24],
+          [-4.23, 50.24],
+          [-4.23, 50.3]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "district": "PL21",
+        "name": "Kingsbridge"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-3.86, 50.27],
+          [-3.76, 50.27],
+          [-3.76, 50.2],
+          [-3.86, 50.2],
+          [-3.86, 50.27]
+        ]]
+      }
+    }
+  ]
+}

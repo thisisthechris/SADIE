@@ -3,7 +3,7 @@ export default function PartnerBadge({ className = "" }: { className?: string })
     <span
       title="Partner organisation"
       className={
-        "inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-amber-500/30 dark:text-amber-300 " +
+        "inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-amber-500/30 " +
         className
       }
     >

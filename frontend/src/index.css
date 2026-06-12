@@ -3,28 +3,17 @@
 @tailwind utilities;
 
 :root {
-  /* Plymouth Culture brand colours — light theme. */
-  --bg: 245 245 245;        /* #F5F5F5 — Plymouth light grey */
-  --fg: 26 26 26;           /* near-black body text */
-  --muted: 84 84 84;        /* #545454 — Plymouth grey */
-  --card: 255 255 255;      /* pure white */
-  --border: 218 218 230;    /* soft blue-tinted grey */
-  --accent: 0 31 204;       /* #001FCC — Plymouth blue */
-  /* Secondary brand tokens (theme-invariant). */
-  --mint: 40 247 188;       /* #28F7BC — Plymouth mint/turquoise */
-  --amber: 243 192 70;      /* #f3c046 — Plymouth amber */
-  --light-blue: 172 203 249; /* #accbf9 — Plymouth pale blue */
+  /* Plymouth Culture brand colours — light theme only. */
+  --bg: 255 255 255;        /* #FFFFFF — white */
+  --fg: 0 0 0;              /* #000000 — pure black */
+  --muted: 84 84 84;        /* #545454 — grey */
+  --card: 255 255 255;      /* #FFFFFF — white */
+  --border: 218 218 230;    /* soft grey */
+  --accent: 0 31 204;       /* #001FCC — primary blue */
+  /* Secondary brand tokens. */
+  --pink: 247 61 133;       /* #f73d85 — pink */
+  --light-blue: 0 31 204;   /* #001FCC — primary blue for headings */
   color-scheme: light;
-}
-
-.dark {
-  --bg: 8 10 28;            /* very dark navy */
-  --fg: 245 245 245;        /* #F5F5F5 */
-  --muted: 130 148 195;     /* slate-blue muted */
-  --card: 14 18 46;         /* dark navy card */
-  --border: 28 36 74;       /* dark navy border */
-  --accent: 40 247 188;     /* #28F7BC — mint as dark-mode accent */
-  color-scheme: dark;
 }
 
 @layer base {
@@ -39,6 +28,28 @@
 }
 
 @layer components {
+  /* Typography: Headings */
+  .heading-main {
+    @apply text-heading-main font-bold text-light-blue;
+  }
+
+  .heading-small {
+    @apply text-heading-small font-bold text-light-blue capitalize;
+  }
+
+  .heading-sub {
+    @apply text-heading-sub font-bold uppercase;
+  }
+
+  /* Typography: Body copy */
+  .body-lg {
+    @apply text-body-lg font-light text-fg;
+  }
+
+  .body-regular {
+    @apply text-body-regular font-normal text-fg;
+  }
+
   .card {
     @apply bg-card border border-border rounded-lg shadow-soft;
   }

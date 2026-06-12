@@ -144,7 +144,7 @@ function Header({ org }: { org: OrganisationDetail }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold">{org.name}</h1>
+            <h1 className="heading-small">{org.name}</h1>
             {org.is_partner && <PartnerBadge />}
           </div>
           {org.parent && (
@@ -218,7 +218,7 @@ function ChildrenGrid({
 }) {
   return (
     <div className="card p-4">
-      <h2 className="mb-3 text-lg font-semibold">Sub-organisations</h2>
+      <h2 className="heading-sub mb-3">Sub-organisations</h2>
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {children.map((c) => (
           <Link
@@ -244,7 +244,7 @@ function LocationsTable({
 }) {
   return (
     <div className="card overflow-hidden">
-      <h2 className="px-4 pt-4 text-lg font-semibold">Locations</h2>
+      <h2 className="heading-sub px-4 pt-4">Locations</h2>
       <table className="mt-2 w-full text-sm">
         <thead className="bg-border/20 text-left">
           <tr>
@@ -279,7 +279,7 @@ function TopVenuesCard({
   const top = [...rows].sort((a, b) => b.event_count - a.event_count).slice(0, 8);
   return (
     <div className="card p-4">
-      <h2 className="mb-2 text-lg font-semibold">Top venues</h2>
+      <h2 className="heading-sub mb-2">Top venues</h2>
       {loading ? (
         <p className="text-sm text-muted">Loading…</p>
       ) : top.length === 0 ? (
@@ -312,7 +312,7 @@ function TopPostcodesCard({
   const max = top[0]?.total ?? 0;
   return (
     <div className="card p-4">
-      <h2 className="mb-2 text-lg font-semibold">Top postcodes</h2>
+      <h2 className="heading-sub mb-2">Top postcodes</h2>
       {loading ? (
         <p className="text-sm text-muted">Loading…</p>
       ) : top.length === 0 ? (
@@ -387,7 +387,7 @@ function EditPanel({
         save.mutate(body);
       }}
     >
-      <h2 className="mb-3 text-lg font-semibold">Edit organisation</h2>
+      <h2 className="heading-sub mb-3">Edit organisation</h2>
       <div className="grid gap-3 md:grid-cols-2">
         <label className="text-sm">
           <span className="mb-1 block text-muted">Name</span>

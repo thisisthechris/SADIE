@@ -21,7 +21,13 @@ const basename = import.meta.env.DEV ? "/" : "/app";
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter basename={basename}>
+      <BrowserRouter 
+        basename={basename}
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
         <App />
       </BrowserRouter>
     </QueryClientProvider>

@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import Layout from "./components/Layout";
+import { OrgInsights } from "./pages/OrgInsights";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import MapPage from "./pages/Map";
@@ -41,7 +42,8 @@ export default function App() {
           </RequireAuth>
         }
       >
-        <Route index element={<Home />} />
+        <Route index element={<OrgInsights />} />
+        <Route path="overview" element={<Home />} />
         <Route
           path="events/:id"
           element={<Suspense fallback={VizFallback}><EventDetail /></Suspense>}
