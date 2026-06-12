@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
-import { useFilters } from "../lib/filters";
+import { useFilters, type FilterState } from "../lib/filters";
 import type { Category, OrganisationSummary, Paginated } from "../lib/types";
 import SaveViewButton from "./SaveViewButton";
 
@@ -13,12 +13,54 @@ const PERIODS = [
   { v: "1y", l: "Last year" },
 ];
 
+const INTERACTION_TYPES = [
+  { v: "event", l: "Events" },
+  { v: "location", l: "Locations" },
+];
+
 /** Count how many filter fields are non-empty (excluding empty strings). */
 function useActiveFilterCount() {
   const f = useFilters();
   return [f.org, f.category, f.date_from, f.date_to, f.period, f.itype].filter(
     Boolean
   ).length;
+}
+
+/** Get human-readable labels for active filters */
+function getActiveFilterLabels(
+  filters: FilterState,
+  orgsData: Paginated<OrganisationSummary> | undefined,
+  catsData: Paginated<Category> | undefined,
+): string[] {
+  const labels: string[] = [];
+  
+  if (filters.org && orgsData) {
+    const org = orgsData.results.find(o => o.id === Number(filters.org));
+    if (org) labels.push(org.name);
+  }
+  
+  if (filters.category && catsData) {
+    const cat = catsData.results.find(c => c.id === Number(filters.category));
+    if (cat) labels.push(cat.name);
+  }
+  
+  if (filters.period) {
+    const period = PERIODS.find(p => p.v === filters.period);
+    if (period) labels.push(period.l);
+  }
+  
+  if (filters.date_from || filters.date_to) {
+    const from = filters.date_from ? new Date(filters.date_from).toLocaleDateString() : "";
+    const to = filters.date_to ? new Date(filters.date_to).toLocaleDateString() : "";
+    labels.push(`${from || "?"} - ${to || "?"}`);
+  }
+  
+  if (filters.itype) {
+    const itype = INTERACTION_TYPES.find(t => t.v === filters.itype);
+    if (itype) labels.push(itype.l);
+  }
+  
+  return labels;
 }
 
 export default function FilterDropdown({
@@ -68,38 +110,50 @@ export default function FilterDropdown({
     staleTime: 5 * 60_000,
   });
 
+  const activeLabels = getActiveFilterLabels(f, orgs.data, cats.data);
+
   return (
     <div className="relative" ref={ref}>
       {/* Trigger button */}
-      <button
-        onClick={onToggle}
-        className={`btn-ghost text-xs flex items-center gap-1.5 ${
-          activeCount > 0 ? "text-accent" : ""
-        }`}
-        title="Filters"
-        aria-expanded={open}
-      >
-        {/* Funnel icon */}
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-          className="w-4 h-4 flex-shrink-0"
-          aria-hidden
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onToggle}
+          className={`btn-ghost text-xs flex items-center gap-1.5 ${
+            activeCount > 0 ? "text-accent" : ""
+          }`}
+          title="Filters"
+          aria-expanded={open}
         >
-          <path
-            fillRule="evenodd"
-            d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 0 1 .628.74v2.288a2.25 2.25 0 0 1-.659 1.59l-4.682 4.683a2.25 2.25 0 0 0-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 0 1 8 18.25v-5.757a2.25 2.25 0 0 0-.659-1.591L2.659 6.22A2.25 2.25 0 0 1 2 4.629V2.34a.75.75 0 0 1 .628-.74Z"
-            clipRule="evenodd"
-          />
-        </svg>
-        <span>Filters</span>
-        {activeCount > 0 && (
-          <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-accent text-white text-[10px] font-bold leading-none">
-            {activeCount}
-          </span>
+          {/* Funnel icon */}
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            className="w-4 h-4 flex-shrink-0"
+            aria-hidden
+          >
+            <path
+              fillRule="evenodd"
+              d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 0 1 .628.74v2.288a2.25 2.25 0 0 1-.659 1.59l-4.682 4.683a2.25 2.25 0 0 0-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 0 1 8 18.25v-5.757a2.25 2.25 0 0 0-.659-1.591L2.659 6.22A2.25 2.25 0 0 1 2 4.629V2.34a.75.75 0 0 1 .628-.74Z"
+              clipRule="evenodd"
+            />
+          </svg>
+          <span>Filters</span>
+          {activeCount > 0 && (
+            <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-accent text-white text-[10px] font-bold leading-none">
+              {activeCount}
+            </span>
+          )}
+        </button>
+
+        {/* Active filters display */}
+        {activeLabels.length > 0 && (
+          <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted">
+            <span>·</span>
+            <span className="line-clamp-1">{activeLabels.join(", ")}</span>
+          </div>
         )}
-      </button>
+      </div>
 
       {/* Dropdown panel */}
       {open && (
