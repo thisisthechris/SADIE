@@ -169,6 +169,15 @@ export default function EventDetailPage() {
 
         <h1 className="heading-main leading-snug">{e.title}</h1>
 
+        {/* Event image */}
+        {e.image_url && (
+          <img 
+            src={e.image_url} 
+            alt={e.title} 
+            className="w-full max-h-64 object-cover rounded-lg"
+          />
+        )}
+
         {/* Meta row */}
         <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted">
           <span className="flex items-center gap-1.5">

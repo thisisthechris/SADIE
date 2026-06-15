@@ -45,6 +45,11 @@ def _build_rss(events, *, title: str, link: str, description: str) -> str:
         
         # Build description with organisation, location, categories
         desc_parts = []
+        
+        # Add image if available
+        if ev.image_url:
+            desc_parts.append(f'<img src="{ev.image_url}" alt="{ev.title}" style="max-width:100%; height:auto; margin-bottom: 10px;" />')
+        
         if ev.organisation:
             desc_parts.append(f"<strong>Organisation:</strong> {ev.organisation.name}")
         if ev.location:

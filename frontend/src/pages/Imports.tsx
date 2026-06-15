@@ -251,6 +251,13 @@ function Drawer({ id, onClose }: { id: number; onClose: () => void }) {
                 {q.data.source_name} · {q.data.external_id}
               </div>
             </div>
+            {q.data.image_url && (
+              <img 
+                src={q.data.image_url} 
+                alt={q.data.title}
+                className="w-full max-h-40 object-cover rounded"
+              />
+            )}
             {q.data.start_datetime && (
               <div className="text-xs text-muted">
                 {new Date(q.data.start_datetime).toLocaleString()} →{" "}

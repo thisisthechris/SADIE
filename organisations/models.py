@@ -134,6 +134,13 @@ class Location(_db_models.Model):
     address = models.TextField(blank=True)
     postcode = _db_models.CharField(max_length=10, blank=True, db_index=True)
     point = _point_field()
+    parent = _db_models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=_db_models.SET_NULL,
+        related_name="sub_venues",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -141,3 +148,25 @@ class Location(_db_models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.organisation.name})"
+
+    def clean(self):
+        super().clean()
+        # Validate parent is in the same organisation
+        if self.parent_id is not None:
+            if self.pk and self.parent_id == self.pk:
+                raise ValidationError({"parent": "A location cannot be its own parent."})
+            parent = self.parent
+            if parent.organisation_id != self.organisation_id:
+                raise ValidationError(
+                    {"parent": "Parent location must be in the same organisation."}
+                )
+            # Enforce flat 1-level hierarchy: parent must itself have no parent
+            if parent.parent_id is not None:
+                raise ValidationError(
+                    {"parent": "Sub-locations cannot themselves have a parent (1-level hierarchy)."}
+                )
+            # If this location already has children, it cannot also be a child
+            if self.pk and type(self).objects.filter(parent_id=self.pk).exists():
+                raise ValidationError(
+                    {"parent": "This location already has sub-locations and cannot be made a sub-location."}
+                )

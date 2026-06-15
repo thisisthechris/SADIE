@@ -64,6 +64,9 @@ export interface OrgLocation {
   address?: string;
   postcode?: string;
   point: unknown;
+  parent_id?: number | null;
+  parent_name?: string | null;
+  sub_venues?: Array<{ id: number; name: string }>;
   created_at?: string;
 }
 

@@ -92,6 +92,9 @@ def _build_calendar(events, *, name: str, description: str, host: str) -> bytes:
         if cats:
             ical_event.add("categories", cats)
 
+        if ev.image_url:
+            ical_event.add("attach", ev.image_url)
+
         cal.add_component(ical_event)
 
     return cal.to_ical()

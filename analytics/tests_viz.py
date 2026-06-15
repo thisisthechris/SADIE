@@ -69,22 +69,41 @@ class VizEndpointsTest(TestCase):
                 interaction_date=date.today(),
             )
 
-        PostcodeAreaInteraction.objects.create(
-            organisation=cls.org_a,
-            postcode="PL1 1AA",
-            area="PL1",
-            interaction_count=10,
-            period_start=date.today() - timedelta(days=30),
-            period_end=date.today(),
-        )
-        PostcodeAreaInteraction.objects.create(
-            organisation=cls.org_b,
-            postcode="PL4 6AB",
-            area="PL4",
-            interaction_count=4,
-            period_start=date.today() - timedelta(days=30),
-            period_end=date.today(),
-        )
+        # PL1 area postcodes (15 postcodes with varying interactions)
+        pl1_postcodes = [
+            ("PL1 1AA", 145), ("PL1 1AB", 98), ("PL1 1AC", 67),
+            ("PL1 2AA", 112), ("PL1 2AB", 89), ("PL1 2AC", 56),
+            ("PL1 3AA", 134), ("PL1 3AB", 78), ("PL1 3AC", 92),
+            ("PL1 4AA", 101), ("PL1 4AB", 73), ("PL1 4AC", 44),
+            ("PL1 5AA", 187), ("PL1 5AB", 65), ("PL1 5AC", 53),
+        ]
+        for postcode, count in pl1_postcodes:
+            PostcodeAreaInteraction.objects.create(
+                organisation=cls.org_a,
+                postcode=postcode,
+                area="PL1",
+                interaction_count=count,
+                period_start=date.today() - timedelta(days=30),
+                period_end=date.today(),
+            )
+        
+        # PL4 area postcodes (15 postcodes with varying interactions)
+        pl4_postcodes = [
+            ("PL4 0AA", 156), ("PL4 0AB", 89), ("PL4 0AC", 72),
+            ("PL4 6AA", 124), ("PL4 6AB", 103), ("PL4 6AC", 58),
+            ("PL4 7AA", 167), ("PL4 7AB", 94), ("PL4 7AC", 71),
+            ("PL4 8AA", 138), ("PL4 8AB", 85), ("PL4 8AC", 51),
+            ("PL4 9AA", 142), ("PL4 9AB", 76), ("PL4 9AC", 63),
+        ]
+        for postcode, count in pl4_postcodes:
+            PostcodeAreaInteraction.objects.create(
+                organisation=cls.org_b,
+                postcode=postcode,
+                area="PL4",
+                interaction_count=count,
+                period_start=date.today() - timedelta(days=30),
+                period_end=date.today(),
+            )
 
     def setUp(self):
         self.c = APIClient()

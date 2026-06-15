@@ -13,13 +13,68 @@ from .models import Location, Organisation
 
 
 class LocationSerializer(_GeoBase):
+    parent_id = serializers.IntegerField(read_only=True, allow_null=True)
+    parent_name = serializers.CharField(read_only=True, source="parent.name", allow_null=True)
+    sub_venues = serializers.SerializerMethodField()
+
     class Meta:
         model = Location
-        fields = ["id", "name", "address", "postcode", "point", "created_at"]
+        fields = ["id", "name", "address", "postcode", "point", "parent_id", "parent_name", "sub_venues", "created_at"]
+
+    def get_sub_venues(self, obj):
+        """Return nested sub-venues (children only, not recursive)."""
+        children = obj.sub_venues.all()
+        return [
+            {"id": child.id, "name": child.name}
+            for child in children
+        ]
 
 
 if _HAS_GIS:
     LocationSerializer.Meta.geo_field = "point"
+
+
+class LocationWriteSerializer(serializers.ModelSerializer):
+    """For writable operations (PATCH/PUT). Includes parent validation."""
+    parent = serializers.PrimaryKeyRelatedField(
+        queryset=Location.objects.all(),
+        allow_null=True,
+        required=False
+    )
+
+    class Meta:
+        model = Location
+        fields = ["name", "address", "postcode", "point", "parent"]
+
+    def validate_parent(self, parent):
+        """Validate parent is in same org and follows hierarchy rules."""
+        instance = self.instance
+        if parent is None:
+            return parent
+
+        # Parent must be in same organisation
+        if parent.organisation_id != (instance.organisation_id if instance else None):
+            raise serializers.ValidationError(
+                "Parent location must be in the same organisation."
+            )
+
+        # Prevent self-reference
+        if instance and parent.pk == instance.pk:
+            raise serializers.ValidationError("A location cannot be its own parent.")
+
+        # Parent must itself have no parent (flat 1-level hierarchy)
+        if parent.parent_id is not None:
+            raise serializers.ValidationError(
+                "Sub-locations cannot themselves have a parent (1-level hierarchy)."
+            )
+
+        # If instance already has children, it cannot become a sub-location
+        if instance and Location.objects.filter(parent_id=instance.pk).exists():
+            raise serializers.ValidationError(
+                "This location already has sub-locations and cannot be made a sub-location."
+            )
+
+        return parent
 
 
 class OrgRefSerializer(serializers.ModelSerializer):

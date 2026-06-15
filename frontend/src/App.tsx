@@ -48,12 +48,14 @@ export default function App() {
           path="events/:id"
           element={<Suspense fallback={VizFallback}><EventDetail /></Suspense>}
         />
-        <Route path="map" element={<MapPage />} />
+        <Route path="map" element={<Navigate to="/map/venues" replace />} />
+        <Route path="map/venues" element={<MapPage />} />
+        <Route path="map/events" element={<MapPage />} />
         <Route path="calendar" element={<CalendarPage />} />
         <Route path="organisations" element={<OrganisationsPage />} />
         <Route path="organisations/:slug" element={<OrganisationDetailPage />} />
         <Route path="postcodes" element={<Postcodes />} />
-        <Route path="map3d" element={<Navigate to="/map" replace />} />
+        <Route path="map3d" element={<Navigate to="/map/venues" replace />} />
         <Route path="postcodes3d" element={<Navigate to="/postcodes" replace />} />
         <Route
           path="network"

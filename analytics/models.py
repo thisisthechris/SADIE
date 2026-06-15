@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 
 from events.models import Event
 from organisations.models import Location, Organisation
@@ -65,3 +66,37 @@ class PostcodeAreaInteraction(models.Model):
 
     def __str__(self):
         return f"{self.postcode} ({self.organisation.name}) {self.period_start}–{self.period_end}"
+
+
+class PostcodeGeo(models.Model):
+    """Geocoding cache for UK postcodes using postcodes.io.
+    
+    Stores lat/lng for normalized postcodes to avoid repeated API lookups.
+    Supports full postcodes (PL4 0AB), sectors (PL4 0), and outward codes (PL4).
+    """
+    
+    STATUS_CHOICES = [
+        ("pending", "Pending geocoding"),
+        ("success", "Successfully geocoded"),
+        ("failed", "Geocoding failed (will not retry)"),
+    ]
+
+    postcode = models.CharField(max_length=10, unique=True, db_index=True)
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending", db_index=True)
+    geocoded_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["postcode"]
+        indexes = [
+            models.Index(fields=["status", "updated_at"]),
+        ]
+
+    def __str__(self):
+        status_icon = {"success": "✓", "failed": "✗", "pending": "?"}.get(self.status, "?")
+        if self.latitude is not None and self.longitude is not None:
+            return f"{self.postcode} {status_icon} ({self.latitude:.4f}, {self.longitude:.4f})"
+        return f"{self.postcode} {status_icon}"

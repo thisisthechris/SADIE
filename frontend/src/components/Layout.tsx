@@ -19,11 +19,12 @@ type NavEntry = NavLeaf | NavGroup;
 
 const NAV: NavEntry[] = [
   { to: "/", label: "Insights", end: true },
-  { to: "/overview", label: "Dashboard" },
+  { to: "/overview", label: "System Overview" },
   {
     label: "Maps",
     items: [
-      { to: "/map", label: "Map" },
+      { to: "/map/venues", label: "Venues" },
+      { to: "/map/events", label: "Events" },
       { to: "/postcodes", label: "Postcodes" },
     ],
   },
@@ -40,7 +41,6 @@ const NAV: NavEntry[] = [
     label: "Directory",
     items: [
       { to: "/organisations", label: "Organisations" },
-      { to: "/views", label: "Saved views" },
       { to: "/imports", label: "Imports", staff: true },
     ],
   },
@@ -61,6 +61,8 @@ const TITLES: Record<string, string> = (() => {
     }
   }
   out["/v"] = "Saved view";
+  out["/map/venues"] = "Venues";
+  out["/map/events"] = "Events";
   return out;
 })();
 

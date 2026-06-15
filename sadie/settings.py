@@ -92,24 +92,14 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "/static/"
-# In production, staticfiles are baked into the image during build and served directly.
-# The volume mount (if any) is only for runtime-generated files.
 STATIC_ROOT = os.environ.get("STATIC_ROOT", BASE_DIR / "staticfiles")
 # Serve the Vite-built SPA bundle (frontend/dist/assets/*) under /static/spa/.
 # The directory may not exist before the first `npm run build`; gate it so
 # `collectstatic` doesn't blow up in dev.
 STATICFILES_DIRS = []
 _spa_dist = BASE_DIR / "frontend" / "dist"
-print(f"[SADIE] BASE_DIR={BASE_DIR}")
-print(f"[SADIE] STATIC_ROOT={STATIC_ROOT}")
-print(f"[SADIE] _spa_dist={_spa_dist}")
-print(f"[SADIE] _spa_dist.exists()={_spa_dist.exists()}")
 if _spa_dist.exists():
-    print(f"[SADIE] Adding frontend/dist to STATICFILES_DIRS")
     STATICFILES_DIRS.append(("spa", _spa_dist))
-else:
-    print(f"[SADIE] WARNING: frontend/dist does not exist at {_spa_dist}")
-print(f"[SADIE] STATICFILES_DIRS={STATICFILES_DIRS}")
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.environ.get("MEDIA_ROOT", BASE_DIR / "mediafiles")
 
@@ -180,12 +170,7 @@ CORS_URLS_REGEX = r"^/api/upload/.*$"
 # CSRF trusted origins – required for Django 4.x when the app is served over
 # HTTPS via a reverse proxy (Traefik, Nginx Proxy Manager, etc.).
 # Set to a comma-separated list of origins, e.g. https://yourdomain.com
-# In development, include http://localhost:5173 (Vite dev server)
-_csrf_origins = os.environ.get("CSRF_TRUSTED_ORIGINS", "")
-if DEBUG and not _csrf_origins:
-    # Development defaults: Vite at 5173 proxies to Django at 8000
-    _csrf_origins = "http://localhost:5173,http://localhost:8000"
-CSRF_TRUSTED_ORIGINS = [o.strip() for o in _csrf_origins.split(",") if o.strip()]
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()]
 
 # MapTiler key surfaced to the SPA at runtime via /api/config/.
 # Never bake this into the JS bundle so it can be rotated without a rebuild.

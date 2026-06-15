@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { useFilters } from "../lib/filters";
@@ -59,7 +60,10 @@ export default function Journeys() {
       <section className="grid gap-4 lg:grid-cols-3">
         <div className="card p-4 lg:col-span-2">
           <h2 className="heading-sub mb-3">Monthly trend</h2>
-          <Sparkline points={(data?.monthly ?? []).map((p) => p.count)} />
+          <Sparkline
+            points={(data?.monthly ?? []).map((p) => p.count)}
+            labels={(data?.monthly ?? []).map((p) => p.month ?? "")}
+          />
         </div>
         <div className="card p-4">
           <div className="flex items-center justify-between mb-3">
@@ -197,25 +201,87 @@ function RankList({ rows }: { rows: Array<{ label: string; n: number }> }) {
   );
 }
 
-function Sparkline({ points }: { points: number[] }) {
+function Sparkline({ points, labels }: { points: number[]; labels?: string[] }) {
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+
   if (!points.length) return <div className="text-sm text-muted">No data.</div>;
-  const w = 600;
-  const h = 80;
+
+  const W = 600, H = 200;
+  const PL = 46, PR = 12, PT = 10, PB = 28;
+  const cW = W - PL - PR;
+  const cH = H - PT - PB;
+
   const max = Math.max(...points, 1);
-  const step = points.length > 1 ? w / (points.length - 1) : 0;
-  const d = points
-    .map(
-      (p, i) =>
-        `${i === 0 ? "M" : "L"} ${(i * step).toFixed(1)} ${(h - (p / max) * h).toFixed(1)}`,
-    )
+  const n = points.length;
+  const xOf = (i: number) => PL + (n > 1 ? (i / (n - 1)) * cW : cW / 2);
+  const yOf = (v: number) => PT + (1 - v / max) * cH;
+
+  const yTicks = [0, Math.round(max / 2), max];
+  const xTickCount = Math.min(n, 5);
+  const xTickIdxs = Array.from({ length: xTickCount }, (_, k) =>
+    Math.round((k / (xTickCount - 1)) * (n - 1))
+  );
+
+  const linePath = points
+    .map((p, i) => `${i === 0 ? "M" : "L"} ${xOf(i).toFixed(1)} ${yOf(p).toFixed(1)}`)
     .join(" ");
+  const areaPath =
+    linePath +
+    ` L ${xOf(n - 1).toFixed(1)} ${yOf(0).toFixed(1)}` +
+    ` L ${xOf(0).toFixed(1)} ${yOf(0).toFixed(1)} Z`;
+
+  const handleMouseMove = (e: { clientX: number; currentTarget: SVGSVGElement }) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const svgX = ((e.clientX - rect.left) / rect.width) * W;
+    const frac = Math.max(0, Math.min(1, (svgX - PL) / cW));
+    setHoverIdx(Math.round(frac * (n - 1)));
+  };
+
+  const hx = hoverIdx !== null ? xOf(hoverIdx) : null;
+  const hy = hoverIdx !== null ? yOf(points[hoverIdx]) : null;
+  const hVal = hoverIdx !== null ? points[hoverIdx] : null;
+  const hLabel = hoverIdx !== null ? (labels?.[hoverIdx] ?? String(hoverIdx)) : null;
+  const tooltipW = 80, tooltipH = 32;
+  const tooltipX = hx !== null
+    ? Math.max(PL, Math.min(W - PR - tooltipW, (hx ?? 0) - tooltipW / 2))
+    : 0;
+
   return (
     <svg
-      viewBox={`0 0 ${w} ${h}`}
-      className="w-full h-20 text-accent"
-      preserveAspectRatio="none"
+      viewBox={`0 0 ${W} ${H}`}
+      className="w-full text-accent"
+      onMouseMove={handleMouseMove}
+      onMouseLeave={() => setHoverIdx(null)}
     >
-      <path d={d} fill="none" stroke="currentColor" strokeWidth={1.5} />
+      {yTicks.map((v) => {
+        const y = yOf(v);
+        return (
+          <g key={v}>
+            <line x1={PL} y1={y} x2={W - PR} y2={y} stroke="rgba(0,0,0,0.08)" strokeWidth={1} />
+            <text x={PL - 6} y={y} textAnchor="end" dominantBaseline="middle" fontSize={9} fill="#888">
+              {v.toLocaleString()}
+            </text>
+          </g>
+        );
+      })}
+      <line x1={PL} y1={PT + cH} x2={W - PR} y2={PT + cH} stroke="rgba(0,0,0,0.15)" strokeWidth={1} />
+      {labels && xTickIdxs.map((idx) => (
+        <text key={idx} x={xOf(idx)} y={H - 6} textAnchor="middle" fontSize={9} fill="#888">
+          {(labels[idx] ?? "").slice(0, 7)}
+        </text>
+      ))}
+      <path d={areaPath} fill="currentColor" fillOpacity={0.08} />
+      <path d={linePath} fill="none" stroke="currentColor" strokeWidth={1.5} />
+      {hx !== null && hy !== null && (
+        <>
+          <line x1={hx} y1={PT} x2={hx} y2={PT + cH} stroke="currentColor" strokeWidth={1} strokeDasharray="3 2" strokeOpacity={0.5} />
+          <circle cx={hx} cy={hy} r={4} fill="currentColor" />
+          <circle cx={hx} cy={hy} r={2.5} fill="white" />
+          <rect x={tooltipX} y={PT} width={tooltipW} height={tooltipH} rx={4} fill="white" stroke="rgba(0,0,0,0.12)" strokeWidth={1} style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.12))" }} />
+          <text x={tooltipX + tooltipW / 2} y={PT + 11} textAnchor="middle" fontSize={10} fontWeight="600" fill="#001FCC">{hVal?.toLocaleString()}</text>
+          <text x={tooltipX + tooltipW / 2} y={PT + 24} textAnchor="middle" fontSize={9} fill="#545454">{hLabel?.slice(0, 7)}</text>
+        </>
+      )}
     </svg>
   );
 }

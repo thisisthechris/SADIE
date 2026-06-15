@@ -39,6 +39,8 @@ urlpatterns = [
     path("viz/event-list/", viz_views.event_list, name="viz-event-list"),
     path("viz/postcode-bars/", viz_views.postcode_bars, name="viz-postcode-bars"),
     path("viz/postcode-records/", viz_views.postcode_records, name="viz-postcode-records"),
+    path("viz/postcode-points/", viz_views.postcode_points, name="viz-postcode-points"),
+    path("viz/postcode-heat/", viz_views.postcode_heat, name="viz-postcode-heat"),
     path("viz/network/", viz_views.network, name="viz-network"),
     path("viz/spatiotemporal/", viz_views.spatiotemporal, name="viz-spatiotemporal"),
     # Phase 4 — Recommendations
