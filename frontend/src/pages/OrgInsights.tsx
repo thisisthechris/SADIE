@@ -1,20 +1,57 @@
-import React from "react";
+import React, { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useFilters } from "../lib/filters";
+import { useConfig } from "../lib/auth";
+import { api } from "../lib/api";
 import { BigStat } from "../components/BigStat";
 import { HeadlineAreaChart } from "../components/AreaChart";
-import { ChoroplethMap } from "../components/ChoroplethMap";
+import Map2D, { type MapPoint, type HeatmapPoint } from "../viz/Map2D";
 import { HeadlineResponse } from "../lib/types";
+
+interface Point {
+  postcode: string;
+  lng: number;
+  lat: number;
+  total: number;
+}
+
+interface PointsResp {
+  count: number;
+  results: Point[];
+}
+
+interface HeatData {
+  lng: number;
+  lat: number;
+  total: number;
+  postcode_count: number;
+  postcodes: string[];
+}
+
+interface HeatResp {
+  count: number;
+  clustering: {
+    radius_meters: number;
+    min_postcodes: number;
+    min_interactions: number;
+  };
+  results: HeatData[];
+}
 
 /**
  * OrgInsights: New landing page with organisation-focused insights.
  * Displays:
  * - BigStat cards for headline metrics
  * - AreaChart showing trend over months
- * - ChoroplethMap showing postcode distribution
+ * - Map2D with bubble visualization showing postcode distribution
  */
 export const OrgInsights: React.FC = () => {
   const { org } = useFilters();
+  const cfg = useConfig();
+  const maptilerKey = cfg.data?.maptiler_api_key ?? "";
+  const [showPoints, setShowPoints] = useState(true);
+  const [showHeatmap, setShowHeatmap] = useState(false);
+  const [showClusters, setShowClusters] = useState(true);
 
   // Fetch headline stats
   const params = new URLSearchParams();
@@ -28,6 +65,47 @@ export const OrgInsights: React.FC = () => {
       return res.json();
     },
   });
+
+  // Fetch postcode points for exact locations
+  const pointsQuery = useQuery({
+    queryKey: ["viz-postcode-points", org],
+    queryFn: () => {
+      const q = org ? { org: String(org) } : {};
+      return api<PointsResp>("/api/analytics/viz/postcode-points/", { query: q });
+    },
+  });
+
+  // Fetch heatmap data for privacy-clustered bubbles
+  const heatmapQuery = useQuery({
+    queryKey: ["viz-postcode-heat", org],
+    queryFn: () => {
+      const q = org ? { org: String(org) } : {};
+      return api<HeatResp>("/api/analytics/viz/postcode-heat/", { query: q });
+    },
+  });
+
+  // Transform points into MapPoint format
+  const mapPoints: MapPoint[] = useMemo(() => {
+    const max = Math.max(1, ...(pointsQuery.data?.results ?? []).map((p) => p.total));
+    return (pointsQuery.data?.results ?? []).map((p) => ({
+      id: p.postcode,
+      lng: p.lng,
+      lat: p.lat,
+      weight: Math.round((p.total / max) * 100),
+      color: "#20c997",
+      popupHtml: `<div class="text-sm"><div class="font-medium">${p.postcode}</div><div>${p.total.toLocaleString()} interactions</div></div>`,
+    }));
+  }, [pointsQuery.data]);
+
+  // Transform heatmap into HeatmapPoint format
+  const heatmapPoints: HeatmapPoint[] = useMemo(() => {
+    return (heatmapQuery.data?.results ?? []).map((h) => ({
+      lng: h.lng,
+      lat: h.lat,
+      total: h.total,
+      postcode_count: h.postcode_count,
+    }));
+  }, [heatmapQuery.data]);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
@@ -68,13 +146,63 @@ export const OrgInsights: React.FC = () => {
               <HeadlineAreaChart orgId={org} />
             </div>
 
-            {/* Choropleth Map */}
+            {/* Postcode Map */}
             <div className="mb-8">
               <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
-                <h2 className="heading-small mb-4">
-                  Distribution by Postcode
-                </h2>
-                <ChoroplethMap />
+                <div className="mb-4">
+                  <h2 className="heading-small mb-3">Distribution by Postcode</h2>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Bubbles sized by event volume (k-anonymity protection). Toggle visualization layers to explore density and exact locations.
+                  </p>
+                  <div className="flex gap-2 flex-wrap">
+                    <button
+                      onClick={() => setShowPoints(!showPoints)}
+                      className={`px-3 py-1 text-xs rounded font-medium transition ${
+                        showPoints
+                          ? "bg-green-500 text-white"
+                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                      }`}
+                    >
+                      Pins
+                    </button>
+                    <button
+                      onClick={() => setShowClusters(!showClusters)}
+                      className={`px-3 py-1 text-xs rounded font-medium transition ${
+                        showClusters
+                          ? "bg-sky-500 text-white"
+                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                      }`}
+                    >
+                      Bubbles
+                    </button>
+                    <button
+                      onClick={() => setShowHeatmap(!showHeatmap)}
+                      className={`px-3 py-1 text-xs rounded font-medium transition ${
+                        showHeatmap
+                          ? "bg-red-500 text-white"
+                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                      }`}
+                    >
+                      Heat
+                    </button>
+                  </div>
+                </div>
+                {pointsQuery.isLoading || heatmapQuery.isLoading ? (
+                  <div className="flex justify-center py-12">
+                    <div className="text-gray-500">Loading map...</div>
+                  </div>
+                ) : (
+                  <Map2D
+                    points={mapPoints}
+                    heatmapPoints={heatmapPoints}
+                    maptilerKey={maptilerKey}
+                    height="400px"
+                    defaultColor="#20c997"
+                    showPoints={showPoints}
+                    showHeatmap={showHeatmap}
+                    showClusters={showClusters}
+                  />
+                )}
               </div>
             </div>
           </>
