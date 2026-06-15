@@ -141,20 +141,14 @@ export default function Layout() {
         <div className="mx-auto max-w-7xl px-4 h-14 flex items-center gap-4">
           <MainMenu nav={visibleNav} me={me} />
           {breadcrumb.length > 0 && (
-            <>
-              <span className="text-muted/60 hidden sm:inline" aria-hidden>
-                /
-              </span>
-              <h1 className="heading-sub truncate text-base">
-                <span className="text-muted/75">SADIE</span>
-                {breadcrumb.map((item) => (
-                  <span key={item}>
-                    <span className="text-muted/60 mx-1.5">/</span>
-                    <span>{item}</span>
-                  </span>
-                ))}
-              </h1>
-            </>
+            <h1 className="heading-sub truncate text-base">
+              {breadcrumb.map((item, idx) => (
+                <span key={item}>
+                  {idx > 0 && <span className="text-muted/60 mx-1.5">/</span>}
+                  <span>{item}</span>
+                </span>
+              ))}
+            </h1>
           )}
           <div className="ml-auto flex items-center gap-2">
             <button
