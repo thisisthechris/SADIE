@@ -34,6 +34,31 @@ urlpatterns = [
         stats_views.headline,
         name="stats-headline",
     ),
+    path(
+        "stats/visitors-new-returning/",
+        stats_views.visitors_new_returning,
+        name="stats-visitors-new-returning",
+    ),
+    path(
+        "stats/activity-by-weekday/",
+        stats_views.activity_by_weekday,
+        name="stats-activity-by-weekday",
+    ),
+    path(
+        "stats/category-trends/",
+        stats_views.category_trends,
+        name="stats-category-trends",
+    ),
+    path(
+        "stats/top-venues/",
+        stats_views.top_venues,
+        name="stats-top-venues",
+    ),
+    path(
+        "stats/engagement/",
+        stats_views.engagement,
+        name="stats-engagement",
+    ),
     # Phase 3 — 3D visualisation data
     path("viz/event-points/", viz_views.event_points, name="viz-event-points"),
     path("viz/event-list/", viz_views.event_list, name="viz-event-list"),

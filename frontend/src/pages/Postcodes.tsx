@@ -5,6 +5,7 @@ import { useFilters } from "../lib/filters";
 import { useConfig } from "../lib/auth";
 import ExportMenu from "../components/ExportMenu";
 import Map2D, { type MapPoint, type HeatmapPoint } from "../viz/Map2D";
+import InfoTooltip from "../components/InfoTooltip";
 import { downloadCsv } from "../lib/export";
 
 interface Bar {
@@ -150,10 +151,13 @@ export default function Postcodes() {
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="heading-main">Postcodes</h1>
-          <p className="body-lg">
-            Full-postcode geocoding with privacy-grouped clustering. Pins show exact locations; bubbles size each cluster by interaction volume (k-anonymity protection). Toggle the heatmap for a density view.
-          </p>
+          <h1 className="heading-main">Visitor Locations</h1>
+          <div className="flex items-center gap-2">
+            <p className="body-lg flex-1">
+              See where event visitors are coming from across Plymouth. Pins mark exact postal codes. Bubbles group nearby areas to protect privacy. The heat map shows density.
+            </p>
+            <InfoTooltip text="privacy_grouping" className="mt-1" />
+          </div>
         </div>
         <ExportMenu
           items={[

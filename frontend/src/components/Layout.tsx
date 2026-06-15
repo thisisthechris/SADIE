@@ -18,31 +18,40 @@ type NavGroup = { label: string; items: NavLeaf[]; staff?: boolean };
 type NavEntry = NavLeaf | NavGroup;
 
 const NAV: NavEntry[] = [
-  { to: "/", label: "Insights", end: true },
-  { to: "/overview", label: "System Overview" },
+  { to: "/insights", label: "Insights", end: true },
   {
     label: "Maps",
     items: [
-      { to: "/map/venues", label: "Venues" },
-      { to: "/map/events", label: "Events" },
-      { to: "/postcodes", label: "Postcodes" },
+      { to: "/insights/map/venues", label: "Venues" },
+      { to: "/insights/map/events", label: "Events" },
+      { to: "/insights/postcodes", label: "Postcodes" },
     ],
   },
   {
     label: "Exploration",
     items: [
-      { to: "/network", label: "Network" },
-      { to: "/timecube", label: "Time Cube" },
-      { to: "/journeys", label: "Journeys" },
+      { to: "/insights/network", label: "Network" },
+      { to: "/insights/timecube", label: "Event Timeline Map" },
+      { to: "/insights/journeys", label: "Visitor Activity" },
+      { to: "/insights/trends", label: "Trends" },
+      { to: "/insights/compare", label: "Compare" },
     ],
   },
-  { to: "/calendar", label: "Calendar" },
   {
     label: "Directory",
     items: [
-      { to: "/organisations", label: "Organisations" },
-      { to: "/imports", label: "Imports", staff: true },
+      { to: "/insights/organisations", label: "Organisations" },
+      { to: "/insights/calendar", label: "Calendar" },
+      { to: "/insights/help", label: "Help" },
     ],
+  },
+  {
+    label: "Internal",
+    items: [
+      { to: "/insights/overview", label: "System Overview", staff: true },
+      { to: "/insights/imports", label: "Imports", staff: true },
+    ],
+    staff: true,
   },
 ];
 
@@ -60,9 +69,12 @@ const TITLES: Record<string, string> = (() => {
       out[e.to] = e.label;
     }
   }
-  out["/v"] = "Saved view";
-  out["/map/venues"] = "Venues";
-  out["/map/events"] = "Events";
+  out["/insights/v"] = "Saved view";
+  out["/insights/map/venues"] = "Venues";
+  out["/insights/map/events"] = "Events";
+  out["/insights/help"] = "Help";
+  out["/insights/trends"] = "Trends";
+  out["/insights/compare"] = "Compare";
   return out;
 })();
 
@@ -144,6 +156,15 @@ export default function Layout() {
               onToggle={() => setFilterOpen((v) => !v)}
               onClose={() => setFilterOpen(false)}
             />
+            <NavLink
+              to="/insights/help"
+              className={({ isActive }) =>
+                `btn-ghost text-muted text-sm font-semibold ${isActive ? "text-accent" : ""}`
+              }
+              title="Help & glossary"
+            >
+              ?
+            </NavLink>
           </div>
         </div>
       </header>

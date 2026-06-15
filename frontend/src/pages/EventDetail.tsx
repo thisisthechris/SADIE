@@ -144,7 +144,7 @@ export default function EventDetailPage() {
           ← Back
         </button>
         <span>/</span>
-        <Link to="/calendar" className="hover:text-foreground transition-colors">
+        <Link to="/insights/calendar" className="hover:text-foreground transition-colors">
           Calendar
         </Link>
         <span>/</span>
@@ -207,7 +207,7 @@ export default function EventDetailPage() {
                 d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
             </svg>
             <Link
-              to={`/organisations/${e.organisation.slug}`}
+              to={`/insights/organisations/${e.organisation.slug}`}
               className="hover:text-accent transition-colors font-medium"
             >
               {e.organisation.name}
@@ -275,7 +275,7 @@ export default function EventDetailPage() {
             {similar.data!.results.map((s) => (
               <Link
                 key={s.id}
-                to={`/events/${s.id}`}
+                to={`/insights/events/${s.id}`}
                 className="card p-3 hover:border-accent/50 transition-colors group"
               >
                 <div className="text-sm font-medium group-hover:text-accent transition-colors line-clamp-2">
@@ -303,13 +303,13 @@ export default function EventDetailPage() {
       {/* Explore org button */}
       <div className="flex gap-3 pt-2">
         <Link
-          to={`/organisations/${e.organisation.slug}`}
+          to={`/insights/organisations/${e.organisation.slug}`}
           className="btn-secondary text-sm"
         >
           Explore {e.organisation.name}
         </Link>
         <Link
-          to={`/calendar?event=${e.id}`}
+          to={`/insights/calendar?event=${e.id}`}
           className="btn-secondary text-sm"
         >
           View in calendar

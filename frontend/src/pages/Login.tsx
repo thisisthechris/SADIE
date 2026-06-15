@@ -16,7 +16,7 @@ export default function Login() {
   const [busy, setBusy] = useState(false);
 
   if (isLoading) return null;
-  if (me) return <Navigate to="/" replace />;
+  if (me) return <Navigate to="/insights" replace />;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,7 +28,7 @@ export default function Login() {
         body: { username: u, password: p },
       });
       await qc.invalidateQueries({ queryKey: ["me"] });
-      nav("/");
+      nav("/insights");
     } catch (e2) {
       setErr(
         e2 instanceof ApiError && e2.status === 401

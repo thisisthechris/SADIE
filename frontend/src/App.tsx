@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import Layout from "./components/Layout";
+import Landing from "./pages/Landing";
 import { OrgInsights } from "./pages/OrgInsights";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -9,6 +10,9 @@ import CalendarPage from "./pages/Calendar";
 import OrganisationsPage from "./pages/Organisations";
 import OrganisationDetailPage from "./pages/OrganisationDetail";
 import Postcodes from "./pages/Postcodes";
+import Help from "./pages/Help";
+import Trends from "./pages/Trends";
+import Compare from "./pages/Compare";
 import { useMe } from "./lib/auth";
 
 const EventDetail = lazy(() => import("./pages/EventDetail"));
@@ -33,9 +37,10 @@ function RequireAuth({ children }: { children: JSX.Element }) {
 export default function App() {
   return (
     <Routes>
+      <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route
-        path="/"
+        path="/insights"
         element={
           <RequireAuth>
             <Layout />
@@ -44,19 +49,22 @@ export default function App() {
       >
         <Route index element={<OrgInsights />} />
         <Route path="overview" element={<Home />} />
+        <Route path="help" element={<Help />} />
+        <Route path="trends" element={<Trends />} />
+        <Route path="compare" element={<Compare />} />
         <Route
           path="events/:id"
           element={<Suspense fallback={VizFallback}><EventDetail /></Suspense>}
         />
-        <Route path="map" element={<Navigate to="/map/venues" replace />} />
+        <Route path="map" element={<Navigate to="/insights/map/venues" replace />} />
         <Route path="map/venues" element={<MapPage />} />
         <Route path="map/events" element={<MapPage />} />
         <Route path="calendar" element={<CalendarPage />} />
         <Route path="organisations" element={<OrganisationsPage />} />
         <Route path="organisations/:slug" element={<OrganisationDetailPage />} />
         <Route path="postcodes" element={<Postcodes />} />
-        <Route path="map3d" element={<Navigate to="/map/venues" replace />} />
-        <Route path="postcodes3d" element={<Navigate to="/postcodes" replace />} />
+        <Route path="map3d" element={<Navigate to="/insights/map/venues" replace />} />
+        <Route path="postcodes3d" element={<Navigate to="/insights/postcodes" replace />} />
         <Route
           path="network"
           element={<Suspense fallback={VizFallback}><Network /></Suspense>}

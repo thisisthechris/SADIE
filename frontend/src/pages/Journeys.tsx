@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { useFilters } from "../lib/filters";
 import ExportMenu from "../components/ExportMenu";
+import InfoTooltip from "../components/InfoTooltip";
 import { downloadCsv } from "../lib/export";
 
 interface JourneysSummary {
@@ -33,9 +34,9 @@ export default function Journeys() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="heading-small">User Journeys</h1>
+        <h1 className="heading-small">Visitor Activity</h1>
         <p className="text-sm text-muted">
-          Anonymised interaction analytics across organisations and time.
+          See when and how people interact with events across all partners.
         </p>
       </div>
 
@@ -76,7 +77,10 @@ export default function Journeys() {
       <section className="grid gap-4 lg:grid-cols-2">
         <div className="card p-4">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="heading-sub">Unique visitors per organisation</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="heading-sub">Unique visitors per partner</h2>
+              <InfoTooltip text="unique_visitor" />
+            </div>
             <ExportMenu
               items={[
                 {
@@ -103,12 +107,10 @@ export default function Journeys() {
           />
         </div>
         <div className="card p-4">
-          <h2 className="heading-sub mb-3">
-            Top visitors{" "}
-            <span className="text-xs text-muted font-normal">
-              (anonymised hashes)
-            </span>
-          </h2>
+          <div className="flex items-center gap-2 mb-3">
+            <h2 className="heading-sub">Top individual visitors</h2>
+            <InfoTooltip text="These are anonymised identifiers; no personal information is visible." />
+          </div>
           <RankList
             rows={(data?.top_users ?? []).map((r) => ({
               label: r.user_hash || "—",
@@ -120,7 +122,10 @@ export default function Journeys() {
 
       <section className="card p-4">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="heading-sub">Organisation × type</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="heading-sub">Activity by partner and type</h2>
+            <InfoTooltip text="How many times events of each type were visited, broken down by partner." />
+          </div>
           <ExportMenu
             items={[
               {

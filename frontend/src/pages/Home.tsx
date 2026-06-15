@@ -58,21 +58,21 @@ export default function Home() {
     <div className="space-y-6">
       {/* ── Header ── */}
       <div>
-        <h1 className="heading-main">System overview</h1>
+        <h1 className="heading-main">System Overview</h1>
         <p className="body-lg">
-          Data pipeline status — recent scrape runs, import queue, and interaction activity.
+          Data ingestion status and recent import activity. (Internal staff view only.)
         </p>
       </div>
 
       {/* ── Headline stats ── */}
       <section className="grid gap-3 grid-cols-2 lg:grid-cols-4">
-        <Stat label="Events" value={s?.event_count} to="/calendar" />
-        <Stat label="Interactions" value={s?.interaction_count} to="/journeys" />
-        <Stat label="Unique visitors" value={s?.unique_visitors} to="/journeys" />
+        <Stat label="Events" value={s?.event_count} to="/insights/calendar" />
+        <Stat label="Interactions" value={s?.interaction_count} to="/insights/journeys" />
+        <Stat label="Unique visitors" value={s?.unique_visitors} to="/insights/journeys" />
         <Stat
           label="Pending imports"
           value={importCounts.data !== undefined ? pending : undefined}
-          to="/imports"
+          to="/insights/imports"
           highlight={pending > 0}
         />
       </section>
@@ -112,7 +112,7 @@ export default function Home() {
         <div className="card p-4 flex flex-col">
           <div className="flex items-center justify-between mb-3">
             <h2 className="heading-sub">Import queue</h2>
-            <Link to="/imports" className="btn-ghost text-xs">
+            <Link to="/insights/imports" className="btn-ghost text-xs">
               Review →
             </Link>
           </div>

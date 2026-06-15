@@ -65,7 +65,7 @@ export default function OrganisationDetailPage() {
         <p className="text-sm text-red-600">
           Couldn&rsquo;t load this organisation.
         </p>
-        <Link className="text-sm text-accent hover:underline" to="/organisations">
+        <Link className="text-sm text-accent hover:underline" to="/insights/organisations">
           ← Back to organisations
         </Link>
       </div>
@@ -82,7 +82,7 @@ export default function OrganisationDetailPage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link to="/organisations" className="text-sm text-accent hover:underline">
+        <Link to="/insights/organisations" className="text-sm text-accent hover:underline">
           ← All organisations
         </Link>
       </div>

@@ -6,6 +6,7 @@ import { api } from "../lib/api";
 import { BigStat } from "../components/BigStat";
 import { HeadlineAreaChart } from "../components/AreaChart";
 import Map2D, { type MapPoint, type HeatmapPoint } from "../viz/Map2D";
+import InfoTooltip from "../components/InfoTooltip";
 import { HeadlineResponse } from "../lib/types";
 
 interface Point {
@@ -114,7 +115,7 @@ export const OrgInsights: React.FC = () => {
         <div className="mb-8">
           <h1 className="heading-main mb-2">Insights</h1>
           <p className="body-lg">
-            Explore events and attendance patterns in Plymouth
+            See how many people are attending events and where they're coming from.
           </p>
         </div>
 
@@ -150,9 +151,12 @@ export const OrgInsights: React.FC = () => {
             <div className="mb-8">
               <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
                 <div className="mb-4">
-                  <h2 className="heading-small mb-3">Distribution by Postcode</h2>
+                  <div className="flex items-center gap-2 mb-3">
+                    <h2 className="heading-small">Where visitors come from</h2>
+                    <InfoTooltip text="postcode_area" />
+                  </div>
                   <p className="text-sm text-gray-600 mb-4">
-                    Bubbles sized by event volume (k-anonymity protection). Toggle visualization layers to explore density and exact locations.
+                    Larger bubbles show areas with more event visits. Exact postcodes are shown as pins; small areas are grouped together to protect privacy.
                   </p>
                   <div className="flex gap-2 flex-wrap">
                     <button

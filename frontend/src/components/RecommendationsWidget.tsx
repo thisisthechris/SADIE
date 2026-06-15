@@ -64,7 +64,7 @@ export default function RecommendationsWidget() {
           )}
           {q.data.results.map((e) => (
             <li key={e.id} className="py-2">
-              <Link to={`/events/${e.id}`} className="font-medium truncate block hover:text-accent">
+              <Link to={`/insights/events/${e.id}`} className="font-medium truncate block hover:text-accent">
                 {e.title}
               </Link>
               <div className="text-muted truncate">

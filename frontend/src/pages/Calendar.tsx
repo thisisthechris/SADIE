@@ -349,7 +349,7 @@ export default function CalendarPage() {
                     )}
                     <div className="flex-1 min-w-0">
                       <Link
-                        to={`/events/${e.id}`}
+                        to={`/insights/events/${e.id}`}
                         className="font-medium hover:text-accent truncate block"
                       >
                         {e.title}

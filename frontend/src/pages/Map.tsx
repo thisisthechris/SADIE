@@ -529,7 +529,7 @@ function makeEventPoint(r: EventRow): MapPoint {
     lat: r.lat,
     weight: 4,
     color: "#60a5fa",
-    popupHtml: `<div class="text-xs max-w-[220px]"><a href="/events/${r.id}" class="font-semibold hover:underline">${escapeHtml(
+    popupHtml: `<div class="text-xs max-w-[220px]"><a href="/insights/events/${r.id}" class="font-semibold hover:underline">${escapeHtml(
       r.title,
     )}</a><div>${escapeHtml(r.organisation)}${
       r.location_name ? " · " + escapeHtml(r.location_name) : ""

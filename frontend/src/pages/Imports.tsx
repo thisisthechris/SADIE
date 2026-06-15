@@ -283,7 +283,7 @@ function Drawer({ id, onClose }: { id: number; onClose: () => void }) {
               <div className="card p-2 text-xs">
                 <div className="text-muted">Matched event</div>
                 <Link
-                  to={`/events/${q.data.matched_event.id}`}
+                  to={`/insights/events/${q.data.matched_event.id}`}
                   className="font-medium hover:text-accent hover:underline"
                 >
                   {q.data.matched_event.title}

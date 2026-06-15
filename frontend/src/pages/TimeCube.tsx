@@ -4,6 +4,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { api } from "../lib/api";
 import { useFilters } from "../lib/filters";
+import InfoTooltip from "../components/InfoTooltip";
 
 interface Row {
   id: number;
@@ -146,11 +147,12 @@ export default function TimeCube() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="heading-small">Time–Space Cube</h1>
+        <div className="flex items-center gap-2 mb-2">
+          <h1 className="heading-small">Event Timeline Map</h1>
+          <InfoTooltip text="time_cube" />
+        </div>
         <p className="body-lg">
-          Each sphere is an event positioned by longitude (X), days from the
-          earliest event in view (Y), and latitude (Z). Colour encodes category.
-          Drag to rotate, scroll to zoom.
+          Each sphere represents an event. Horizontal position shows location (east-west), height shows time (oldest to newest), and colour shows the event type. Drag to rotate, scroll to zoom.
         </p>
       </div>
       <div className="card overflow-hidden" style={{ height: "70vh" }}>

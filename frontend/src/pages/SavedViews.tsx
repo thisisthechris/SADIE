@@ -50,7 +50,7 @@ function Section({
             <li key={v.id} className="py-2 flex items-center gap-3">
               <div className="flex-1 min-w-0">
                 <Link
-                  to={`/v/${v.slug}`}
+                  to={`/insights/v/${v.slug}`}
                   className="font-medium truncate hover:underline block"
                 >
                   {v.name}
@@ -73,7 +73,7 @@ function Section({
                   Copy link
                 </button>
               )}
-              <Link to={`/v/${v.slug}`} className="btn-ghost text-xs">
+              <Link to={`/insights/v/${v.slug}`} className="btn-ghost text-xs">
                 Open
               </Link>
               {canDelete && onDelete && (

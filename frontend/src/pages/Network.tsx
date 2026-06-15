@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import ForceGraph3D from "3d-force-graph";
 import { api } from "../lib/api";
 import { useFilters } from "../lib/filters";
+import InfoTooltip from "../components/InfoTooltip";
 
 interface Node {
   id: string;
@@ -101,10 +102,12 @@ export default function Network() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="heading-small">Network</h1>
+        <div className="flex items-center gap-2 mb-2">
+          <h1 className="heading-small">Network</h1>
+          <InfoTooltip text="network" />
+        </div>
         <p className="body-lg">
-          Tripartite graph linking organisations to categories and to anonymised
-          user clusters (MD5-bucketed user hashes). Toggle node types below.
+          See how partners, event types, and visitor groups are all connected. Partners are shown in blue, event types in yellow, and visitor groups in purple. Lines show relationships.
         </p>
       </div>
       <div className="card p-3 flex flex-wrap items-center gap-3 text-sm">

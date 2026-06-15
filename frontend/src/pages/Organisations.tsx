@@ -38,7 +38,7 @@ export default function OrganisationsPage() {
               <tr key={o.id} className="hover:bg-border/10">
                 <td className="px-4 py-2">
                   <Link
-                    to={`/organisations/${o.slug}`}
+                    to={`/insights/organisations/${o.slug}`}
                     className="inline-flex items-center gap-2 font-medium hover:underline"
                   >
                     {o.name}
