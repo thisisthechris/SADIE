@@ -59,35 +59,43 @@ function isGroup(e: NavEntry): e is NavGroup {
   return (e as NavGroup).items !== undefined;
 }
 
-// Flat map of pathname → human title (used for the page-title display).
-const TITLES: Record<string, string> = (() => {
-  const out: Record<string, string> = {};
+// Map of pathname → breadcrumb path (e.g., "/insights/map/venues" → ["Maps", "Venues"])
+const BREADCRUMBS: Record<string, string[]> = (() => {
+  const out: Record<string, string[]> = {};
   for (const e of NAV) {
     if (isGroup(e)) {
-      for (const i of e.items) out[i.to] = i.label;
+      for (const i of e.items) out[i.to] = [e.label, i.label];
     } else {
-      out[e.to] = e.label;
+      out[e.to] = [e.label];
     }
   }
-  out["/insights/v"] = "Saved view";
-  out["/insights/map/venues"] = "Venues";
-  out["/insights/map/events"] = "Events";
-  out["/insights/help"] = "Help";
-  out["/insights/trends"] = "Trends";
-  out["/insights/compare"] = "Compare";
+  out["/insights/v"] = ["Saved view"];
+  out["/insights/map/venues"] = ["Maps", "Venues"];
+  out["/insights/map/events"] = ["Maps", "Events"];
+  out["/insights/postcodes"] = ["Maps", "Postcodes"];
+  out["/insights/network"] = ["Exploration", "Network"];
+  out["/insights/timecube"] = ["Exploration", "Event Timeline Map"];
+  out["/insights/journeys"] = ["Exploration", "Visitor Activity"];
+  out["/insights/trends"] = ["Exploration", "Trends"];
+  out["/insights/compare"] = ["Exploration", "Compare"];
+  out["/insights/organisations"] = ["Directory", "Organisations"];
+  out["/insights/calendar"] = ["Directory", "Calendar"];
+  out["/insights/help"] = ["Directory", "Help"];
+  out["/insights/overview"] = ["Internal", "System Overview"];
+  out["/insights/imports"] = ["Internal", "Imports"];
   return out;
 })();
 
-function pageTitleFor(pathname: string): string {
-  if (TITLES[pathname]) return TITLES[pathname];
-  // Match longest known prefix (e.g. /v/:slug → "Saved view").
+function getBreadcrumbFor(pathname: string): string[] {
+  if (BREADCRUMBS[pathname]) return BREADCRUMBS[pathname];
+  // Match longest known prefix for breadcrumb
   const segs = pathname.split("/").filter(Boolean);
   while (segs.length) {
     const candidate = "/" + segs.join("/");
-    if (TITLES[candidate]) return TITLES[candidate];
+    if (BREADCRUMBS[candidate]) return BREADCRUMBS[candidate];
     segs.pop();
   }
-  return "";
+  return [];
 }
 
 export default function Layout() {
@@ -125,19 +133,27 @@ export default function Layout() {
       })),
     });
   }
-  const pageTitle = pageTitleFor(location.pathname);
+  const breadcrumb = getBreadcrumbFor(location.pathname);
 
   return (
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-30 backdrop-blur bg-bg/85 border-b border-border">
         <div className="mx-auto max-w-7xl px-4 h-14 flex items-center gap-4">
           <MainMenu nav={visibleNav} me={me} />
-          {pageTitle && (
+          {breadcrumb.length > 0 && (
             <>
               <span className="text-muted/60 hidden sm:inline" aria-hidden>
                 /
               </span>
-              <h1 className="heading-sub truncate text-base">{pageTitle}</h1>
+              <h1 className="heading-sub truncate text-base">
+                <span className="text-muted/75">SADIE</span>
+                {breadcrumb.map((item) => (
+                  <span key={item}>
+                    <span className="text-muted/60 mx-1.5">/</span>
+                    <span>{item}</span>
+                  </span>
+                ))}
+              </h1>
             </>
           )}
           <div className="ml-auto flex items-center gap-2">
