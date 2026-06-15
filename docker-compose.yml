@@ -77,8 +77,26 @@ services:
       redis:
         condition: service_healthy
 
+  frontend:
+    image: node:20-alpine
+    working_dir: /frontend
+    # Install deps on startup (uses cached volume) then start the Vite dev server.
+    command: sh -c "npm install --no-audit --no-fund && npm run dev"
+    volumes:
+      - ./frontend:/frontend
+      # Separate volume keeps container node_modules isolated from host binaries.
+      - frontend_node_modules:/frontend/node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      # Vite proxies /api /accounts /media to this URL inside the compose network.
+      BACKEND_URL: "http://web:8000"
+    depends_on:
+      - web
+
 volumes:
   postgres_data:
   static_volume:
   media_volume:
   embeddings_cache:
+  frontend_node_modules:
