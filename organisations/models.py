@@ -157,14 +157,10 @@ class Location(_db_models.Model):
                 raise ValidationError({"parent": "A location cannot be its own parent."})
             parent = self.parent
             if parent.organisation_id != self.organisation_id:
-                raise ValidationError(
-                    {"parent": "Parent location must be in the same organisation."}
-                )
+                raise ValidationError({"parent": "Parent location must be in the same organisation."})
             # Enforce flat 1-level hierarchy: parent must itself have no parent
             if parent.parent_id is not None:
-                raise ValidationError(
-                    {"parent": "Sub-locations cannot themselves have a parent (1-level hierarchy)."}
-                )
+                raise ValidationError({"parent": "Sub-locations cannot themselves have a parent (1-level hierarchy)."})
             # If this location already has children, it cannot also be a child
             if self.pk and type(self).objects.filter(parent_id=self.pk).exists():
                 raise ValidationError(

@@ -1,5 +1,4 @@
 from django.db import models
-from django.utils import timezone
 
 from events.models import Event
 from organisations.models import Location, Organisation
@@ -70,11 +69,11 @@ class PostcodeAreaInteraction(models.Model):
 
 class PostcodeGeo(models.Model):
     """Geocoding cache for UK postcodes using postcodes.io.
-    
+
     Stores lat/lng for normalized postcodes to avoid repeated API lookups.
     Supports full postcodes (PL4 0AB), sectors (PL4 0), and outward codes (PL4).
     """
-    
+
     STATUS_CHOICES = [
         ("pending", "Pending geocoding"),
         ("success", "Successfully geocoded"),

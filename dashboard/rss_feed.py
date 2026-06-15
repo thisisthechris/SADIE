@@ -20,12 +20,12 @@ try:
 except ImportError:
     UTC = timezone.utc  # noqa: UP017
 
+import PyRSS2Gen
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.views.decorators.cache import cache_control
 from django.views.decorators.http import require_safe
-import PyRSS2Gen
 
 from events.models import Event
 from organisations.models import Organisation
@@ -38,18 +38,22 @@ MAX_EVENTS = 2000
 def _build_rss(events, *, title: str, link: str, description: str) -> str:
     """Build an RSS 2.0 feed from a queryset of events."""
     items = []
-    
+
     for ev in events:
         # Construct event URL (prefer event's own URL, fall back to source_url)
         item_link = ev.url or ev.source_url or link
-        
+
         # Build description with organisation, location, categories
         desc_parts = []
-        
+
         # Add image if available
         if ev.image_url:
-            desc_parts.append(f'<img src="{ev.image_url}" alt="{ev.title}" style="max-width:100%; height:auto; margin-bottom: 10px;" />')
-        
+            img_tag = (
+                f'<img src="{ev.image_url}" alt="{ev.title}" '
+                'style="max-width:100%; height:auto; margin-bottom: 10px;" />'
+            )
+            desc_parts.append(img_tag)
+
         if ev.organisation:
             desc_parts.append(f"<strong>Organisation:</strong> {ev.organisation.name}")
         if ev.location:
@@ -57,22 +61,22 @@ def _build_rss(events, *, title: str, link: str, description: str) -> str:
             if ev.location.address:
                 loc_str += f", {ev.location.address}"
             desc_parts.append(f"<strong>Location:</strong> {loc_str}")
-        
+
         cats = [c.name for c in ev.categories.all()]
         if cats:
             desc_parts.append(f"<strong>Categories:</strong> {', '.join(cats)}")
-        
+
         if ev.description:
             desc_parts.append(f"<p>{ev.description}</p>")
-        
+
         if ev.source_url:
             desc_parts.append(f"<small>Source: <a href='{ev.source_url}'>{ev.source_url}</a></small>")
-        
+
         item_desc = "<br/>".join(desc_parts)
-        
+
         # Format datetime for RSS (RFC 822)
         pub_date = ev.created_at or datetime.now(UTC)
-        
+
         items.append(
             PyRSS2Gen.RSSItem(
                 title=ev.title,
@@ -84,7 +88,7 @@ def _build_rss(events, *, title: str, link: str, description: str) -> str:
                 categories=[PyRSS2Gen.Category(c.name) for c in ev.categories.all()],
             )
         )
-    
+
     rss = PyRSS2Gen.RSS2(
         title=title,
         link=link,
@@ -93,7 +97,7 @@ def _build_rss(events, *, title: str, link: str, description: str) -> str:
         lastBuildDate=datetime.now(UTC),
         language="en-gb",
     )
-    
+
     return rss.to_xml()
 
 
@@ -114,14 +118,14 @@ def events_rss(request) -> HttpResponse:
         .prefetch_related("categories")
         .order_by("-created_at")[:MAX_EVENTS]
     )
-    
+
     # Build feed link (preserve query string for filters)
     qs = request.GET.urlencode()
     feed_path = reverse("dashboard-events-rss")
     feed_url = request.build_absolute_uri(feed_path)
     if qs:
         feed_url = f"{feed_url}?{qs}"
-    
+
     body = _build_rss(
         events,
         title="SADIE Events",
@@ -142,7 +146,7 @@ def org_events_rss(request, slug: str) -> HttpResponse:
         .prefetch_related("categories")
         .order_by("-created_at")[:MAX_EVENTS]
     )
-    
+
     body = _build_rss(
         events,
         title=f"SADIE – {org.name}",

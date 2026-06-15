@@ -20,9 +20,7 @@ class Command(BaseCommand):
             self.stdout.write("Starting synchronous scrape of all sources...")
             try:
                 dispatched = scrape_all_sources()
-                self.stdout.write(
-                    self.style.SUCCESS(f"✓ Dispatched {dispatched} scrape task(s).")
-                )
+                self.stdout.write(self.style.SUCCESS(f"✓ Dispatched {dispatched} scrape task(s)."))
             except Exception as exc:
                 self.stdout.write(self.style.ERROR(f"✗ Scrape dispatch failed: {exc}"))
                 raise

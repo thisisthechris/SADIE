@@ -1,9 +1,8 @@
 """Management command to geocode all postcodes in PostcodeAreaInteraction."""
 
-from django.core.management.base import BaseCommand, CommandError
-from django.db.models import Q
+from django.core.management.base import BaseCommand
 
-from analytics.geocoding import geocode_postcode_bulk, normalize_postcode
+from analytics.geocoding import geocode_postcode_bulk
 from analytics.models import PostcodeAreaInteraction, PostcodeGeo
 
 
@@ -29,19 +28,14 @@ class Command(BaseCommand):
 
         # Get all unique postcodes from interactions
         distinct_postcodes = (
-            PostcodeAreaInteraction.objects
-            .values_list("postcode", flat=True)
-            .distinct()
-            .order_by("postcode")
+            PostcodeAreaInteraction.objects.values_list("postcode", flat=True).distinct().order_by("postcode")
         )
         total_count = len(distinct_postcodes)
         self.stdout.write(f"Found {total_count} unique postcodes to process.")
 
         # Filter by status if not retrying failed
         if not retry_failed:
-            existing_successful = PostcodeGeo.objects.filter(status="success").values_list(
-                "postcode", flat=True
-            )
+            existing_successful = PostcodeGeo.objects.filter(status="success").values_list("postcode", flat=True)
             existing_successful_set = set(existing_successful)
             to_geocode = [p for p in distinct_postcodes if p not in existing_successful_set]
             skipped = total_count - len(to_geocode)
@@ -77,7 +71,7 @@ class Command(BaseCommand):
 
         # Summary
         self.stdout.write("\n" + self.style.SUCCESS("=" * 60))
-        self.stdout.write(self.style.SUCCESS(f"Geocoding complete!"))
+        self.stdout.write(self.style.SUCCESS("Geocoding complete!"))
         self.stdout.write(f"  Processed: {total_processed}")
         self.stdout.write(self.style.SUCCESS(f"  Successful: {successful}"))
         self.stdout.write(self.style.ERROR(f"  Failed: {failed}"))

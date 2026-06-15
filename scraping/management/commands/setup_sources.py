@@ -23,9 +23,7 @@ class Command(BaseCommand):
         try:
             call_command("loaddata", "sources.json", verbosity=0)
             new_count = ScrapeSource.objects.count()
-            self.stdout.write(
-                self.style.SUCCESS(f"✓ Loaded {new_count} scrape source(s)")
-            )
+            self.stdout.write(self.style.SUCCESS(f"✓ Loaded {new_count} scrape source(s)"))
 
             # Show what was loaded
             for source in ScrapeSource.objects.all().order_by("name"):
@@ -34,9 +32,6 @@ class Command(BaseCommand):
 
         except Exception as exc:
             self.stdout.write(
-                self.style.ERROR(
-                    f"✗ Failed to load sources: {exc}\n"
-                    "Make sure scraping/fixtures/sources.json exists."
-                )
+                self.style.ERROR(f"✗ Failed to load sources: {exc}\nMake sure scraping/fixtures/sources.json exists.")
             )
             raise

@@ -1,7 +1,6 @@
 from django.db.models import Count
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 
 from .models import Location, Organisation
@@ -92,6 +91,7 @@ class OrganisationViewSet(viewsets.ModelViewSet):
 
         # Reassign events from source to target
         from events.models import Event
+
         Event.objects.filter(organisation=source).update(organisation=target)
 
         # Reassign locations from source to target
@@ -99,6 +99,7 @@ class OrganisationViewSet(viewsets.ModelViewSet):
 
         # Reassign imported events from source to target
         from scraping.models import ImportedEvent
+
         ImportedEvent.objects.filter(matched_organisation=source).update(matched_organisation=target)
 
         # Reassign child organisations to target
@@ -132,9 +133,9 @@ class LocationViewSet(viewsets.ModelViewSet):
         if user and user.is_authenticated and not user.is_staff:
             # Return only locations in organisations where user is a member
             org_ids = list(
-                Organisation.objects.filter(
-                    id__in=user.member_organisations.values_list("id", flat=True)
-                ).values_list("id", flat=True)
+                Organisation.objects.filter(id__in=user.member_organisations.values_list("id", flat=True)).values_list(
+                    "id", flat=True
+                )
             )
             qs = qs.filter(organisation_id__in=org_ids)
         return qs
@@ -186,10 +187,12 @@ class LocationViewSet(viewsets.ModelViewSet):
 
         # Reassign events from source to target
         from events.models import Event
+
         Event.objects.filter(location=source).update(location=target)
 
         # Reassign imported events from source to target
         from scraping.models import ImportedEvent
+
         ImportedEvent.objects.filter(matched_location=source).update(matched_location=target)
 
         # Reassign any sub-venues from source to target
@@ -199,6 +202,6 @@ class LocationViewSet(viewsets.ModelViewSet):
         source.delete()
 
         return Response(
-            {"slug": target.slug if hasattr(target, 'slug') else None, "id": target.id},
+            {"slug": target.slug if hasattr(target, "slug") else None, "id": target.id},
             status=status.HTTP_200_OK,
         )

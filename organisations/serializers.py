@@ -24,10 +24,7 @@ class LocationSerializer(_GeoBase):
     def get_sub_venues(self, obj):
         """Return nested sub-venues (children only, not recursive)."""
         children = obj.sub_venues.all()
-        return [
-            {"id": child.id, "name": child.name}
-            for child in children
-        ]
+        return [{"id": child.id, "name": child.name} for child in children]
 
 
 if _HAS_GIS:
@@ -36,11 +33,8 @@ if _HAS_GIS:
 
 class LocationWriteSerializer(serializers.ModelSerializer):
     """For writable operations (PATCH/PUT). Includes parent validation."""
-    parent = serializers.PrimaryKeyRelatedField(
-        queryset=Location.objects.all(),
-        allow_null=True,
-        required=False
-    )
+
+    parent = serializers.PrimaryKeyRelatedField(queryset=Location.objects.all(), allow_null=True, required=False)
 
     class Meta:
         model = Location
@@ -54,9 +48,7 @@ class LocationWriteSerializer(serializers.ModelSerializer):
 
         # Parent must be in same organisation
         if parent.organisation_id != (instance.organisation_id if instance else None):
-            raise serializers.ValidationError(
-                "Parent location must be in the same organisation."
-            )
+            raise serializers.ValidationError("Parent location must be in the same organisation.")
 
         # Prevent self-reference
         if instance and parent.pk == instance.pk:
@@ -64,9 +56,7 @@ class LocationWriteSerializer(serializers.ModelSerializer):
 
         # Parent must itself have no parent (flat 1-level hierarchy)
         if parent.parent_id is not None:
-            raise serializers.ValidationError(
-                "Sub-locations cannot themselves have a parent (1-level hierarchy)."
-            )
+            raise serializers.ValidationError("Sub-locations cannot themselves have a parent (1-level hierarchy).")
 
         # If instance already has children, it cannot become a sub-location
         if instance and Location.objects.filter(parent_id=instance.pk).exists():

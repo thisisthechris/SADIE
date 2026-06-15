@@ -23,7 +23,6 @@ except ImportError:
 
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from django.urls import reverse
 from django.views.decorators.cache import cache_control
 from django.views.decorators.http import require_safe
 
@@ -97,7 +96,7 @@ def events_json(request) -> HttpResponse:
         .prefetch_related("categories")
         .order_by("start_datetime")[:MAX_EVENTS]
     )
-    
+
     body = _build_json(events, host=request.get_host())
     return _json_response(body, "sadie-events.json")
 
@@ -113,6 +112,6 @@ def org_events_json(request, slug: str) -> HttpResponse:
         .prefetch_related("categories")
         .order_by("start_datetime")[:MAX_EVENTS]
     )
-    
+
     body = _build_json(events, host=request.get_host())
     return _json_response(body, f"sadie-{slug}.json")

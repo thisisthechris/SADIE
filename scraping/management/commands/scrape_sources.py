@@ -25,8 +25,7 @@ class Command(BaseCommand):
             "--async",
             action="store_true",
             dest="async_mode",
-            help="Dispatch tasks asynchronously (default). "
-            "Celery workers must be running.",
+            help="Dispatch tasks asynchronously (default). Celery workers must be running.",
         )
         parser.add_argument(
             "--sync",
@@ -51,8 +50,7 @@ class Command(BaseCommand):
             raise CommandError(
                 f"Source '{source_name}' not found. Available sources:\n"
                 + "\n".join(
-                    f"  • {s.name} ({s.scraper_task_name})"
-                    for s in ScrapeSource.objects.all().order_by("name")
+                    f"  • {s.name} ({s.scraper_task_name})" for s in ScrapeSource.objects.all().order_by("name")
                 )
             )
 
@@ -75,8 +73,7 @@ class Command(BaseCommand):
             task_func.delay(source.pk)
             self.stdout.write(
                 self.style.SUCCESS(
-                    f"✓ Dispatched async scrape for '{source.name}'. "
-                    "Monitor with 'docker compose logs celery'."
+                    f"✓ Dispatched async scrape for '{source.name}'. Monitor with 'docker compose logs celery'."
                 )
             )
         else:
@@ -112,8 +109,6 @@ class Command(BaseCommand):
             self.stdout.write("Starting synchronous scrape of all sources...")
             try:
                 dispatched = scrape_all_sources()
-                self.stdout.write(
-                    self.style.SUCCESS(f"✓ Dispatched {dispatched} scrape task(s).")
-                )
+                self.stdout.write(self.style.SUCCESS(f"✓ Dispatched {dispatched} scrape task(s)."))
             except Exception as exc:
                 raise CommandError(f"Scrape dispatch failed: {exc}")

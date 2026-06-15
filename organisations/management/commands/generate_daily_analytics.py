@@ -18,8 +18,7 @@ class Command(BaseCommand):
 
         self.stdout.write(
             self.style.WARNING(
-                "⚠️  This command is for development/testing only.\n"
-                "   Do NOT run in production environments."
+                "⚠️  This command is for development/testing only.\n   Do NOT run in production environments."
             )
         )
 
@@ -27,13 +26,9 @@ class Command(BaseCommand):
             self.stdout.write("Generating synthetic analytics data...")
             try:
                 result = generate_daily_synthetic_analytics()
-                self.stdout.write(
-                    self.style.SUCCESS(f"✓ Synthetic data generation complete: {result}")
-                )
+                self.stdout.write(self.style.SUCCESS(f"✓ Synthetic data generation complete: {result}"))
             except Exception as exc:
-                self.stdout.write(
-                    self.style.ERROR(f"✗ Synthetic data generation failed: {exc}")
-                )
+                self.stdout.write(self.style.ERROR(f"✗ Synthetic data generation failed: {exc}"))
                 raise
         else:
             result = generate_daily_synthetic_analytics.delay()

@@ -376,35 +376,39 @@ def postcode_points(request: Request) -> Response:
     Output: {lng, lat, postcode, total_interactions}
     """
     p = parse_filter_params(request)
-    
+
     # Get all PostcodeAreaInteraction records matching filters
     qs = postcode_qs(p).values("postcode").annotate(total=Sum("interaction_count"))
-    
+
     rows = []
     postcodes = {r["postcode"] for r in qs}
-    
+
     # Look up geocodes for all postcodes
     geocodes = {
         pg.postcode: (pg.latitude, pg.longitude)
         for pg in PostcodeGeo.objects.filter(postcode__in=postcodes, status="success")
         if pg.latitude is not None
     }
-    
+
     # Build result set
     postcode_totals = {r["postcode"]: r["total"] for r in qs}
     for postcode, (lat, lng) in geocodes.items():
-        rows.append({
-            "postcode": postcode,
-            "lng": lng,
-            "lat": lat,
-            "total": postcode_totals.get(postcode, 0),
-        })
-    
-    return Response({
-        "filters": p,
-        "count": len(rows),
-        "results": rows,
-    })
+        rows.append(
+            {
+                "postcode": postcode,
+                "lng": lng,
+                "lat": lat,
+                "total": postcode_totals.get(postcode, 0),
+            }
+        )
+
+    return Response(
+        {
+            "filters": p,
+            "count": len(rows),
+            "results": rows,
+        }
+    )
 
 
 @api_view(["GET"])
@@ -424,7 +428,7 @@ def postcode_heat(request: Request) -> Response:
     Output: {lng, lat, total, postcode_count, postcodes} (suppressed clusters omitted)
     """
     p = parse_filter_params(request)
-    
+
     # Parse clustering parameters
     try:
         radius = max(100, min(int(request.GET.get("radius_meters", "300")), 2000))
@@ -432,17 +436,15 @@ def postcode_heat(request: Request) -> Response:
         min_interactions = max(1, min(int(request.GET.get("min_interactions", "5")), 1000))
     except (TypeError, ValueError):
         radius, min_postcodes, min_interactions = 300, 2, 5
-    
+
     # Get all PostcodeAreaInteraction records matching filters
     qs = postcode_qs(p).values("postcode").annotate(total=Sum("interaction_count"))
     postcode_totals = {r["postcode"]: r["total"] for r in qs}
-    
+
     # Gather all geocoded postcodes
     postcodes = set(postcode_totals.keys())
-    geocodes = PostcodeGeo.objects.filter(
-        postcode__in=postcodes, status="success", latitude__isnull=False
-    )
-    
+    geocodes = PostcodeGeo.objects.filter(postcode__in=postcodes, status="success", latitude__isnull=False)
+
     points = [
         {
             "postcode": pg.postcode,
@@ -452,19 +454,21 @@ def postcode_heat(request: Request) -> Response:
         }
         for pg in geocodes
     ]
-    
+
     if not points:
-        return Response({
-            "filters": p,
-            "clustering": {
-                "radius_meters": radius,
-                "min_postcodes": min_postcodes,
-                "min_interactions": min_interactions,
-            },
-            "count": 0,
-            "results": [],
-        })
-    
+        return Response(
+            {
+                "filters": p,
+                "clustering": {
+                    "radius_meters": radius,
+                    "min_postcodes": min_postcodes,
+                    "min_interactions": min_interactions,
+                },
+                "count": 0,
+                "results": [],
+            }
+        )
+
     # Cluster points using privacy-preserving algorithm
     clusters = cluster_points(
         points,
@@ -472,15 +476,16 @@ def postcode_heat(request: Request) -> Response:
         min_postcodes=min_postcodes,
         min_interactions=min_interactions,
     )
-    
-    return Response({
-        "filters": p,
-        "clustering": {
-            "radius_meters": radius,
-            "min_postcodes": min_postcodes,
-            "min_interactions": min_interactions,
-        },
-        "count": len(clusters),
-        "results": clusters,
-    })
 
+    return Response(
+        {
+            "filters": p,
+            "clustering": {
+                "radius_meters": radius,
+                "min_postcodes": min_postcodes,
+                "min_interactions": min_interactions,
+            },
+            "count": len(clusters),
+            "results": clusters,
+        }
+    )
