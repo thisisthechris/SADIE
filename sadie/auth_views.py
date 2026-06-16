@@ -43,7 +43,7 @@ def _user_payload(user):
         ]
     except (AttributeError, Exception) as e:
         # User may not have member_organisations relation or DB access issues
-        logger.warning(f"Could not load member organisations for user {user.pk}: {e}")
+        logger.warning(f"Could not load member organisations for user {user.pk}: {type(e).__name__}")
         member_orgs = []
     return {
         "id": user.pk,
