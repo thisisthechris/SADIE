@@ -14,7 +14,7 @@ we silently drop the vector term and use FTS + trigram only.
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 
 from django.contrib.postgres.search import SearchQuery, SearchRank
 from django.db.models import F, FloatField, Model, QuerySet, Value
@@ -93,7 +93,7 @@ def _search_model(
     result_type: str,
     select_related: list[str] | None = None,
     trigram_field: str | None = None,
-    formatter: callable | None = None,
+    formatter: Callable[[Model, str], dict] | None = None,
 ) -> Iterable[dict]:
     """Generic search helper for any searchable model.
 
