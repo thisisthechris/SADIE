@@ -2,10 +2,11 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
 
-// In dev (`vite dev`), base is "/" so the app loads at http://localhost:5173/.
-// In production build (`vite build`), base is "/static/spa/" so Django can serve
-// the assets from its staticfiles directory.
-export default defineConfig(({ command }) => ({
+// The app is served from the site root ("/") in both environments:
+//   - dev:  the Vite dev server at http://localhost:5173/
+//   - prod: a dedicated nginx container serves the build at "/"
+// (the Django backend no longer hosts the SPA).
+export default defineConfig(() => ({
   plugins: [react()],
   resolve: {
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
@@ -19,9 +20,7 @@ export default defineConfig(({ command }) => ({
       "/media": process.env.BACKEND_URL ?? "http://localhost:8000",
     },
   },
-  // Production build is consumed by Django: index.html lives at frontend/dist
-  // and is served by a TemplateView at /app/*; static assets are mounted via
-  // STATICFILES_DIRS on /static/spa/.
+  // Production build is served by the nginx container from the site root.
   build: {
     outDir: "dist",
     emptyOutDir: true,
@@ -30,5 +29,5 @@ export default defineConfig(({ command }) => ({
     // causes the build to be killed by the kernel OOM on GHA runners.
     sourcemap: false,
   },
-  base: command === "serve" ? "/" : "/static/spa/",
+  base: "/",
 }));

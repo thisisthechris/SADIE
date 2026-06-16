@@ -14,9 +14,10 @@ const queryClient = new QueryClient({
   },
 });
 
-// SPA is mounted at /app/* in production (Django urls). In dev the Vite
-// dev server runs at the root, so basename is "/" to match.
-const basename = import.meta.env.DEV ? "/" : "/app";
+// The SPA is served at the site root in both dev (Vite dev server) and
+// production (a dedicated nginx container serves the build at "/"). No path
+// prefix is used in either environment.
+const basename = "/";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

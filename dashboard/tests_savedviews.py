@@ -52,10 +52,12 @@ class SavedViewAPITest(TestCase):
         self.assertEqual(r.status_code, 404)
 
     def test_short_link_redirects_to_spa(self):
-        sv = SavedView.objects.create(user=self.alice, name="P", path="/app/map", query_string="org=2", is_public=True)
+        sv = SavedView.objects.create(
+            user=self.alice, name="P", path="/insights/map", query_string="org=2", is_public=True
+        )
         r = self.client.get(f"/v/{sv.slug}/")
         self.assertEqual(r.status_code, 302)
-        self.assertEqual(r["Location"], f"/app/v/{sv.slug}/")
+        self.assertEqual(r["Location"], f"/insights/v/{sv.slug}/")
 
     def test_short_link_private_redirects_to_login(self):
         sv = SavedView.objects.create(user=self.alice, name="P2", path="/app/", query_string="")

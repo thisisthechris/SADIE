@@ -4,21 +4,23 @@
 # Images are built and pushed automatically by the GitHub Actions deploy workflow
 # (.github/workflows/deploy.yml) on every push to main.
 #
+# Architecture:
+#   nginx  — front door. Serves the built React SPA at / and reverse-proxies
+#            /api, /accounts, admin, /static, feeds and /media to `web`.
+#            This is the ONLY service the host reverse proxy talks to.
+#   web    — Django/gunicorn (API, admin, auth, feeds). Internal only.
+#   celery / celery-beat — background workers.
+#   db / redis — Postgres+PostGIS and Redis. Internal only.
+#
 # Required environment variables (set in Portainer stack env or .env file):
 #   SECRET_KEY, DATABASE_URL, CELERY_BROKER_URL, CELERY_RESULT_BACKEND,
 #   UPLOAD_API_TOKEN, ALLOWED_HOSTS, CSRF_TRUSTED_ORIGINS, DB_PASSWORD
 #   (see .env.example for the full list)
 #
-# Reverse proxy — choose one option and adjust accordingly:
-#
-#   Option A — Traefik
-#     Uncomment the 'labels' and 'networks' blocks on the web service.
-#     Set DOMAIN= in your environment. Remove the 'ports' block from web.
-#     Ensure Traefik's external network name matches below.
-#
-#   Option B — Nginx Proxy Manager / direct port (default)
-#     Leave as-is. web exposes ${WEB_PORT:-8000}:8000.
-#     Point your proxy at http://<host>:${WEB_PORT:-8000}.
+# Reverse proxy (Nginx Proxy Manager on the Unraid host):
+#   Point your proxy host at http://<host>:${WEB_PORT:-8000} (the nginx service).
+#   NPM terminates TLS and forwards X-Forwarded-Proto, which nginx passes to
+#   Django so HTTPS/CSRF are detected correctly.
 #
 # Portainer setup:
 #   1. Stacks → Add Stack → paste this file (or point to the Git repo).
@@ -26,11 +28,13 @@
 #   3. Deploy the stack, then go to Webhooks and copy the redeploy URL.
 #   4. Add the URL as PORTAINER_WEBHOOK_URL in GitHub repo secrets.
 #      The deploy workflow will call it automatically after each build.
+#   NOTE: the redeploy webhook only re-pulls images. When THIS compose file
+#   changes (e.g. adding the nginx service), you must update the stack itself
+#   in Portainer (Pull-and-redeploy for a Git stack, or re-paste the editor).
 
-version: "3.9"
-
-x-app-image: &app-image ghcr.io/thisisthechris/sadie:latest
-x-db-image:  &db-image  ghcr.io/thisisthechris/sadie-db:latest
+x-app-image:   &app-image   ghcr.io/thisisthechris/sadie:latest
+x-nginx-image: &nginx-image ghcr.io/thisisthechris/sadie-nginx:latest
+x-db-image:    &db-image    ghcr.io/thisisthechris/sadie-db:latest
 
 services:
 
@@ -62,14 +66,9 @@ services:
 
   web:
     image: *app-image
-    # Run migrations and collectstatic at startup.
-    # IMPORTANT: staticfiles is intentionally NOT a persistent volume. The SPA
-    # index.html (served by Django from the image) references hashed asset
-    # filenames that change on every frontend build. A persistent volume would
-    # retain OLD assets from a previous image while the new image's index.html
-    # references NEW hashes -> every asset 404s. Writing collectstatic output to
-    # the container's ephemeral layer guarantees index.html and assets always
-    # come from the same build.
+    # Run migrations and collectstatic at startup. staticfiles is the container's
+    # ephemeral layer (no volume) so Django's collected static always matches the
+    # image. web is internal-only now — nginx is the public entrypoint.
     command: sh -c "python manage.py migrate --noinput && echo '[COLLECTSTATIC] Starting...' && python manage.py collectstatic --noinput --clear --verbosity=2 && echo '[COLLECTSTATIC] Complete!' && gunicorn sadie.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 120 --access-logfile -"
     volumes:
       - media_volume:/app/mediafiles
@@ -81,24 +80,23 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
+    # No host port and no `public` network: only nginx (same default network)
+    # reaches web at http://web:8000.
+
+  nginx:
+    image: *nginx-image
+    # Serves the built SPA and reverse-proxies the dynamic routes to web:8000.
+    ports:
+      - "${WEB_PORT:-8000}:80"
+    volumes:
+      # Serve user-uploaded media directly from the shared volume (read-only).
+      - media_volume:/media:ro
+    depends_on:
+      - web
+    restart: unless-stopped
     networks:
       - default
       - public
-
-    # --- Option A: Traefik (uncomment; also remove the 'ports' block below) ---
-    # labels:
-    #   - traefik.enable=true
-    #   - traefik.http.routers.sadie.rule=Host(`${DOMAIN}`)
-    #   - traefik.http.routers.sadie.entrypoints=websecure
-    #   - traefik.http.routers.sadie.tls.certresolver=letsencrypt
-    #   - traefik.http.services.sadie.loadbalancer.server.port=8000
-    # networks:
-    #   - default
-    #   - traefik_proxy
-
-    # --- Option B: direct port / Nginx Proxy Manager (default) ---
-    ports:
-      - "${WEB_PORT:-8000}:8000"
 
   celery:
     image: *app-image
@@ -135,11 +133,3 @@ volumes:
 networks:
   public:
     external: true  # Unraid host network (or any existing shared network)
-
-# Uncomment if using Traefik (Option A):
-# networks:
-#   default:
-#   public:
-#     external: true
-#   traefik_proxy:
-#     external: true

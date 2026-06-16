@@ -1,11 +1,10 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import include, path, re_path
+from django.urls import include, path
 
 from . import auth_views
 from .search_views import search as search_view
-from .spa_views import landing_view, spa_view
 
 admin.site.site_header = "SADIE Admin"
 admin.site.site_title = "SADIE Admin"
@@ -27,10 +26,7 @@ urlpatterns = [
     path("api/upload/", include("analytics.upload_urls")),
     path("api/", include("dashboard.api_urls")),
     path("api/", include("scraping.urls")),
-    # Landing page and SPA
-    path("", landing_view, name="landing"),
-    path("app/", spa_view, name="spa-root"),
-    re_path(r"^app/.*$", spa_view, name="spa-catchall"),
-    # Legacy URL endpoints (ICS feeds, short links)
+    # Public feeds (ICS/RSS/JSON) and saved-view short links. The React SPA is
+    # served separately by the nginx front-door container, not by Django.
     path("", include("dashboard.urls")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

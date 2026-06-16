@@ -4,22 +4,22 @@ from django.urls import reverse
 
 
 class DashboardAuthTest(TestCase):
-    """Tests for dashboard routing after migration to React SPA.
+    """Tests for Django-level routing after the SPA moved to its own nginx container.
 
-    Old Django dashboard views have been removed. The following is the new behavior:
-    - "/" redirects to "/app/" (302 redirect)
-    - Old paths ("/map/", "/calendar/", etc.) return 404 Not Found
-    - React SPA at "/app/*" is publicly accessible and handles auth client-side
+    The React SPA (including "/" and any legacy "/app/*" links) is now served and
+    routed by the nginx front-door container, NOT by Django. At the Django layer:
+    - "/" and "/app/" are no longer routes and return 404.
+    - Old dashboard paths ("/map/", "/calendar/", etc.) return 404.
+    - The auth login page remains served by Django.
     """
 
     def setUp(self):
         self.user = User.objects.create_user(username="testuser", password="testpass123")
 
-    def test_root_redirects_to_app(self):
-        """Root path "/" redirects to "/app/" (302 redirect)."""
+    def test_root_not_served_by_django(self):
+        """Django no longer serves the SPA shell at "/"; nginx owns the root."""
         response = self.client.get("/")
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response["Location"], "/app/")
+        self.assertEqual(response.status_code, 404)
 
     def test_old_dashboard_paths_return_404(self):
         """Old dashboard URLs return 404 (not found)."""
@@ -29,16 +29,10 @@ class DashboardAuthTest(TestCase):
                 response = self.client.get(url)
                 self.assertEqual(response.status_code, 404)
 
-    def test_react_app_accessible_unauthenticated(self):
-        """React SPA at /app/ is publicly accessible (authentication handled client-side)."""
+    def test_app_prefix_not_served_by_django(self):
+        """Django no longer serves the SPA at "/app/"; nginx redirects it to root."""
         response = self.client.get("/app/")
-        self.assertEqual(response.status_code, 200)
-
-    def test_react_app_accessible_authenticated(self):
-        """React SPA at /app/ is accessible for authenticated users."""
-        self.client.login(username="testuser", password="testpass123")
-        response = self.client.get("/app/")
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 404)
 
     def test_login_page_accessible(self):
         """The login page itself must be publicly accessible."""

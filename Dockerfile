@@ -1,17 +1,3 @@
-FROM node:20-alpine AS frontend
-WORKDIR /frontend
-# Raise the Node.js heap limit so vite + source-map generation doesn't OOM
-# on memory-constrained CI runners (the default ~1.5 GB is too small for this bundle).
-ENV NODE_OPTIONS=--max-old-space-size=4096
-# Put local .bin on PATH so tsc / vite can be called directly in RUN steps.
-ENV PATH=/frontend/node_modules/.bin:$PATH
-COPY frontend/package.json frontend/package-lock.json* ./
-RUN npm install --no-audit --no-fund
-COPY frontend/ ./
-# Split into two layers: if tsc fails you see TypeScript errors; if vite fails you see vite errors.
-RUN tsc -b
-RUN vite build
-
 FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -33,9 +19,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Pull the SPA build output in so Django can serve it under /app/* and /static/spa/.
-COPY --from=frontend /frontend/dist ./frontend/dist
-
+# Collect Django's own static (admin, DRF browsable API, leaflet widgets) so
+# WhiteNoise can serve them under /static/. The React SPA is built and served
+# separately by the nginx front-door container, not by Django.
 RUN python manage.py collectstatic --noinput --verbosity=2
 
 EXPOSE 8000

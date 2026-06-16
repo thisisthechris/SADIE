@@ -56,4 +56,4 @@ def short_link(request, slug: str):
     view = get_object_or_404(SavedView, slug=slug)
     if not view.is_public and not (request.user.is_authenticated and view.user_id == request.user.id):
         return redirect(f"/login/?next=/v/{slug}/")
-    return redirect(f"/app/v/{slug}/")
+    return redirect(f"/insights/v/{slug}/")

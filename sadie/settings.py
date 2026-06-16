@@ -93,13 +93,9 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 STATIC_ROOT = os.environ.get("STATIC_ROOT", BASE_DIR / "staticfiles")
-# Serve the Vite-built SPA bundle (frontend/dist/assets/*) under /static/spa/.
-# The directory may not exist before the first `npm run build`; gate it so
-# `collectstatic` doesn't blow up in dev.
-STATICFILES_DIRS = []
-_spa_dist = BASE_DIR / "frontend" / "dist"
-if _spa_dist.exists():
-    STATICFILES_DIRS.append(("spa", _spa_dist))
+# Django serves only its own collected static (admin, DRF, leaflet widgets) via
+# WhiteNoise. The React SPA and its assets are built and served separately by
+# the nginx front-door container.
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.environ.get("MEDIA_ROOT", BASE_DIR / "mediafiles")
 
