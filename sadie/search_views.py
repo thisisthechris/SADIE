@@ -102,10 +102,12 @@ def _search_model(
         vec: Optional embedding vector
         limit: Maximum results to return
         model: Django model class to search
-        result_type: Type label for results (e.g., "event")
+        result_type: Type label for results (e.g., "event", "organisation")
         select_related: List of related fields to select
         trigram_field: Field name for trigram similarity
-        formatter: Callable to format result dict from model instance
+        formatter: Callable taking (model_instance, result_type) and returning dict.
+            The result_type parameter is passed to the formatter so it can set the
+            "type" field in the result dict (part of the API contract).
 
     Yields:
         Formatted result dictionaries

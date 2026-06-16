@@ -4,9 +4,16 @@ Health check endpoints for monitoring and orchestration.
 Provides liveness and readiness probes for container health checks,
 load balancers, and Kubernetes deployments.
 
+Readiness Probe Behavior:
+- CRITICAL FAILURES (return 503):
+  - Database connectivity issues → service cannot function
+- NON-CRITICAL WARNINGS (return 200 with warning):
+  - Cache/Redis connectivity issues → service can still serve requests,
+    but some features (caching, Celery tasks) may be degraded
+
 Endpoints:
     GET /health/live/      Liveness probe (Django is running)
-    GET /health/ready/     Readiness probe (all services ready to accept traffic)
+    GET /health/ready/     Readiness probe (all critical services ready)
 """
 
 from __future__ import annotations
@@ -23,7 +30,10 @@ logger = logging.getLogger(__name__)
 
 
 def _check_database() -> bool:
-    """Check if database connection is working."""
+    """Check if database connection is working (CRITICAL).
+
+    Returns False if database is unavailable, preventing readiness.
+    """
     try:
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
@@ -34,14 +44,18 @@ def _check_database() -> bool:
 
 
 def _check_cache() -> bool:
-    """Check if cache (Redis) is working."""
+    """Check if cache (Redis) is working (NON-CRITICAL).
+
+    Returns False if cache fails, but doesn't prevent readiness since
+    Django can still function without cache (performance degradation only).
+    """
     try:
         cache.set("health_check", "ok", timeout=10)
         return cache.get("health_check") == "ok"
     except Exception as e:
-        logger.warning(f"Cache health check failed (non-critical): {e}")
-        # Cache failures are not critical for readiness
-        return True
+        logger.warning(f"Cache health check failed (non-critical, service continues): {e}")
+        # Returning False but this is non-critical for readiness
+        return False
 
 
 @api_view(["GET"])
@@ -57,39 +71,48 @@ def live(request):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def ready(request):
-    """Readiness probe: returns 200 only if all dependencies are ready.
+    """Readiness probe: returns 200 if service can accept traffic.
 
-    Checks:
+    Critical Checks (must pass):
     - Database connectivity
+
+    Non-Critical Warnings (failure logged but doesn't block traffic):
     - Redis/cache connectivity
+
+    HTTP Status Codes:
+    - 200: Service is ready to accept traffic
+    - 503: Service is NOT ready (critical dependencies failed)
 
     Use this in Kubernetes readiness probes or before accepting traffic.
     """
     db_ok = _check_database()
     cache_ok = _check_cache()
 
-    if db_ok and cache_ok:
+    # Determine readiness based on critical checks only
+    is_ready = db_ok
+
+    # Build response with all check statuses
+    checks = {
+        "database": "ok" if db_ok else "failed",
+        "cache": "ok" if cache_ok else "warning",
+    }
+
+    if is_ready:
         return JsonResponse(
             {
                 "status": "ready",
                 "service": "django",
-                "checks": {
-                    "database": "ok",
-                    "cache": "ok",
-                },
+                "checks": checks,
             },
             status=200,
         )
-
-    status_code = 503 if not db_ok else 200
-    return JsonResponse(
-        {
-            "status": "not_ready",
-            "service": "django",
-            "checks": {
-                "database": "ok" if db_ok else "failed",
-                "cache": "ok" if cache_ok else "warning",
+    else:
+        return JsonResponse(
+            {
+                "status": "not_ready",
+                "service": "django",
+                "checks": checks,
             },
-        },
-        status=status_code,
-    )
+            status=503,
+        )
+
