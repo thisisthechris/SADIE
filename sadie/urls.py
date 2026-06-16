@@ -3,7 +3,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
-from . import auth_views
+from . import auth_views, health_views
 from .search_views import search as search_view
 
 admin.site.site_header = "SADIE Admin"
@@ -13,6 +13,9 @@ admin.site.index_title = "Welcome to SADIE Admin"
 urlpatterns = [
     path("herebedragons/", admin.site.urls),
     path("accounts/", include("django.contrib.auth.urls")),
+    # Health checks for monitoring and orchestration
+    path("health/live/", health_views.live, name="health-live"),
+    path("health/ready/", health_views.ready, name="health-ready"),
     path("api/config/", auth_views.config, name="api-config"),
     path("api/auth/csrf/", auth_views.csrf, name="api-auth-csrf"),
     path("api/auth/me/", auth_views.me, name="api-auth-me"),

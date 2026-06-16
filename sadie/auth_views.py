@@ -15,6 +15,8 @@ Endpoints:
 
 from __future__ import annotations
 
+import logging
+
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.middleware.csrf import get_token
@@ -25,15 +27,23 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+logger = logging.getLogger(__name__)
+
 
 def _user_payload(user):
+    """Build user payload with member organisations.
+
+    Handles missing organisation relations gracefully.
+    """
     member_orgs = []
     try:
         member_orgs = [
             {"id": o.id, "slug": o.slug, "name": o.name, "is_partner": o.is_partner}
             for o in user.member_organisations.all().only("id", "slug", "name", "is_partner")
         ]
-    except Exception:
+    except (AttributeError, Exception) as e:
+        # User may not have member_organisations relation or DB access issues
+        logger.warning(f"Could not load member organisations for user {user.pk}: {e}")
         member_orgs = []
     return {
         "id": user.pk,
