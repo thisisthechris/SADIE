@@ -39,7 +39,7 @@ def _check_database() -> bool:
             cursor.execute("SELECT 1")
         return True
     except Exception as e:
-        logger.error(f"Database health check failed: {e}")
+        logger.error(f"Database health check failed: {type(e).__name__}")
         return False
 
 
@@ -53,7 +53,7 @@ def _check_cache() -> bool:
         cache.set("health_check", "ok", timeout=10)
         return cache.get("health_check") == "ok"
     except Exception as e:
-        logger.warning(f"Cache health check failed (non-critical, service continues): {e}")
+        logger.warning(f"Cache health check failed (non-critical): {type(e).__name__}")
         # Returning False but this is non-critical for readiness
         return False
 
