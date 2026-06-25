@@ -489,3 +489,190 @@ def postcode_heat(request: Request) -> Response:
             "results": clusters,
         }
     )
+
+
+# ── Journeys (visitor pathways) ────────────────────────────────────────────
+
+
+def _resolve_location(it) -> Location | None:
+    """Return the venue for an interaction (direct ``location`` or via ``event``)."""
+    if it.location_id and it.location:
+        return it.location
+    if it.event_id and it.event and it.event.location_id:
+        return it.event.location
+    return None
+
+
+def _visitor_sequences(p, *, max_visitors: int, max_steps: int) -> list[tuple[str, list[dict]]]:
+    """Build ordered, geo-located visit sequences per anonymised visitor.
+
+    Returns a list of ``(user_hash, steps)`` tuples (most active first) where
+    each step is a dict with venue coords and metadata. Visitors with fewer than
+    two located steps are dropped (no movement to draw). Ordering within a day
+    falls back to ``created_at``/``id`` because ``interaction_date`` is
+    day-granular — the visit *order* is the only time dimension available.
+    """
+    interactions = (
+        interactions_qs(p)
+        .select_related("event", "event__location", "location", "organisation")
+        .order_by("user_hash", "interaction_date", "created_at", "id")
+    )
+
+    sequences: dict[str, list[dict]] = {}
+    for it in interactions.iterator():
+        steps = sequences.setdefault(it.user_hash, [])
+        if len(steps) >= max_steps:
+            continue
+        loc = _resolve_location(it)
+        if not loc:
+            continue
+        coords = location_coords(loc)
+        if not coords:
+            continue
+        steps.append(
+            {
+                "location_id": loc.id,
+                "name": loc.name,
+                "organisation": it.organisation.name if it.organisation_id else "",
+                "lng": coords[0],
+                "lat": coords[1],
+                "date": it.interaction_date.isoformat() if it.interaction_date else None,
+                "type": it.interaction_type,
+                "event_id": it.event_id,
+                "event_title": (it.event.title if it.event_id and it.event else ""),
+            }
+        )
+
+    located = [(h, s) for h, s in sequences.items() if len(s) >= 2]
+    located.sort(key=lambda hs: len(hs[1]), reverse=True)
+    return located[:max_visitors]
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticatedOrReadOnly])
+def journeys_paths(request: Request) -> Response:
+    """Per-visitor ordered journeys as GeoJSON LineStrings + step lists.
+
+    Each anonymised visitor (8-char hash) becomes one path connecting the venues
+    they interacted with, in visit order. Honours the standard FilterBar params
+    and an optional ``limit`` (default 50, max 200). Powers the per-visitor
+    "Journey map".
+    """
+    p = parse_filter_params(request)
+    try:
+        max_visitors = max(1, min(int(request.GET.get("limit", "50")), 200))
+    except (TypeError, ValueError):
+        max_visitors = 50
+
+    sequences = _visitor_sequences(p, max_visitors=max_visitors, max_steps=100)
+
+    journeys = []
+    features = []
+    for user_hash, steps in sequences:
+        short = user_hash[:8]
+        journeys.append({"visitor": short, "step_count": len(steps), "steps": steps})
+        features.append(
+            {
+                "type": "Feature",
+                "geometry": {
+                    "type": "LineString",
+                    "coordinates": [[s["lng"], s["lat"]] for s in steps],
+                },
+                "properties": {"visitor": short, "step_count": len(steps)},
+            }
+        )
+
+    return Response(
+        {
+            "filters": p,
+            "count": len(journeys),
+            "journeys": journeys,
+            "geojson": {"type": "FeatureCollection", "features": features},
+        }
+    )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticatedOrReadOnly])
+def journeys_flows(request: Request) -> Response:
+    """Aggregated venue→venue movement flows across all visitors.
+
+    Counts how often visitors move directly from one venue to another (in visit
+    order), producing weighted directed edges plus venue nodes. Self-loops
+    (consecutive visits to the same venue) are ignored. Honours the standard
+    FilterBar params. Powers the "common pathways" view.
+    """
+    p = parse_filter_params(request)
+
+    sequences = _visitor_sequences(p, max_visitors=1_000_000, max_steps=200)
+
+    edges: dict[tuple[int, int], int] = {}
+    node_visits: dict[int, int] = {}
+    node_meta: dict[int, dict] = {}
+
+    for _hash, steps in sequences:
+        for i, step in enumerate(steps):
+            lid = step["location_id"]
+            node_visits[lid] = node_visits.get(lid, 0) + 1
+            if lid not in node_meta:
+                node_meta[lid] = {
+                    "location_id": lid,
+                    "name": step["name"],
+                    "lng": step["lng"],
+                    "lat": step["lat"],
+                }
+            if i == 0:
+                continue
+            prev = steps[i - 1]["location_id"]
+            if prev == lid:
+                continue
+            key = (prev, lid)
+            edges[key] = edges.get(key, 0) + 1
+
+    nodes = [{**meta, "visits": node_visits.get(lid, 0)} for lid, meta in node_meta.items()]
+    nodes.sort(key=lambda n: n["visits"], reverse=True)
+
+    flows = []
+    features = []
+    for (src, dst), count in edges.items():
+        a = node_meta[src]
+        b = node_meta[dst]
+        flows.append(
+            {
+                "from_id": src,
+                "from_name": a["name"],
+                "to_id": dst,
+                "to_name": b["name"],
+                "count": count,
+            }
+        )
+        features.append(
+            {
+                "type": "Feature",
+                "geometry": {
+                    "type": "LineString",
+                    "coordinates": [[a["lng"], a["lat"]], [b["lng"], b["lat"]]],
+                },
+                "properties": {
+                    "from_id": src,
+                    "to_id": dst,
+                    "from_name": a["name"],
+                    "to_name": b["name"],
+                    "count": count,
+                },
+            }
+        )
+
+    flows.sort(key=lambda r: r["count"], reverse=True)
+    features.sort(key=lambda f: f["properties"]["count"], reverse=True)
+
+    return Response(
+        {
+            "filters": p,
+            "node_count": len(nodes),
+            "flow_count": len(flows),
+            "nodes": nodes,
+            "flows": flows,
+            "geojson": {"type": "FeatureCollection", "features": features},
+        }
+    )

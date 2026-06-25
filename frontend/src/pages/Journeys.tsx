@@ -5,6 +5,7 @@ import { useFilters } from "../lib/filters";
 import ExportMenu from "../components/ExportMenu";
 import InfoTooltip from "../components/InfoTooltip";
 import { downloadCsv } from "../lib/export";
+import JourneyMap from "./JourneyMap";
 
 interface JourneysSummary {
   totals: { interactions: number; unique_users: number };
@@ -19,7 +20,50 @@ interface JourneysSummary {
   }>;
 }
 
+type Tab = "summary" | "map";
+
 export default function Journeys() {
+  const [tab, setTab] = useState<Tab>("summary");
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-end justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="heading-small">Visitor Activity</h1>
+          <p className="text-sm text-muted">
+            See when and how people interact with events across all partners.
+          </p>
+        </div>
+        <div className="inline-flex rounded-lg border border-border overflow-hidden">
+          <button
+            className={`px-3 py-1.5 text-sm ${
+              tab === "summary"
+                ? "bg-accent text-white"
+                : "bg-white text-muted hover:bg-border/30"
+            }`}
+            onClick={() => setTab("summary")}
+          >
+            Summary
+          </button>
+          <button
+            className={`px-3 py-1.5 text-sm ${
+              tab === "map"
+                ? "bg-accent text-white"
+                : "bg-white text-muted hover:bg-border/30"
+            }`}
+            onClick={() => setTab("map")}
+          >
+            Journey map
+          </button>
+        </div>
+      </div>
+
+      {tab === "summary" ? <SummaryView /> : <JourneyMap />}
+    </div>
+  );
+}
+
+function SummaryView() {
   const f = useFilters();
   const q = f.asQuery();
 
@@ -33,13 +77,6 @@ export default function Journeys() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="heading-small">Visitor Activity</h1>
-        <p className="text-sm text-muted">
-          See when and how people interact with events across all partners.
-        </p>
-      </div>
-
       <section className="grid gap-3 grid-cols-2 md:grid-cols-4">
         <Stat label="Interactions" value={data?.totals.interactions} />
         <Stat label="Unique visitors" value={data?.totals.unique_users} />

@@ -9,7 +9,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useMe } from "../lib/auth";
 import { api } from "../lib/api";
 import SearchModal from "./SearchModal";
-import FilterDropdown from "./FilterDropdown";
+import OrgToggle from "./OrgToggle";
 import Logo from "./Logo";
 import BrandShape from "./BrandShape";
 
@@ -34,7 +34,6 @@ const NAV: NavEntry[] = [
       { to: "/insights/timecube", label: "Event Timeline Map" },
       { to: "/insights/journeys", label: "Visitor Activity" },
       { to: "/insights/trends", label: "Trends" },
-      { to: "/insights/compare", label: "Compare" },
     ],
   },
   {
@@ -77,7 +76,6 @@ const BREADCRUMBS: Record<string, string[]> = (() => {
   out["/insights/timecube"] = ["Exploration", "Event Timeline Map"];
   out["/insights/journeys"] = ["Exploration", "Visitor Activity"];
   out["/insights/trends"] = ["Exploration", "Trends"];
-  out["/insights/compare"] = ["Exploration", "Compare"];
   out["/insights/organisations"] = ["Directory", "Organisations"];
   out["/insights/calendar"] = ["Directory", "Calendar"];
   out["/insights/help"] = ["Directory", "Help"];
@@ -102,7 +100,6 @@ export default function Layout() {
   const { data: me } = useMe();
   const location = useLocation();
   const [cmdOpen, setCmdOpen] = useState(false);
-  const [filterOpen, setFilterOpen] = useState(false);
 
   // Cmd-K / Ctrl-K opens the global command menu.
   useEffect(() => {
@@ -161,11 +158,7 @@ export default function Layout() {
                 ⌘K
               </kbd>
             </button>
-            <FilterDropdown
-              open={filterOpen}
-              onToggle={() => setFilterOpen((v) => !v)}
-              onClose={() => setFilterOpen(false)}
-            />
+            <OrgToggle />
             <NavLink
               to="/insights/help"
               className={({ isActive }) =>

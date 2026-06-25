@@ -68,6 +68,8 @@ urlpatterns = [
     path("viz/postcode-heat/", viz_views.postcode_heat, name="viz-postcode-heat"),
     path("viz/network/", viz_views.network, name="viz-network"),
     path("viz/spatiotemporal/", viz_views.spatiotemporal, name="viz-spatiotemporal"),
+    path("viz/journeys-paths/", viz_views.journeys_paths, name="viz-journeys-paths"),
+    path("viz/journeys-flows/", viz_views.journeys_flows, name="viz-journeys-flows"),
     # Phase 4 — Recommendations
     path(
         "recommendations/similar/<int:event_id>/",

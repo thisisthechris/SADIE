@@ -21,9 +21,25 @@ export interface HeatmapPoint {
   postcode_count?: number;
 }
 
+export interface MapPath {
+  id: number | string;
+  /** Ordered [lng, lat] coordinates forming the line. */
+  coordinates: [number, number][];
+  /** Line colour (defaults to accent). */
+  color?: string;
+  /** Line width in px (defaults to 3). */
+  width?: number;
+  /** Line opacity 0–1 (defaults to 0.8). */
+  opacity?: number;
+  /** Tooltip HTML shown on hover (sanitised upstream — keep simple). */
+  popupHtml?: string;
+}
+
 interface Props {
   points: MapPoint[];
   heatmapPoints?: HeatmapPoint[];
+  /** Optional polylines (journey paths, venue→venue flows). */
+  paths?: MapPath[];
   centre?: [number, number];
   zoom?: number;
   height?: string;
@@ -45,6 +61,8 @@ const HEATMAP_SOURCE_ID = "map2d-heatmap";
 const HEATMAP_LAYER_ID = "map2d-heatmap-layer";
 const CLUSTER_CIRCLE_LAYER_ID = "map2d-cluster-circles";
 const CLUSTER_LABEL_LAYER_ID = "map2d-cluster-labels";
+const PATH_SOURCE_ID = "map2d-paths";
+const PATH_LAYER_ID = "map2d-paths-lines";
 
 /**
  * Lightweight MapLibre + GeoJSON visualization supporting both circle pins and heatmap layers.
@@ -53,6 +71,7 @@ const CLUSTER_LABEL_LAYER_ID = "map2d-cluster-labels";
 export default function Map2D({
   points,
   heatmapPoints,
+  paths,
   centre = [-4.142, 50.371],
   zoom = 11,
   height = "70vh",
@@ -90,6 +109,29 @@ export default function Map2D({
     const loadHandler = () => {
       console.warn("[Map2D] Map load event fired");
       try {
+        // Path source + line layer for journeys / flows. Added before the
+        // point layers so pins render on top of the lines.
+        map.addSource(PATH_SOURCE_ID, {
+          type: "geojson",
+          data: { type: "FeatureCollection", features: [] },
+        });
+        map.addLayer({
+          id: PATH_LAYER_ID,
+          type: "line",
+          source: PATH_SOURCE_ID,
+          layout: {
+            "visibility": "visible",
+            "line-cap": "round",
+            "line-join": "round",
+          },
+          paint: {
+            "line-color": ["coalesce", ["get", "color"], defaultColor],
+            "line-width": ["coalesce", ["get", "width"], 3],
+            "line-opacity": ["coalesce", ["get", "opacity"], 0.8],
+          },
+        });
+        console.warn("[Map2D] Added path layer");
+
         // Point source for exact pins
         map.addSource(SOURCE_ID, {
           type: "geojson",
@@ -264,6 +306,25 @@ export default function Map2D({
           popup.remove();
         });
 
+        // Hover tooltips for path lines.
+        map.on("mouseenter", PATH_LAYER_ID, (e) => {
+          const f = e.features?.[0];
+          const html = (f?.properties as any)?.popupHtml;
+          if (!html) return;
+          map.getCanvas().style.cursor = "pointer";
+          popup.setLngLat(e.lngLat).setHTML(html).addTo(map);
+        });
+        map.on("mousemove", PATH_LAYER_ID, (e) => {
+          const f = e.features?.[0];
+          const html = (f?.properties as any)?.popupHtml;
+          if (!html) return;
+          popup.setLngLat(e.lngLat).setHTML(html);
+        });
+        map.on("mouseleave", PATH_LAYER_ID, () => {
+          map.getCanvas().style.cursor = "";
+          popup.remove();
+        });
+
         // Hover tooltips for bubble clusters.
         map.on("mouseenter", CLUSTER_CIRCLE_LAYER_ID, (e) => {
           map.getCanvas().style.cursor = "pointer";
@@ -357,6 +418,51 @@ export default function Map2D({
       if (retryTimeout) clearTimeout(retryTimeout);
     };
   }, [points, mapLoaded, showPoints]);
+
+  // Push paths -> path source whenever they change.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded) return;
+
+    let retryTimeout: ReturnType<typeof setTimeout> | null = null;
+    let active = true;
+
+    const apply = () => {
+      if (!active || !mapRef.current) return;
+      try {
+        const src = mapRef.current.getSource(PATH_SOURCE_ID) as
+          | maplibregl.GeoJSONSource
+          | undefined;
+        if (!src) {
+          retryTimeout = setTimeout(apply, 100);
+          return;
+        }
+        src.setData({
+          type: "FeatureCollection",
+          features: (paths ?? []).map((p) => ({
+            type: "Feature",
+            geometry: { type: "LineString", coordinates: p.coordinates },
+            properties: {
+              id: p.id,
+              color: p.color,
+              width: p.width,
+              opacity: p.opacity,
+              popupHtml: p.popupHtml ?? "",
+            },
+          })),
+        });
+      } catch (err) {
+        console.error("[Map2D] Error applying paths:", err);
+      }
+    };
+
+    apply();
+
+    return () => {
+      active = false;
+      if (retryTimeout) clearTimeout(retryTimeout);
+    };
+  }, [paths, mapLoaded]);
 
   // Push heatmap points -> heatmap source whenever they change.
   useEffect(() => {

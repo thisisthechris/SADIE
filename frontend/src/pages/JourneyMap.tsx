@@ -1,0 +1,421 @@
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "../lib/api";
+import { useFilters } from "../lib/filters";
+import { useConfig } from "../lib/auth";
+import Map2D, { type MapPoint, type MapPath } from "../viz/Map2D";
+import ExportMenu from "../components/ExportMenu";
+import InfoTooltip from "../components/InfoTooltip";
+import { downloadCsv } from "../lib/export";
+
+// ── Types matching the analytics endpoints ────────────────────────────────
+
+interface JourneyStep {
+  location_id: number;
+  name: string;
+  organisation: string;
+  lng: number;
+  lat: number;
+  date: string | null;
+  type: string;
+  event_id: number | null;
+  event_title: string;
+}
+
+interface VisitorJourney {
+  visitor: string;
+  step_count: number;
+  steps: JourneyStep[];
+}
+
+interface JourneysPaths {
+  count: number;
+  journeys: VisitorJourney[];
+}
+
+interface FlowNode {
+  location_id: number;
+  name: string;
+  lng: number;
+  lat: number;
+  visits: number;
+}
+
+interface Flow {
+  from_id: number;
+  from_name: string;
+  to_id: number;
+  to_name: string;
+  count: number;
+}
+
+interface JourneysFlows {
+  node_count: number;
+  flow_count: number;
+  nodes: FlowNode[];
+  flows: Flow[];
+}
+
+type Mode = "flows" | "visitors";
+
+// Distinct colours for individual visitor paths.
+const VISITOR_COLORS = [
+  "#2563eb", "#db2777", "#059669", "#d97706", "#7c3aed",
+  "#dc2626", "#0891b2", "#ca8a04", "#9333ea", "#16a34a",
+];
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+export default function JourneyMap() {
+  const f = useFilters();
+  const cfg = useConfig();
+  const key = cfg.data?.maptiler_api_key ?? "";
+  const q = f.asQuery();
+
+  const [mode, setMode] = useState<Mode>("flows");
+  const [selectedVisitor, setSelectedVisitor] = useState<string | null>(null);
+
+  const flows = useQuery({
+    queryKey: ["journeys-flows", q],
+    queryFn: () =>
+      api<JourneysFlows>("/api/analytics/viz/journeys-flows/", { query: q }),
+    enabled: mode === "flows",
+  });
+
+  const paths = useQuery({
+    queryKey: ["journeys-paths", q],
+    queryFn: () =>
+      api<JourneysPaths>("/api/analytics/viz/journeys-paths/", {
+        query: { ...q, limit: "100" },
+      }),
+    enabled: mode === "visitors",
+  });
+
+  // ── Common pathways (flows) → map paths + venue nodes ──
+  const flowPaths: MapPath[] = useMemo(() => {
+    const rows = flows.data?.flows ?? [];
+    if (!rows.length) return [];
+    const nodeById = new Map(
+      (flows.data?.nodes ?? []).map((n) => [n.location_id, n]),
+    );
+    const max = Math.max(...rows.map((r) => r.count), 1);
+    return rows
+      .map((r) => {
+        const a = nodeById.get(r.from_id);
+        const b = nodeById.get(r.to_id);
+        if (!a || !b) return null;
+        const frac = r.count / max;
+        return {
+          id: `${r.from_id}-${r.to_id}`,
+          coordinates: [
+            [a.lng, a.lat],
+            [b.lng, b.lat],
+          ] as [number, number][],
+          color: "#2563eb",
+          width: 1.5 + frac * 8,
+          opacity: 0.25 + frac * 0.55,
+          popupHtml: `<div class="text-xs"><div class="font-semibold">${escapeHtml(
+            r.from_name,
+          )} → ${escapeHtml(r.to_name)}</div><div>${r.count} visitor${
+            r.count === 1 ? "" : "s"
+          }</div></div>`,
+        } as MapPath;
+      })
+      .filter((x): x is MapPath => x !== null);
+  }, [flows.data]);
+
+  const flowNodes: MapPoint[] = useMemo(() => {
+    const nodes = flows.data?.nodes ?? [];
+    if (!nodes.length) return [];
+    const max = Math.max(...nodes.map((n) => n.visits), 1);
+    return nodes.map((n) => ({
+      id: n.location_id,
+      lng: n.lng,
+      lat: n.lat,
+      weight: 1 + (n.visits / max) * 2,
+      color: "#1e3a8a",
+      popupHtml: `<div class="text-xs"><div class="font-semibold">${escapeHtml(
+        n.name,
+      )}</div><div>${n.visits} visit${n.visits === 1 ? "" : "s"}</div></div>`,
+    }));
+  }, [flows.data]);
+
+  // ── Individual visitors → coloured paths + step markers ──
+  const journeys = paths.data?.journeys ?? [];
+  const activeVisitor = selectedVisitor
+    ? journeys.find((j) => j.visitor === selectedVisitor) ?? null
+    : null;
+
+  const visitorPaths: MapPath[] = useMemo(() => {
+    if (!journeys.length) return [];
+    if (activeVisitor) {
+      return [
+        {
+          id: activeVisitor.visitor,
+          coordinates: activeVisitor.steps.map(
+            (s) => [s.lng, s.lat] as [number, number],
+          ),
+          color: VISITOR_COLORS[0],
+          width: 4,
+          opacity: 0.9,
+          popupHtml: `<div class="text-xs">Visitor ${escapeHtml(
+            activeVisitor.visitor,
+          )} · ${activeVisitor.step_count} stops</div>`,
+        },
+      ];
+    }
+    // "All" — faint overlay of every visitor path.
+    return journeys.map((j, i) => ({
+      id: j.visitor,
+      coordinates: j.steps.map((s) => [s.lng, s.lat] as [number, number]),
+      color: VISITOR_COLORS[i % VISITOR_COLORS.length],
+      width: 2,
+      opacity: 0.35,
+      popupHtml: `<div class="text-xs">Visitor ${escapeHtml(
+        j.visitor,
+      )} · ${j.step_count} stops</div>`,
+    }));
+  }, [journeys, activeVisitor]);
+
+  const visitorPoints: MapPoint[] = useMemo(() => {
+    if (!activeVisitor) return [];
+    return activeVisitor.steps.map((s, i) => ({
+      id: `${activeVisitor.visitor}-${i}`,
+      lng: s.lng,
+      lat: s.lat,
+      weight: 1.4,
+      color: VISITOR_COLORS[0],
+      popupHtml: `<div class="text-xs"><div class="font-semibold">${
+        i + 1
+      }. ${escapeHtml(s.name)}</div>${
+        s.date ? `<div>${escapeHtml(s.date)}</div>` : ""
+      }${
+        s.event_title
+          ? `<div class="text-muted">${escapeHtml(s.event_title)}</div>`
+          : ""
+      }</div>`,
+    }));
+  }, [activeVisitor]);
+
+  const mapPaths = mode === "flows" ? flowPaths : visitorPaths;
+  const mapPoints = mode === "flows" ? flowNodes : visitorPoints;
+
+  return (
+    <div className="space-y-4">
+      {/* ── Mode toggle ── */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="inline-flex rounded-lg border border-border overflow-hidden">
+          <button
+            className={`px-3 py-1.5 text-sm ${
+              mode === "flows"
+                ? "bg-accent text-white"
+                : "bg-white text-muted hover:bg-border/30"
+            }`}
+            onClick={() => setMode("flows")}
+          >
+            Common pathways
+          </button>
+          <button
+            className={`px-3 py-1.5 text-sm ${
+              mode === "visitors"
+                ? "bg-accent text-white"
+                : "bg-white text-muted hover:bg-border/30"
+            }`}
+            onClick={() => setMode("visitors")}
+          >
+            Individual visitors
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {mode === "flows" && (
+            <ExportMenu
+              items={[
+                {
+                  label: "CSV flows",
+                  disabled: !flows.data?.flows.length,
+                  onClick: () =>
+                    downloadCsv("journey-flows.csv", flows.data?.flows ?? [], [
+                      { key: "from_name", label: "From" },
+                      { key: "to_name", label: "To" },
+                      { key: "count", label: "Visitors" },
+                    ]),
+                },
+              ]}
+            />
+          )}
+        </div>
+      </div>
+
+      {mode === "visitors" && (
+        <VisitorPicker
+          journeys={journeys}
+          selected={selectedVisitor}
+          onSelect={setSelectedVisitor}
+        />
+      )}
+
+      {/* ── Map ── */}
+      {!key ? (
+        <div className="card p-6 text-sm text-muted">
+          MapTiler key missing — set{" "}
+          <code className="font-mono">MAPTILER_API_KEY</code> and restart the
+          web service.
+        </div>
+      ) : (
+        <div className="card overflow-hidden">
+          <Map2D
+            points={mapPoints}
+            paths={mapPaths}
+            maptilerKey={key}
+            showHeatmap={false}
+          />
+        </div>
+      )}
+
+      {/* ── Detail panels ── */}
+      {mode === "flows" ? (
+        <FlowsTable flows={flows.data?.flows ?? []} loading={flows.isLoading} />
+      ) : activeVisitor ? (
+        <VisitorSteps journey={activeVisitor} />
+      ) : (
+        <div className="text-xs text-muted">
+          {paths.isLoading
+            ? "Loading visitor journeys…"
+            : journeys.length
+              ? `Showing ${journeys.length} visitor journeys. Select one above to see its stops.`
+              : "No multi-stop visitor journeys for the current filters."}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Visitor picker ─────────────────────────────────────────────────────────
+
+function VisitorPicker({
+  journeys,
+  selected,
+  onSelect,
+}: {
+  journeys: VisitorJourney[];
+  selected: string | null;
+  onSelect: (v: string | null) => void;
+}) {
+  if (!journeys.length) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <button
+        className={`px-2.5 py-1 rounded-md text-xs border ${
+          selected === null
+            ? "bg-accent text-white border-accent"
+            : "bg-white text-muted border-border hover:bg-border/30"
+        }`}
+        onClick={() => onSelect(null)}
+      >
+        All ({journeys.length})
+      </button>
+      {journeys.slice(0, 30).map((j) => (
+        <button
+          key={j.visitor}
+          className={`px-2.5 py-1 rounded-md text-xs border font-mono ${
+            selected === j.visitor
+              ? "bg-accent text-white border-accent"
+              : "bg-white text-muted border-border hover:bg-border/30"
+          }`}
+          onClick={() => onSelect(j.visitor)}
+          title={`${j.step_count} stops`}
+        >
+          {j.visitor} · {j.step_count}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ── Visitor step list (TapIn-style chronological journey) ──────────────────
+
+function VisitorSteps({ journey }: { journey: VisitorJourney }) {
+  return (
+    <section className="card p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <h2 className="heading-sub">
+          Journey for visitor{" "}
+          <span className="font-mono text-accent">{journey.visitor}</span>
+        </h2>
+        <InfoTooltip text="Anonymised identifier — no personal information is shown. Order reflects visit sequence, not exact time." />
+      </div>
+      <ol className="space-y-3">
+        {journey.steps.map((s, i) => (
+          <li key={`${s.location_id}-${i}`} className="flex gap-3">
+            <div className="flex flex-col items-center">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-white text-xs font-semibold">
+                {i + 1}
+              </span>
+              {i < journey.steps.length - 1 && (
+                <span className="w-px flex-1 bg-border my-1" />
+              )}
+            </div>
+            <div className="pb-1">
+              <div className="text-sm font-medium">{s.name}</div>
+              <div className="text-xs text-muted">
+                {[s.organisation, s.date].filter(Boolean).join(" · ")}
+              </div>
+              {s.event_title && (
+                <div className="text-xs text-muted">{s.event_title}</div>
+              )}
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+// ── Common pathways table ──────────────────────────────────────────────────
+
+function FlowsTable({ flows, loading }: { flows: Flow[]; loading: boolean }) {
+  if (loading) return <div className="text-xs text-muted">Loading flows…</div>;
+  if (!flows.length)
+    return (
+      <div className="text-xs text-muted">
+        No venue-to-venue movements for the current filters.
+      </div>
+    );
+  const max = Math.max(...flows.map((r) => r.count), 1);
+  return (
+    <section className="card p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <h2 className="heading-sub">Top pathways</h2>
+        <InfoTooltip text="How many visitors moved directly from one venue to the next, in visit order." />
+      </div>
+      <ol className="space-y-1.5">
+        {flows.slice(0, 25).map((r) => (
+          <li key={`${r.from_id}-${r.to_id}`} className="text-sm">
+            <div className="flex justify-between gap-3">
+              <span className="truncate">
+                {r.from_name} <span className="text-muted">→</span>{" "}
+                {r.to_name}
+              </span>
+              <span className="text-muted tabular-nums shrink-0">
+                {r.count}
+              </span>
+            </div>
+            <div className="h-1 bg-border/50 rounded mt-1">
+              <div
+                className="h-1 bg-accent rounded"
+                style={{ width: `${(r.count / max) * 100}%` }}
+              />
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
