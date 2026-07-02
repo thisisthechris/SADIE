@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState, useEffect, useRef } from "react";
+import { useQuery, useQueries } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { useFilters } from "../lib/filters";
 import { useConfig } from "../lib/auth";
@@ -7,6 +7,7 @@ import Map2D, { type MapPoint, type MapPath } from "../viz/Map2D";
 import ExportMenu from "../components/ExportMenu";
 import InfoTooltip from "../components/InfoTooltip";
 import { downloadCsv } from "../lib/export";
+import { TimelineSlider, msToDateStr } from "../components/TimelineSlider";
 
 // ── Types matching the analytics endpoints ────────────────────────────────
 
@@ -64,6 +65,9 @@ const VISITOR_COLORS = [
   "#dc2626", "#0891b2", "#ca8a04", "#9333ea", "#16a34a",
 ];
 
+const N_BUCKETS = 6;
+const BUCKET_HUES = [0, 30, 60, 120, 210, 270]; // red→orange→yellow→green→blue→violet
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
@@ -81,54 +85,127 @@ export default function JourneyMap() {
   const [mode, setMode] = useState<Mode>("flows");
   const [selectedVisitor, setSelectedVisitor] = useState<string | null>(null);
 
-  const flows = useQuery({
-    queryKey: ["journeys-flows", q],
-    queryFn: () =>
-      api<JourneysFlows>("/api/analytics/viz/journeys-flows/", { query: q }),
-    enabled: mode === "flows",
-  });
+  // ── Timeline state (Common Pathways only) ──
+  const [windowDays, setWindowDays] = useState(90);
+  const [offsetDays, setOffsetDays] = useState(0);
+  const initialisedRef = useRef(false);
 
+  // Always load paths to derive the full date range for the timeline.
+  // Flows are re-queried whenever the timeline window changes.
   const paths = useQuery({
     queryKey: ["journeys-paths", q],
     queryFn: () =>
       api<JourneysPaths>("/api/analytics/viz/journeys-paths/", {
         query: { ...q, limit: "100" },
       }),
-    enabled: mode === "visitors",
   });
 
-  // ── Common pathways (flows) → map paths + venue nodes ──
+  // Derive date range from all loaded step dates.
+  const dateTimes = useMemo(() => {
+    const ts: number[] = [];
+    for (const j of paths.data?.journeys ?? []) {
+      for (const s of j.steps) {
+        if (s.date) ts.push(new Date(s.date).getTime());
+      }
+    }
+    if (!ts.length) return null;
+    return { min: Math.min(...ts), max: Math.max(...ts) };
+  }, [paths.data]);
+
+  // Initialise timeline centred on the most recent data when first loaded.
+  useEffect(() => {
+    if (!dateTimes || initialisedRef.current) return;
+    initialisedRef.current = true;
+    const totalDays = Math.max(1, Math.ceil((dateTimes.max - dateTimes.min) / 86_400_000));
+    setWindowDays(Math.min(90, totalDays));
+    const end = Math.max(0, totalDays - Math.min(90, totalDays));
+    setOffsetDays(end);
+  }, [dateTimes]);
+
+  // Build dfrom/dto query params from the timeline window.
+  // Debounced so rapid slider drags don't fire a burst of API calls.
+  const [debouncedTimeQuery, setDebouncedTimeQuery] = useState<Record<string, string>>({});
+
+  const timeQuery = useMemo((): Record<string, string> => {
+    if (!dateTimes) return {};
+    const startMs = dateTimes.min + offsetDays * 86_400_000;
+    const endMs = startMs + windowDays * 86_400_000;
+    return { dfrom: msToDateStr(startMs), dto: msToDateStr(endMs) };
+  }, [dateTimes, offsetDays, windowDays]);
+
+  // Debounce: only commit the query after the user pauses for 300ms.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedTimeQuery(timeQuery), 300);
+    return () => clearTimeout(t);
+  }, [timeQuery]);
+
+  const flows = useQuery({
+    queryKey: ["journeys-flows", q, debouncedTimeQuery],
+    queryFn: () =>
+      api<JourneysFlows>("/api/analytics/viz/journeys-flows/", {
+        query: { ...q, ...debouncedTimeQuery },
+      }),
+    enabled: mode === "flows",
+  });
+
+  // ── Rainbow buckets: divide the window into N slices, each a different hue ──
+  // Hue sweeps red→violet (0°→270°) as time moves from start to end.
+
+  const buckets = useMemo(() => {
+    if (!dateTimes) return [];
+    const startMs = dateTimes.min + offsetDays * 86_400_000;
+    const endMs = startMs + windowDays * 86_400_000;
+    const sliceMs = (endMs - startMs) / N_BUCKETS;
+    return Array.from({ length: N_BUCKETS }, (_, i) => ({
+      dfrom: msToDateStr(Math.round(startMs + i * sliceMs)),
+      dto: msToDateStr(Math.round(startMs + (i + 1) * sliceMs)),
+      color: `hsl(${BUCKET_HUES[i]}, 85%, 52%)`,
+    }));
+  }, [dateTimes, offsetDays, windowDays]);
+
+  const bucketResults = useQueries({
+    queries: buckets.map((b) => ({
+      queryKey: ["journeys-flows-bucket", q, b.dfrom, b.dto],
+      queryFn: () =>
+        api<JourneysFlows>("/api/analytics/viz/journeys-flows/", {
+          query: { ...q, dfrom: b.dfrom, dto: b.dto },
+        }),
+      enabled: mode === "flows" && buckets.length > 0,
+      staleTime: 5 * 60_000,
+    })),
+  });
+
+
+  // ── Common pathways (flows) → rainbow map paths + venue nodes ──
   const flowPaths: MapPath[] = useMemo(() => {
-    const rows = flows.data?.flows ?? [];
-    if (!rows.length) return [];
-    const nodeById = new Map(
-      (flows.data?.nodes ?? []).map((n) => [n.location_id, n]),
-    );
-    const max = Math.max(...rows.map((r) => r.count), 1);
-    return rows
-      .map((r) => {
+    if (!buckets.length) return [];
+    const paths: MapPath[] = [];
+    buckets.forEach((bucket, idx) => {
+      const data = bucketResults[idx]?.data;
+      if (!data?.flows.length) return;
+      const nodeById = new Map(data.nodes.map((n) => [n.location_id, n]));
+      const max = Math.max(...data.flows.map((r) => r.count), 1);
+      for (const r of data.flows) {
         const a = nodeById.get(r.from_id);
         const b = nodeById.get(r.to_id);
-        if (!a || !b) return null;
+        if (!a || !b) continue;
         const frac = r.count / max;
-        return {
-          id: `${r.from_id}-${r.to_id}`,
-          coordinates: [
-            [a.lng, a.lat],
-            [b.lng, b.lat],
-          ] as [number, number][],
-          color: "#2563eb",
-          width: 1.5 + frac * 8,
-          opacity: 0.25 + frac * 0.55,
+        paths.push({
+          id: `b${idx}-${r.from_id}-${r.to_id}`,
+          coordinates: [[a.lng, a.lat], [b.lng, b.lat]] as [number, number][],
+          color: bucket.color,
+          width: 1 + frac * 7,
+          opacity: 0.2 + frac * 0.5,
           popupHtml: `<div class="text-xs"><div class="font-semibold">${escapeHtml(
             r.from_name,
           )} → ${escapeHtml(r.to_name)}</div><div>${r.count} visitor${
             r.count === 1 ? "" : "s"
-          }</div></div>`,
-        } as MapPath;
-      })
-      .filter((x): x is MapPath => x !== null);
-  }, [flows.data]);
+          } · ${bucket.dfrom} to ${bucket.dto}</div></div>`,
+        } as MapPath);
+      }
+    });
+    return paths;
+  }, [buckets, bucketResults]);
 
   const flowNodes: MapPoint[] = useMemo(() => {
     const nodes = flows.data?.nodes ?? [];
@@ -258,6 +335,20 @@ export default function JourneyMap() {
           journeys={journeys}
           selected={selectedVisitor}
           onSelect={setSelectedVisitor}
+        />
+      )}
+
+      {/* ── Timeline (Common Pathways only) ── */}
+      {mode === "flows" && dateTimes && (
+        <TimelineSlider
+          minMs={dateTimes.min}
+          maxMs={dateTimes.max}
+          offsetDays={offsetDays}
+          windowDays={windowDays}
+          onOffsetChange={setOffsetDays}
+          onWindowChange={setWindowDays}
+          countLabel={`${flows.data?.flow_count ?? 0} flows · ${flows.data?.node_count ?? 0} venues`}
+          gradientColors={buckets.map((b) => b.color)}
         />
       )}
 

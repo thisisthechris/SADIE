@@ -65,8 +65,8 @@ def parse_filter_params(source: Any) -> dict:
     p = {
         "org": getter("org", "") or "",
         "cat": getter("category", "") or "",
-        "dfrom": getter("date_from", "") or "",
-        "dto": getter("date_to", "") or "",
+        "dfrom": getter("date_from", "") or getter("dfrom", "") or "",
+        "dto": getter("date_to", "") or getter("dto", "") or "",
         "search": getter("search", "") or "",
         "period": getter("period", "") or "",
         "itype": getter("itype", "") or "",

@@ -130,6 +130,46 @@ export default function Map2D({
             "line-opacity": ["coalesce", ["get", "opacity"], 0.8],
           },
         });
+
+        // Create a right-pointing arrow as raw pixel data for direction indicators.
+        // Using explicit {width,height,data} format (MapLibre's documented API).
+        const ARROW_SIZE = 16;
+        const arrowData = new Uint8Array(ARROW_SIZE * ARROW_SIZE * 4);
+        for (let y = 0; y < ARROW_SIZE; y++) {
+          for (let x = 0; x < ARROW_SIZE; x++) {
+            // Triangle: right-pointing. Inside when x/size > |y/size - 0.5| * 2 - margin
+            const ynorm = Math.abs(y / ARROW_SIZE - 0.5) * 2;
+            const xnorm = (x - 1) / ARROW_SIZE;
+            if (xnorm > ynorm - 0.05) {
+              const i = (y * ARROW_SIZE + x) * 4;
+              arrowData[i] = 255;     // R (SDF: white = inside shape)
+              arrowData[i + 1] = 255; // G
+              arrowData[i + 2] = 255; // B
+              arrowData[i + 3] = 255; // A
+            }
+          }
+        }
+        map.addImage("flow-arrow", { width: ARROW_SIZE, height: ARROW_SIZE, data: arrowData }, { sdf: true });
+
+        // Arrow symbols along each path line to show direction.
+        map.addLayer({
+          id: `${PATH_LAYER_ID}-arrows`,
+          type: "symbol",
+          source: PATH_SOURCE_ID,
+          layout: {
+            "symbol-placement": "line",
+            "symbol-spacing": 80,
+            "icon-image": "flow-arrow",
+            "icon-size": ["interpolate", ["linear"], ["coalesce", ["get", "width"], 3], 1, 0.6, 10, 1.4],
+            "icon-rotation-alignment": "map",
+            "icon-pitch-alignment": "viewport",
+            "icon-allow-overlap": true,
+          },
+          paint: {
+            "icon-color": ["coalesce", ["get", "color"], defaultColor],
+            "icon-opacity": ["coalesce", ["get", "opacity"], 0.8],
+          },
+        });
         console.warn("[Map2D] Added path layer");
 
         // Point source for exact pins

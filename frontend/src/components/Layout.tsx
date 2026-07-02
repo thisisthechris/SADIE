@@ -33,6 +33,8 @@ const NAV: NavEntry[] = [
       { to: "/insights/network", label: "Network" },
       { to: "/insights/timecube", label: "Event Timeline Map" },
       { to: "/insights/journeys", label: "Visitor Activity" },
+      { to: "/insights/journey-map", label: "Journey Map" },
+      { to: "/insights/postcode-areas", label: "Postcode Areas" },
       { to: "/insights/trends", label: "Trends" },
     ],
   },
@@ -75,6 +77,8 @@ const BREADCRUMBS: Record<string, string[]> = (() => {
   out["/insights/network"] = ["Exploration", "Network"];
   out["/insights/timecube"] = ["Exploration", "Event Timeline Map"];
   out["/insights/journeys"] = ["Exploration", "Visitor Activity"];
+  out["/insights/journey-map"] = ["Exploration", "Journey Map"];
+  out["/insights/postcode-areas"] = ["Exploration", "Postcode Areas"];
   out["/insights/trends"] = ["Exploration", "Trends"];
   out["/insights/organisations"] = ["Directory", "Organisations"];
   out["/insights/calendar"] = ["Directory", "Calendar"];
