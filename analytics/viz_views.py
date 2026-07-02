@@ -716,6 +716,7 @@ def _visitor_sequences(p, *, max_visitors: int, max_steps: int) -> list[tuple[st
                 "location_id": loc.id,
                 "name": loc.name,
                 "organisation": it.organisation.name if it.organisation_id else "",
+                "organisation_id": it.organisation_id,
                 "lng": coords[0],
                 "lat": coords[1],
                 "date": it.interaction_date.isoformat() if it.interaction_date else None,
@@ -800,6 +801,7 @@ def journeys_flows(request: Request) -> Response:
                 node_meta[lid] = {
                     "location_id": lid,
                     "name": step["name"],
+                    "organisation_id": step.get("organisation_id"),
                     "lng": step["lng"],
                     "lat": step["lat"],
                 }

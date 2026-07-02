@@ -24,22 +24,19 @@ const NAV: NavEntry[] = [
     items: [
       { to: "/insights/map/venues", label: "Venues" },
       { to: "/insights/map/events", label: "Events" },
-      { to: "/insights/postcodes", label: "Postcodes" },
     ],
   },
   {
     label: "Exploration",
     items: [
-      { to: "/insights/journeys", label: "Visitor Activity" },
       { to: "/insights/journey-map", label: "Journey Map" },
-      { to: "/insights/postcode-areas", label: "Postcode Areas" },
+      { to: "/insights/postcode-areas/map", label: "Postcode Pathways" },
       { to: "/insights/trends", label: "Trends" },
     ],
   },
   {
     label: "Directory",
     items: [
-      { to: "/insights/organisations", label: "Organisations" },
       { to: "/insights/calendar", label: "Calendar" },
       { to: "/insights/help", label: "Help" },
     ],
@@ -47,6 +44,10 @@ const NAV: NavEntry[] = [
   {
     label: "Internal",
     items: [
+      { to: "/insights/journeys", label: "Visitor Activity", staff: true },
+      { to: "/insights/organisations", label: "Organisations", staff: true },
+      { to: "/insights/postcodes", label: "Postcodes (legacy)", staff: true },
+      { to: "/insights/postcode-areas", label: "Postcode Overview", end: true, staff: true },
       { to: "/insights/overview", label: "System Overview", staff: true },
       { to: "/insights/imports", label: "Imports", staff: true },
     ],
@@ -71,14 +72,15 @@ const BREADCRUMBS: Record<string, string[]> = (() => {
   out["/insights/v"] = ["Saved view"];
   out["/insights/map/venues"] = ["Maps", "Venues"];
   out["/insights/map/events"] = ["Maps", "Events"];
-  out["/insights/postcodes"] = ["Maps", "Postcodes"];
+  out["/insights/postcodes"] = ["Internal", "Postcodes (legacy)"];
   out["/insights/network"] = ["Exploration", "Network"];
   out["/insights/timecube"] = ["Exploration", "Event Timeline Map"];
-  out["/insights/journeys"] = ["Exploration", "Visitor Activity"];
+  out["/insights/journeys"] = ["Internal", "Visitor Activity"];
   out["/insights/journey-map"] = ["Exploration", "Journey Map"];
-  out["/insights/postcode-areas"] = ["Exploration", "Postcode Areas"];
+  out["/insights/postcode-areas"] = ["Internal", "Postcode Overview"];
+  out["/insights/postcode-areas/map"] = ["Exploration", "Postcode Pathways"];
   out["/insights/trends"] = ["Exploration", "Trends"];
-  out["/insights/organisations"] = ["Directory", "Organisations"];
+  out["/insights/organisations"] = ["Internal", "Organisations"];
   out["/insights/calendar"] = ["Directory", "Calendar"];
   out["/insights/help"] = ["Directory", "Help"];
   out["/insights/overview"] = ["Internal", "System Overview"];
@@ -288,6 +290,7 @@ function MainMenu({ nav, me }: { nav: NavEntry[]; me?: ReturnType<typeof useMe>[
                 <NavLink
                   key={item.to}
                   to={item.to}
+                  end={item.end}
                   role="menuitem"
                   className={({ isActive }) =>
                     "block px-3 py-1.5 text-sm hover:bg-border/40 " +

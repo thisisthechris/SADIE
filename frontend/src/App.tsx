@@ -23,7 +23,8 @@ const ViewResolver = lazy(() => import("./pages/ViewResolver"));
 const Imports = lazy(() => import("./pages/Imports"));
 const Journeys = lazy(() => import("./pages/Journeys"));
 const JourneyMap = lazy(() => import("./pages/JourneyMap"));
-const PostcodeAreas = lazy(() => import("./pages/PostcodeAreas"));
+const PostcodeAreasOverview = lazy(() => import("./pages/PostcodeAreasOverview"));
+const PostcodeAreasMap = lazy(() => import("./pages/PostcodeAreasMap"));
 
 const VizFallback = (
   <div className="card p-6 text-sm text-muted">Loading 3D viewer…</div>
@@ -97,7 +98,11 @@ export default function App() {
         />
         <Route
           path="postcode-areas"
-          element={<Suspense fallback={VizFallback}><PostcodeAreas /></Suspense>}
+          element={<Suspense fallback={VizFallback}><PostcodeAreasOverview /></Suspense>}
+        />
+        <Route
+          path="postcode-areas/map"
+          element={<Suspense fallback={VizFallback}><PostcodeAreasMap /></Suspense>}
         />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

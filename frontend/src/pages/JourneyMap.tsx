@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import { useQuery, useQueries } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { useFilters } from "../lib/filters";
-import { useConfig } from "../lib/auth";
+import { useConfig, useMe } from "../lib/auth";
 import Map2D, { type MapPoint, type MapPath } from "../viz/Map2D";
 import ExportMenu from "../components/ExportMenu";
 import InfoTooltip from "../components/InfoTooltip";
@@ -15,6 +15,7 @@ interface JourneyStep {
   location_id: number;
   name: string;
   organisation: string;
+  organisation_id: number | null;
   lng: number;
   lat: number;
   date: string | null;
@@ -37,6 +38,7 @@ interface JourneysPaths {
 interface FlowNode {
   location_id: number;
   name: string;
+  organisation_id?: number | null;
   lng: number;
   lat: number;
   visits: number;
@@ -100,8 +102,8 @@ function escapeHtml(s: string): string {
 
 export default function JourneyMap() {
   const f = useFilters();
-  const cfg = useConfig();
-  const key = cfg.data?.maptiler_api_key ?? "";
+  const cfg = useConfig();  const { data: me } = useMe();
+  const myOrgIds = new Set((me?.member_organisations ?? []).map((o) => o.id));  const key = cfg.data?.maptiler_api_key ?? "";
   const q = f.asQuery();
 
   const [mode, setMode] = useState<Mode>("flows");
@@ -212,6 +214,7 @@ export default function JourneyMap() {
       const nodeById = new Map(data.nodes.map((n) => [n.location_id, n]));
       const max = Math.max(...data.flows.map((r) => r.count), 1);
       for (const r of data.flows) {
+        if (r.count <= 3) continue;
         const a = nodeById.get(r.from_id);
         const b = nodeById.get(r.to_id);
         if (!a || !b) continue;
@@ -242,12 +245,14 @@ export default function JourneyMap() {
       lng: n.lng,
       lat: n.lat,
       weight: 1 + (n.visits / max) * 2,
-      color: "#1e3a8a",
+      color: n.organisation_id != null && myOrgIds.has(n.organisation_id)
+        ? "#ec4899"
+        : "#3b82f6",
       popupHtml: `<div class="text-xs"><div class="font-semibold">${escapeHtml(
         n.name,
       )}</div><div>${n.visits} visit${n.visits === 1 ? "" : "s"}</div></div>`,
     }));
-  }, [flows.data]);
+  }, [flows.data, myOrgIds]);
 
   // ── Individual visitors → coloured paths + step markers ──
   const journeys = paths.data?.journeys ?? [];
@@ -293,7 +298,9 @@ export default function JourneyMap() {
       lng: s.lng,
       lat: s.lat,
       weight: 1.4,
-      color: VISITOR_COLORS[0],
+      color: s.organisation_id != null && myOrgIds.has(s.organisation_id)
+        ? "#ec4899"
+        : VISITOR_COLORS[0],
       popupHtml: `<div class="text-xs"><div class="font-semibold">${
         i + 1
       }. ${escapeHtml(s.name)}</div>${
@@ -379,37 +386,61 @@ export default function JourneyMap() {
         />
       )}
 
-      {/* ── Map ── */}
-      {!key ? (
-        <div className="card p-6 text-sm text-muted">
-          MapTiler key missing — set{" "}
-          <code className="font-mono">MAPTILER_API_KEY</code> and restart the
-          web service.
-        </div>
-      ) : (
-        <div className="card overflow-hidden">
-          <Map2D
-            points={mapPoints}
-            paths={mapPaths}
-            maptilerKey={key}
-            showHeatmap={false}
-          />
-        </div>
-      )}
-
-      {/* ── Detail panels ── */}
+      {/* ── Map + Top Pathways side-by-side (flows), full-width (visitors) ── */}
       {mode === "flows" ? (
-        <FlowsTable flows={flows.data?.flows ?? []} loading={flows.isLoading} />
-      ) : activeVisitor ? (
-        <VisitorSteps journey={activeVisitor} />
-      ) : (
-        <div className="text-xs text-muted">
-          {paths.isLoading
-            ? "Loading visitor journeys…"
-            : journeys.length
-              ? `Showing ${journeys.length} visitor journeys. Select one above to see its stops.`
-              : "No multi-stop visitor journeys for the current filters."}
+        <div className="flex gap-4 items-start">
+          <div className="flex-1 min-w-0">
+            {!key ? (
+              <div className="card p-6 text-sm text-muted">
+                MapTiler key missing — set{" "}
+                <code className="font-mono">MAPTILER_API_KEY</code> and restart the
+                web service.
+              </div>
+            ) : (
+              <div className="card overflow-hidden">
+                <Map2D
+                  points={mapPoints}
+                  paths={mapPaths}
+                  maptilerKey={key}
+                  showHeatmap={false}
+                />
+              </div>
+            )}
+          </div>
+          <div className="w-80 shrink-0 max-h-[70vh] overflow-y-auto">
+            <FlowsTable flows={flows.data?.flows ?? []} loading={flows.isLoading} />
+          </div>
         </div>
+      ) : (
+        <>
+          {!key ? (
+            <div className="card p-6 text-sm text-muted">
+              MapTiler key missing — set{" "}
+              <code className="font-mono">MAPTILER_API_KEY</code> and restart the
+              web service.
+            </div>
+          ) : (
+            <div className="card overflow-hidden">
+              <Map2D
+                points={mapPoints}
+                paths={mapPaths}
+                maptilerKey={key}
+                showHeatmap={false}
+              />
+            </div>
+          )}
+          {activeVisitor ? (
+            <VisitorSteps journey={activeVisitor} />
+          ) : (
+            <div className="text-xs text-muted">
+              {paths.isLoading
+                ? "Loading visitor journeys…"
+                : journeys.length
+                  ? `Showing ${journeys.length} visitor journeys. Select one above to see its stops.`
+                  : "No multi-stop visitor journeys for the current filters."}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
