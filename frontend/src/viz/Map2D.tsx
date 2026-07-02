@@ -35,16 +35,51 @@ export interface MapPath {
   popupHtml?: string;
 }
 
+/**
+ * A GeoJSON FeatureCollection of area polygons (e.g. postcode-district
+ * boundaries). Per-feature `properties` may carry `color`, `fillOpacity`,
+ * `selected`, `code` and `popupHtml` to drive styling/interaction.
+ */
+export type AreaFeatureCollection = {
+  type: "FeatureCollection";
+  features: Array<{
+    type: "Feature";
+    geometry: { type: "Polygon" | "MultiPolygon"; coordinates: unknown };
+    properties: Record<string, unknown>;
+  }>;
+};
+
+/**
+ * A GeoJSON FeatureCollection of transport corridors. Line/MultiLine features
+ * are drawn as corridors; Point features are drawn as markers (e.g. park &
+ * ride sites). Per-feature `properties` may carry `color`, `width`, `opacity`
+ * and `popupHtml`.
+ */
+export type CorridorFeatureCollection = {
+  type: "FeatureCollection";
+  features: Array<{
+    type: "Feature";
+    geometry: { type: string; coordinates: unknown };
+    properties: Record<string, unknown>;
+  }>;
+};
+
 interface Props {
   points: MapPoint[];
   heatmapPoints?: HeatmapPoint[];
   /** Optional polylines (journey paths, venue→venue flows). */
   paths?: MapPath[];
+  /** Optional filled area polygons (postcode-district boundaries). */
+  areaPolygons?: AreaFeatureCollection;
+  /** Optional public-transport corridors (lines) + markers (points). */
+  corridors?: CorridorFeatureCollection;
   centre?: [number, number];
   zoom?: number;
   height?: string;
   maptilerKey: string;
   onMapReady?: (m: maplibregl.Map) => void;
+  /** Called with a polygon's `code` property when an area is clicked. */
+  onAreaClick?: (code: string) => void;
   /** Default circle colour when a point doesn't specify one. */
   defaultColor?: string;
   /** Show heatmap layer (default true if heatmapPoints provided) */
@@ -53,6 +88,10 @@ interface Props {
   showPoints?: boolean;
   /** Show graduated bubble layer (proportional symbols) for clustered data */
   showClusters?: boolean;
+  /** Show area polygon fill/outline layers (default true) */
+  showAreas?: boolean;
+  /** Show transport corridor line/marker layers (default true) */
+  showCorridors?: boolean;
 }
 
 const SOURCE_ID = "map2d-points";
@@ -63,6 +102,12 @@ const CLUSTER_CIRCLE_LAYER_ID = "map2d-cluster-circles";
 const CLUSTER_LABEL_LAYER_ID = "map2d-cluster-labels";
 const PATH_SOURCE_ID = "map2d-paths";
 const PATH_LAYER_ID = "map2d-paths-lines";
+const AREA_SOURCE_ID = "map2d-areas";
+const AREA_FILL_LAYER_ID = "map2d-areas-fill";
+const AREA_LINE_LAYER_ID = "map2d-areas-line";
+const CORRIDOR_SOURCE_ID = "map2d-corridors";
+const CORRIDOR_LINE_LAYER_ID = "map2d-corridors-line";
+const CORRIDOR_POINT_LAYER_ID = "map2d-corridors-points";
 
 /**
  * Lightweight MapLibre + GeoJSON visualization supporting both circle pins and heatmap layers.
@@ -72,20 +117,28 @@ export default function Map2D({
   points,
   heatmapPoints,
   paths,
+  areaPolygons,
+  corridors,
   centre = [-4.142, 50.371],
   zoom = 11,
   height = "70vh",
   maptilerKey,
   onMapReady,
+  onAreaClick,
   defaultColor = "#60a5fa",
   showHeatmap = true,
   showPoints = true,
   showClusters = false,
+  showAreas = true,
+  showCorridors = true,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const popupRef = useRef<maplibregl.Popup | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
+  // Keep the latest onAreaClick without re-creating the map (empty-deps effect).
+  const onAreaClickRef = useRef(onAreaClick);
+  onAreaClickRef.current = onAreaClick;
 
   useEffect(() => {
     console.warn("[Map2D] Map useEffect called");
@@ -109,6 +162,68 @@ export default function Map2D({
     const loadHandler = () => {
       console.warn("[Map2D] Map load event fired");
       try {
+        // ── Area polygons (postcode districts) — added first so they sit at
+        // the bottom of the stack, beneath corridors, flows and pins. ──
+        map.addSource(AREA_SOURCE_ID, {
+          type: "geojson",
+          data: { type: "FeatureCollection", features: [] },
+        });
+        map.addLayer({
+          id: AREA_FILL_LAYER_ID,
+          type: "fill",
+          source: AREA_SOURCE_ID,
+          layout: { "visibility": "visible" },
+          paint: {
+            "fill-color": ["coalesce", ["get", "color"], defaultColor],
+            "fill-opacity": ["coalesce", ["get", "fillOpacity"], 0.3],
+          },
+        });
+        map.addLayer({
+          id: AREA_LINE_LAYER_ID,
+          type: "line",
+          source: AREA_SOURCE_ID,
+          layout: { "visibility": "visible", "line-join": "round" },
+          paint: {
+            "line-color": ["coalesce", ["get", "color"], "#334155"],
+            "line-width": ["case", ["boolean", ["get", "selected"], false], 3.5, 1],
+            "line-opacity": 0.9,
+          },
+        });
+        console.warn("[Map2D] Added area layers");
+
+        // ── Public-transport corridors: lines for routes, circles for P&R. ──
+        map.addSource(CORRIDOR_SOURCE_ID, {
+          type: "geojson",
+          data: { type: "FeatureCollection", features: [] },
+        });
+        map.addLayer({
+          id: CORRIDOR_LINE_LAYER_ID,
+          type: "line",
+          source: CORRIDOR_SOURCE_ID,
+          filter: ["!=", ["geometry-type"], "Point"],
+          layout: { "visibility": "visible", "line-cap": "round", "line-join": "round" },
+          paint: {
+            "line-color": ["coalesce", ["get", "color"], "#0ea5e9"],
+            "line-width": ["coalesce", ["get", "width"], 2.5],
+            "line-opacity": ["coalesce", ["get", "opacity"], 0.85],
+          },
+        });
+        map.addLayer({
+          id: CORRIDOR_POINT_LAYER_ID,
+          type: "circle",
+          source: CORRIDOR_SOURCE_ID,
+          filter: ["==", ["geometry-type"], "Point"],
+          layout: { "visibility": "visible" },
+          paint: {
+            "circle-radius": 6,
+            "circle-color": ["coalesce", ["get", "color"], "#f59e0b"],
+            "circle-opacity": 0.95,
+            "circle-stroke-width": 2,
+            "circle-stroke-color": "#fff",
+          },
+        });
+        console.warn("[Map2D] Added corridor layers");
+
         // Path source + line layer for journeys / flows. Added before the
         // point layers so pins render on top of the lines.
         map.addSource(PATH_SOURCE_ID, {
@@ -386,6 +501,47 @@ export default function Map2D({
           popup.remove();
         });
 
+        // Hover + click for area polygons.
+        map.on("mousemove", AREA_FILL_LAYER_ID, (e) => {
+          map.getCanvas().style.cursor = "pointer";
+          const html = (e.features?.[0]?.properties as any)?.popupHtml;
+          if (html) popup.setLngLat(e.lngLat).setHTML(html).addTo(map);
+        });
+        map.on("mouseleave", AREA_FILL_LAYER_ID, () => {
+          map.getCanvas().style.cursor = "";
+          popup.remove();
+        });
+        map.on("click", AREA_FILL_LAYER_ID, (e) => {
+          const code = (e.features?.[0]?.properties as any)?.code;
+          if (code != null) onAreaClickRef.current?.(String(code));
+        });
+
+        // Hover tooltips for corridor lines.
+        map.on("mousemove", CORRIDOR_LINE_LAYER_ID, (e) => {
+          map.getCanvas().style.cursor = "pointer";
+          const html = (e.features?.[0]?.properties as any)?.popupHtml;
+          if (html) popup.setLngLat(e.lngLat).setHTML(html).addTo(map);
+        });
+        map.on("mouseleave", CORRIDOR_LINE_LAYER_ID, () => {
+          map.getCanvas().style.cursor = "";
+          popup.remove();
+        });
+
+        // Hover tooltips for corridor markers (park & ride sites).
+        map.on("mouseenter", CORRIDOR_POINT_LAYER_ID, (e) => {
+          map.getCanvas().style.cursor = "pointer";
+          const f = e.features?.[0];
+          const html = (f?.properties as any)?.popupHtml;
+          if (html && f) {
+            const c = (f.geometry as any).coordinates as [number, number];
+            popup.setLngLat(c).setHTML(html).addTo(map);
+          }
+        });
+        map.on("mouseleave", CORRIDOR_POINT_LAYER_ID, () => {
+          map.getCanvas().style.cursor = "";
+          popup.remove();
+        });
+
         console.warn("[Map2D] Initialization complete, setting mapLoaded");
         setMapLoaded(true);
         onMapReady?.(map);
@@ -503,6 +659,86 @@ export default function Map2D({
       if (retryTimeout) clearTimeout(retryTimeout);
     };
   }, [paths, mapLoaded]);
+
+  // Push area polygons -> area source whenever they change.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded) return;
+
+    let retryTimeout: ReturnType<typeof setTimeout> | null = null;
+    let active = true;
+
+    const apply = () => {
+      if (!active || !mapRef.current) return;
+      try {
+        const src = mapRef.current.getSource(AREA_SOURCE_ID) as
+          | maplibregl.GeoJSONSource
+          | undefined;
+        if (!src) {
+          retryTimeout = setTimeout(apply, 100);
+          return;
+        }
+        src.setData(
+          (areaPolygons ?? { type: "FeatureCollection", features: [] }) as any,
+        );
+        const vis = showAreas ? "visible" : "none";
+        for (const id of [AREA_FILL_LAYER_ID, AREA_LINE_LAYER_ID]) {
+          if (mapRef.current.getLayer(id)) {
+            mapRef.current.setLayoutProperty(id, "visibility", vis);
+          }
+        }
+      } catch (err) {
+        console.error("[Map2D] Error applying areas:", err);
+      }
+    };
+
+    apply();
+
+    return () => {
+      active = false;
+      if (retryTimeout) clearTimeout(retryTimeout);
+    };
+  }, [areaPolygons, mapLoaded, showAreas]);
+
+  // Push transport corridors -> corridor source whenever they change.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded) return;
+
+    let retryTimeout: ReturnType<typeof setTimeout> | null = null;
+    let active = true;
+
+    const apply = () => {
+      if (!active || !mapRef.current) return;
+      try {
+        const src = mapRef.current.getSource(CORRIDOR_SOURCE_ID) as
+          | maplibregl.GeoJSONSource
+          | undefined;
+        if (!src) {
+          retryTimeout = setTimeout(apply, 100);
+          return;
+        }
+        src.setData(
+          (corridors ?? { type: "FeatureCollection", features: [] }) as any,
+        );
+        const vis = showCorridors ? "visible" : "none";
+        for (const id of [CORRIDOR_LINE_LAYER_ID, CORRIDOR_POINT_LAYER_ID]) {
+          if (mapRef.current.getLayer(id)) {
+            mapRef.current.setLayoutProperty(id, "visibility", vis);
+          }
+        }
+      } catch (err) {
+        console.error("[Map2D] Error applying corridors:", err);
+      }
+    };
+
+    apply();
+
+    return () => {
+      active = false;
+      if (retryTimeout) clearTimeout(retryTimeout);
+    };
+  }, [corridors, mapLoaded, showCorridors]);
 
   // Push heatmap points -> heatmap source whenever they change.
   useEffect(() => {

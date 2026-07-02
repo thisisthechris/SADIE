@@ -32,7 +32,13 @@ export interface TimelineSliderProps {
   /** When provided, the window handle displays a left-to-right linear gradient
    *  using these colours (ordered from earliest to latest bucket). */
   gradientColors?: string[];
+  /** Timestamps (ms) of data points. When provided, the track shows a density
+   *  strip highlighting where along the timeline data exists. */
+  dataTimestamps?: number[];
 }
+
+// Resolution of the data-density histogram drawn behind the track.
+const DENSITY_BINS = 100;
 
 export function TimelineSlider({
   minMs,
@@ -43,6 +49,7 @@ export function TimelineSlider({
   onWindowChange,
   countLabel,
   gradientColors,
+  dataTimestamps,
 }: TimelineSliderProps) {
   const trackRef = useRef<HTMLDivElement>(null);
   const totalDays = Math.max(1, Math.ceil((maxMs - minMs) / 86_400_000));
@@ -160,6 +167,21 @@ export function TimelineSlider({
   const startMs = minMs + offsetDays * 86_400_000;
   const endMs = startMs + windowDays * 86_400_000;
 
+  // Normalised data-density per bin (0–1) across the full min→max range.
+  const densityBins = useMemo(() => {
+    if (!dataTimestamps?.length) return [] as number[];
+    const span = maxMs - minMs || 1;
+    const counts = new Array(DENSITY_BINS).fill(0);
+    for (const t of dataTimestamps) {
+      const frac = (t - minMs) / span;
+      if (frac < 0 || frac > 1) continue;
+      const idx = Math.min(DENSITY_BINS - 1, Math.floor(frac * DENSITY_BINS));
+      counts[idx]++;
+    }
+    const max = Math.max(...counts, 1);
+    return counts.map((c: number) => c / max);
+  }, [dataTimestamps, minMs, maxMs]);
+
   const stepOffset = (delta: number) => {
     onOffsetChange(Math.max(0, Math.min(maxOffset, offsetDays + delta)));
   };
@@ -237,6 +259,22 @@ export function TimelineSlider({
             onPointerUp={onTrackPointerUp}
             onPointerLeave={onTrackPointerUp}
           >
+            {/* Data-density strip: taller/brighter bars where more data exists. */}
+            {densityBins.map((d, i) =>
+              d > 0 ? (
+                <div
+                  key={`d${i}`}
+                  className="absolute bottom-0 bg-accent pointer-events-none"
+                  style={{
+                    left: `${(i / DENSITY_BINS) * 100}%`,
+                    width: `${100 / DENSITY_BINS}%`,
+                    height: `${25 + d * 75}%`,
+                    opacity: 0.15 + d * 0.35,
+                  }}
+                />
+              ) : null,
+            )}
+
             {ticks.map((t) => (
               <div
                 key={t.label}

@@ -1,1 +1,8 @@
 ruff==0.15.4
+
+# GIS data assembly (scripts/gis/) — see scripts/gis/README.md
+# requests: required for both builders (Overpass + boundary download)
+requests==2.32.3
+# geopandas/shapely: optional — only for ODL shapefile input or --tolerance
+geopandas==1.0.1
+shapely==2.0.6

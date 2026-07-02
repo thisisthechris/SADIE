@@ -30,8 +30,6 @@ const NAV: NavEntry[] = [
   {
     label: "Exploration",
     items: [
-      { to: "/insights/network", label: "Network" },
-      { to: "/insights/timecube", label: "Event Timeline Map" },
       { to: "/insights/journeys", label: "Visitor Activity" },
       { to: "/insights/journey-map", label: "Journey Map" },
       { to: "/insights/postcode-areas", label: "Postcode Areas" },

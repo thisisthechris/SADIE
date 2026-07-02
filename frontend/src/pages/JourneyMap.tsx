@@ -66,7 +66,29 @@ const VISITOR_COLORS = [
 ];
 
 const N_BUCKETS = 6;
-const BUCKET_HUES = [0, 30, 60, 120, 210, 270]; // red→orange→yellow→green→blue→violet
+
+// Plymouth Culture brand gradient endpoints (earliest → latest bucket).
+const BRAND_EARLY = "#001FCC"; // primary blue
+const BRAND_LATE = "#f73d85"; // pink
+
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace("#", "");
+  return [
+    parseInt(h.slice(0, 2), 16),
+    parseInt(h.slice(2, 4), 16),
+    parseInt(h.slice(4, 6), 16),
+  ];
+}
+
+/** Linear RGB interpolation between two hex colours; t in [0, 1]. */
+function lerpColor(a: string, b: string, t: number): string {
+  const [ar, ag, ab] = hexToRgb(a);
+  const [br, bg, bb] = hexToRgb(b);
+  const r = Math.round(ar + (br - ar) * t);
+  const g = Math.round(ag + (bg - ag) * t);
+  const bl = Math.round(ab + (bb - ab) * t);
+  return `rgb(${r}, ${g}, ${bl})`;
+}
 
 function escapeHtml(s: string): string {
   return s
@@ -101,16 +123,20 @@ export default function JourneyMap() {
   });
 
   // Derive date range from all loaded step dates.
-  const dateTimes = useMemo(() => {
+  const stepTimestamps = useMemo(() => {
     const ts: number[] = [];
     for (const j of paths.data?.journeys ?? []) {
       for (const s of j.steps) {
         if (s.date) ts.push(new Date(s.date).getTime());
       }
     }
-    if (!ts.length) return null;
-    return { min: Math.min(...ts), max: Math.max(...ts) };
+    return ts;
   }, [paths.data]);
+
+  const dateTimes = useMemo(() => {
+    if (!stepTimestamps.length) return null;
+    return { min: Math.min(...stepTimestamps), max: Math.max(...stepTimestamps) };
+  }, [stepTimestamps]);
 
   // Initialise timeline centred on the most recent data when first loaded.
   useEffect(() => {
@@ -148,8 +174,8 @@ export default function JourneyMap() {
     enabled: mode === "flows",
   });
 
-  // ── Rainbow buckets: divide the window into N slices, each a different hue ──
-  // Hue sweeps red→violet (0°→270°) as time moves from start to end.
+  // ── Brand buckets: divide the window into N slices, each a brand-gradient step ──
+  // Colour ramps blue→pink as time moves from start to end.
 
   const buckets = useMemo(() => {
     if (!dateTimes) return [];
@@ -159,7 +185,7 @@ export default function JourneyMap() {
     return Array.from({ length: N_BUCKETS }, (_, i) => ({
       dfrom: msToDateStr(Math.round(startMs + i * sliceMs)),
       dto: msToDateStr(Math.round(startMs + (i + 1) * sliceMs)),
-      color: `hsl(${BUCKET_HUES[i]}, 85%, 52%)`,
+      color: lerpColor(BRAND_EARLY, BRAND_LATE, i / (N_BUCKETS - 1)),
     }));
   }, [dateTimes, offsetDays, windowDays]);
 
@@ -349,6 +375,7 @@ export default function JourneyMap() {
           onWindowChange={setWindowDays}
           countLabel={`${flows.data?.flow_count ?? 0} flows · ${flows.data?.node_count ?? 0} venues`}
           gradientColors={buckets.map((b) => b.color)}
+          dataTimestamps={stepTimestamps}
         />
       )}
 

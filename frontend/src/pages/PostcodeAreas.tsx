@@ -5,13 +5,33 @@ import { useFilters } from "../lib/filters";
 import { useConfig } from "../lib/auth";
 import ExportMenu from "../components/ExportMenu";
 import { downloadCsv } from "../lib/export";
-import Map2D, { type MapPoint, type MapPath } from "../viz/Map2D";
+import Map2D, {
+  type MapPoint,
+  type MapPath,
+  type AreaFeatureCollection,
+  type CorridorFeatureCollection,
+} from "../viz/Map2D";
 
 // One distinct colour per postcode district (cycles if >10).
 const DISTRICT_COLORS = [
   "#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4",
   "#3b82f6", "#8b5cf6", "#ec4899", "#14b8a6", "#f59e0b",
 ];
+
+// Colour per public-transport mode (kept in sync with the map legend).
+const MODE_COLORS: Record<string, string> = {
+  bus: "#0ea5e9",
+  rail: "#7c3aed",
+  ferry: "#0891b2",
+  park_ride: "#f59e0b",
+};
+
+const MODE_LABELS: Record<string, string> = {
+  bus: "Bus",
+  rail: "Rail",
+  ferry: "Ferry",
+  park_ride: "Park & Ride",
+};
 
 function districtColor(districts: District[], code: string): string {
   const idx = districts.findIndex((d) => d.code === code);
@@ -86,6 +106,12 @@ export default function PostcodeAreas() {
   const q = f.asQuery();
   const [selected, setSelected] = useState<string | null>(null);
   const [pageMode, setPageMode] = useState<PageMode>("overview");
+  const [layers, setLayers] = useState({
+    areas: true,
+    corridors: true,
+    flows: true,
+    venues: true,
+  });
 
   // All districts (no district param = summary only)
   const summary = useQuery({
@@ -134,6 +160,87 @@ export default function PostcodeAreas() {
     staleTime: 5 * 60_000,
   });
 
+  // Static GIS layers (served from frontend/public/data). These are assembled
+  // as a GIS data project — real PL district boundaries + Plymouth transport
+  // corridors — and loaded client-side for now.
+  const boundariesQuery = useQuery<AreaFeatureCollection>({
+    queryKey: ["geojson", "pl-postcode-districts"],
+    queryFn: async () => {
+      const res = await fetch("/data/pl-postcode-districts.geojson");
+      if (!res.ok) throw new Error("Failed to load postcode boundaries");
+      return res.json();
+    },
+    enabled: pageMode === "map",
+    staleTime: Infinity,
+  });
+
+  const corridorsQuery = useQuery<CorridorFeatureCollection>({
+    queryKey: ["geojson", "plymouth-pt-corridors"],
+    queryFn: async () => {
+      const res = await fetch("/data/plymouth-pt-corridors.geojson");
+      if (!res.ok) throw new Error("Failed to load transport corridors");
+      return res.json();
+    },
+    enabled: pageMode === "map",
+    staleTime: Infinity,
+  });
+
+  // Merge interaction totals into the boundary polygons: distinct district
+  // colour, fill opacity scaled by activity, selection outline + popup.
+  const areaPolygons = useMemo<AreaFeatureCollection | undefined>(() => {
+    const fc = boundariesQuery.data;
+    if (!fc?.features) return undefined;
+    const totalByCode = new Map(districts.map((d) => [d.code, d.total]));
+    const maxTotal = Math.max(...districts.map((d) => d.total), 1);
+    return {
+      type: "FeatureCollection",
+      features: fc.features.map((ft) => {
+        const props = (ft.properties ?? {}) as Record<string, unknown>;
+        const code = String(props.district ?? props.code ?? "");
+        const name = props.name ? String(props.name) : "";
+        const total = totalByCode.get(code) ?? 0;
+        return {
+          ...ft,
+          properties: {
+            ...props,
+            code,
+            total,
+            color: districtColor(districts, code),
+            selected: selected === code,
+            fillOpacity: 0.2 + 0.55 * (total / maxTotal),
+            popupHtml: `<div class="text-xs"><div class="font-semibold">${escHtml(code)}${name ? ` · ${escHtml(name)}` : ""}</div><div>${total.toLocaleString()} interactions</div></div>`,
+          },
+        };
+      }),
+    };
+  }, [boundariesQuery.data, districts, selected]);
+
+  // Colour corridors by mode + attach hover tooltips.
+  const corridors = useMemo<CorridorFeatureCollection | undefined>(() => {
+    const fc = corridorsQuery.data;
+    if (!fc?.features) return undefined;
+    return {
+      type: "FeatureCollection",
+      features: fc.features.map((ft) => {
+        const props = (ft.properties ?? {}) as Record<string, unknown>;
+        const mode = String(props.mode ?? "bus");
+        const label = MODE_LABELS[mode] ?? mode;
+        const name = String(props.name ?? props.ref ?? label);
+        const isPoint = ft.geometry?.type === "Point";
+        return {
+          ...ft,
+          properties: {
+            ...props,
+            color: MODE_COLORS[mode] ?? "#0ea5e9",
+            width: mode === "rail" ? 3 : 2.5,
+            opacity: 0.85,
+            popupHtml: `<div class="text-xs"><div class="font-semibold">${escHtml(name)}</div><div>${escHtml(label)}${isPoint ? " site" : ""}</div></div>`,
+          },
+        };
+      }),
+    };
+  }, [corridorsQuery.data]);
+
   // Build Map2D data: venue→venue paths + postcode origin circles
   const { mapPaths, mapPoints } = useMemo(() => {
     const pcd = postcodeNodesQuery.data;
@@ -176,29 +283,16 @@ export default function PostcodeAreas() {
       }
     }
 
-    // Points: postcode origin circles + venue pins
-    const allNodes = pcd?.postcode_nodes ?? [];
-    const maxTotal = Math.max(...allNodes.map((n) => n.total), 1);
-    const points: MapPoint[] = [
-      ...allNodes
-        .filter((n) => !selected || n.code === selected)
-        .map((n) => ({
-          id: `pc-${n.code}`,
-          lng: n.lng,
-          lat: n.lat,
-          weight: 1 + (n.total / maxTotal) * 3,
-          color: districtColor(allNodes, n.code),
-          popupHtml: `<div class="text-xs font-semibold">${escHtml(n.code)}</div><div class="text-xs">${n.total.toLocaleString()} interactions</div>`,
-        })),
-      ...(vfd?.nodes ?? []).map((v) => ({
-        id: `venue-${v.location_id}`,
-        lng: v.lng,
-        lat: v.lat,
-        weight: 1,
-        color: "#1e293b",
-        popupHtml: `<div class="text-xs font-semibold">${escHtml(v.name)}</div>`,
-      })),
-    ];
+    // Points: venue pins only. Postcode districts are now drawn as filled
+    // polygons (areaPolygons) rather than centroid circles.
+    const points: MapPoint[] = (vfd?.nodes ?? []).map((v) => ({
+      id: `venue-${v.location_id}`,
+      lng: v.lng,
+      lat: v.lat,
+      weight: 1,
+      color: "#1e293b",
+      popupHtml: `<div class="text-xs font-semibold">${escHtml(v.name)}</div>`,
+    }));
 
     return { mapPaths: paths, mapPoints: points };
   }, [postcodeNodesQuery.data, venueFlowsQuery.data, selected]);
@@ -389,14 +483,67 @@ export default function PostcodeAreas() {
               MapTiler key missing — set <code className="font-mono">MAPTILER_API_KEY</code>.
             </div>
           ) : (
-            <div className="card overflow-hidden">
-              <Map2D
-                points={mapPoints}
-                paths={mapPaths}
-                maptilerKey={mapKey}
-                showHeatmap={false}
-              />
-            </div>
+            <>
+              {/* Layer toggles */}
+              <div className="card p-3 flex flex-wrap items-center gap-x-5 gap-y-2">
+                <span className="text-xs font-medium text-muted uppercase tracking-wide">
+                  Layers
+                </span>
+                {([
+                  ["areas", "Postcode areas"],
+                  ["corridors", "Transport corridors"],
+                  ["flows", "Venue pathways"],
+                  ["venues", "Venues"],
+                ] as const).map(([key, label]) => (
+                  <label
+                    key={key}
+                    className="inline-flex items-center gap-1.5 text-sm cursor-pointer select-none"
+                  >
+                    <input
+                      type="checkbox"
+                      className="accent-accent"
+                      checked={layers[key]}
+                      onChange={(e) =>
+                        setLayers((s) => ({ ...s, [key]: e.target.checked }))
+                      }
+                    />
+                    {label}
+                  </label>
+                ))}
+                {/* Transport mode legend */}
+                <div className="flex flex-wrap items-center gap-3 ml-auto">
+                  {Object.entries(MODE_LABELS).map(([mode, label]) => (
+                    <span
+                      key={mode}
+                      className="inline-flex items-center gap-1.5 text-xs text-muted"
+                    >
+                      <span
+                        className="w-3.5 h-1 rounded-full"
+                        style={{ background: MODE_COLORS[mode] }}
+                      />
+                      {label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="card overflow-hidden">
+                <Map2D
+                  points={mapPoints}
+                  paths={layers.flows ? mapPaths : []}
+                  areaPolygons={areaPolygons}
+                  corridors={corridors}
+                  maptilerKey={mapKey}
+                  showHeatmap={false}
+                  showPoints={layers.venues}
+                  showAreas={layers.areas}
+                  showCorridors={layers.corridors}
+                  onAreaClick={(code) =>
+                    setSelected((cur) => (cur === code ? null : code))
+                  }
+                />
+              </div>
+            </>
           )}
 
           {/* District colour legend */}
@@ -427,7 +574,7 @@ export default function PostcodeAreas() {
                 ))}
               </div>
               <p className="text-xs text-muted pt-1">
-                Coloured circles show visitor origin areas · Blue lines show common venue-to-venue pathways · Click a district to highlight it
+                Shaded areas show visitor origin districts (darker = busier) · Coloured lines show Plymouth public-transport corridors · Blue arrows show common venue-to-venue pathways · Click an area to highlight it
               </p>
             </div>
           )}
