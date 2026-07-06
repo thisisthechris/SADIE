@@ -31,6 +31,7 @@ const NAV: NavEntry[] = [
     items: [
       { to: "/insights/journey-map", label: "Journey Map" },
       { to: "/insights/postcode-areas/map", label: "Postcode Pathways" },
+      { to: "/insights/org-connections", label: "Org Connections" },
       { to: "/insights/trends", label: "Trends" },
     ],
   },
@@ -79,6 +80,7 @@ const BREADCRUMBS: Record<string, string[]> = (() => {
   out["/insights/journey-map"] = ["Exploration", "Journey Map"];
   out["/insights/postcode-areas"] = ["Internal", "Postcode Overview"];
   out["/insights/postcode-areas/map"] = ["Exploration", "Postcode Pathways"];
+  out["/insights/org-connections"] = ["Exploration", "Org Connections"];
   out["/insights/trends"] = ["Exploration", "Trends"];
   out["/insights/organisations"] = ["Internal", "Organisations"];
   out["/insights/calendar"] = ["Directory", "Calendar"];

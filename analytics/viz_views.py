@@ -860,3 +860,97 @@ def journeys_flows(request: Request) -> Response:
             "geojson": {"type": "FeatureCollection", "features": features},
         }
     )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticatedOrReadOnly])
+def org_connections(request: Request) -> Response:
+    """Organisation-to-organisation shared-visitor flow graph on a map.
+
+    For each visitor journey, every pair of distinct organisations visited
+    produces an edge weighted by the number of visitors who made that
+    cross-org transition (direction: first → second in visit order).
+    Organisation positions are the centroid of their venue lat/lngs.
+
+    Intended to power the "Org Connections" map — nodes are placed at their
+    geographic centroid so pathways can be drawn on a real map.
+    Honours the standard FilterBar params.
+    """
+    p = parse_filter_params(request)
+
+    sequences = _visitor_sequences(p, max_visitors=1_000_000, max_steps=200)
+
+    # org_id → accumulated centroid + visit count
+    org_lat: dict[int, float] = {}
+    org_lng: dict[int, float] = {}
+    org_venue_count: dict[int, int] = {}
+    org_visit_count: dict[int, int] = {}
+    org_name: dict[int, str] = {}
+
+    # org-pair edges: (src_org_id, dst_org_id) → shared visitor count
+    edges: dict[tuple[int, int], int] = {}
+
+    for _hash, steps in sequences:
+        seen_orgs_this_visit: list[int] = []
+        for step in steps:
+            oid = step.get("organisation_id")
+            if not oid:
+                continue
+            # Accumulate centroid from each venue visit
+            lat, lng = step["lat"], step["lng"]
+            org_lat[oid] = org_lat.get(oid, 0.0) + lat
+            org_lng[oid] = org_lng.get(oid, 0.0) + lng
+            org_venue_count[oid] = org_venue_count.get(oid, 0) + 1
+            org_visit_count[oid] = org_visit_count.get(oid, 0) + 1
+            if step.get("organisation"):
+                org_name[oid] = step["organisation"]
+            seen_orgs_this_visit.append(oid)
+
+        # Build directed org→org edges for each consecutive distinct-org pair
+        prev_org: int | None = None
+        for oid in seen_orgs_this_visit:
+            if prev_org is not None and prev_org != oid:
+                key = (prev_org, oid)
+                edges[key] = edges.get(key, 0) + 1
+            prev_org = oid
+
+    # Build node list with centroid positions
+    nodes = []
+    for oid, name in org_name.items():
+        count = org_venue_count.get(oid, 1)
+        nodes.append(
+            {
+                "id": oid,
+                "name": name,
+                "lat": org_lat[oid] / count,
+                "lng": org_lng[oid] / count,
+                "visit_count": org_visit_count.get(oid, 0),
+            }
+        )
+    nodes.sort(key=lambda n: n["visit_count"], reverse=True)
+
+    node_meta = {n["id"]: n for n in nodes}
+    flows = []
+    for (src, dst), count in edges.items():
+        if src not in node_meta or dst not in node_meta:
+            continue
+        flows.append(
+            {
+                "from_id": src,
+                "from_name": node_meta[src]["name"],
+                "to_id": dst,
+                "to_name": node_meta[dst]["name"],
+                "shared_visitors": count,
+            }
+        )
+    flows.sort(key=lambda r: r["shared_visitors"], reverse=True)
+
+    return Response(
+        {
+            "filters": p,
+            "node_count": len(nodes),
+            "flow_count": len(flows),
+            "nodes": nodes,
+            "flows": flows,
+        }
+    )
