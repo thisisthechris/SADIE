@@ -304,8 +304,6 @@ export default function JourneyMap() {
       popupHtml: `<div class="text-xs"><div class="font-semibold">${
         i + 1
       }. ${escapeHtml(s.name)}</div>${
-        s.date ? `<div>${escapeHtml(s.date)}</div>` : ""
-      }${
         s.event_title
           ? `<div class="text-muted">${escapeHtml(s.event_title)}</div>`
           : ""
@@ -514,7 +512,7 @@ function VisitorSteps({ journey }: { journey: VisitorJourney }) {
             <div className="pb-1">
               <div className="text-sm font-medium">{s.name}</div>
               <div className="text-xs text-muted">
-                {[s.organisation, s.date].filter(Boolean).join(" · ")}
+                {s.organisation}
               </div>
               {s.event_title && (
                 <div className="text-xs text-muted">{s.event_title}</div>

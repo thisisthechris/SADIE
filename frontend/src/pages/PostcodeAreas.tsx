@@ -108,9 +108,9 @@ export default function PostcodeAreas() {
   const [pageMode, setPageMode] = useState<PageMode>("overview");
   const [layers, setLayers] = useState({
     areas: true,
-    corridors: true,
-    flows: true,
-    venues: true,
+    corridors: false,
+    flows: false,
+    venues: false,
   });
 
   // All districts (no district param = summary only)

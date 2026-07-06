@@ -37,9 +37,9 @@ export default function PostcodeAreasMap() {
 
   const [layers, setLayers] = useState({
     areas: true,
-    corridors: true,
-    flows: true,
-    venues: true,
+    corridors: false,
+    flows: false,
+    venues: false,
   });
 
   // District summary — needed to merge totals into polygon colours.
