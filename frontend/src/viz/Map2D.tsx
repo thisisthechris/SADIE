@@ -92,6 +92,8 @@ interface Props {
   showAreas?: boolean;
   /** Show transport corridor line/marker layers (default true) */
   showCorridors?: boolean;
+  /** Show direction arrows on path/flow lines (default true) */
+  showArrows?: boolean;
 }
 
 const SOURCE_ID = "map2d-points";
@@ -131,6 +133,7 @@ export default function Map2D({
   showClusters = false,
   showAreas = true,
   showCorridors = true,
+  showArrows = true,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -303,10 +306,10 @@ export default function Map2D({
             "visibility": "visible",
           },
           paint: {
-            "circle-radius": 7,
+            "circle-radius": 4,
             "circle-color": ["coalesce", ["get", "color"], defaultColor],
-            "circle-opacity": 0.85,
-            "circle-stroke-width": 2.5,
+            "circle-opacity": 0.9,
+            "circle-stroke-width": 1.5,
             "circle-stroke-color": "#fff",
             "circle-stroke-opacity": 0.9,
           },
@@ -502,7 +505,10 @@ export default function Map2D({
         });
 
         // Hover + click for area polygons.
+        // Skip if the cursor is over a venue point (circle layer has visual priority).
         map.on("mousemove", AREA_FILL_LAYER_ID, (e) => {
+          const overPoint = map.queryRenderedFeatures(e.point, { layers: [LAYER_ID] }).length > 0;
+          if (overPoint) return;
           map.getCanvas().style.cursor = "pointer";
           const html = (e.features?.[0]?.properties as any)?.popupHtml;
           if (html) popup.setLngLat(e.lngLat).setHTML(html).addTo(map);
@@ -659,6 +665,16 @@ export default function Map2D({
       if (retryTimeout) clearTimeout(retryTimeout);
     };
   }, [paths, mapLoaded]);
+
+  // Toggle arrow symbol layer visibility.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded) return;
+    const vis = showArrows ? "visible" : "none";
+    if (map.getLayer(`${PATH_LAYER_ID}-arrows`)) {
+      map.setLayoutProperty(`${PATH_LAYER_ID}-arrows`, "visibility", vis);
+    }
+  }, [showArrows, mapLoaded]);
 
   // Push area polygons -> area source whenever they change.
   useEffect(() => {

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { Map as MapIcon, Route, ArrowLeftRight, MapPin, type LucideIcon } from "lucide-react";
 import { api } from "../lib/api";
 import { useFilters } from "../lib/filters";
 import { useConfig, useMe } from "../lib/auth";
@@ -20,6 +21,9 @@ import {
   type FlowsResp,
   type VenueFlowsResp,
 } from "../lib/postcodeAreas";
+
+// Core Plymouth postcode districts — coloured with districtColor; all others shown as gray.
+const CORE_PLYMOUTH = new Set(["PL1", "PL2", "PL3", "PL4", "PL5", "PL6", "PL7", "PL8", "PL9"]);
 
 export default function PostcodeAreasMap() {
   const f = useFilters();
@@ -108,9 +112,13 @@ export default function PostcodeAreasMap() {
             ...props,
             code,
             total,
-            color: districtColor(districts, code),
+            color: CORE_PLYMOUTH.has(code) ? districtColor(districts, code) : "#94a3b8",
             selected: selected === code,
-            fillOpacity: 0.2 + 0.55 * (total / maxTotal),
+            fillOpacity: selected
+              ? selected === code
+                ? Math.min(0.85, 0.4 + 0.45 * (total / maxTotal))        // selected: 0.40–0.85
+                : total > 0 ? 0.04 + 0.08 * (total / maxTotal) : 0.06   // others: nearly invisible
+              : total > 0 ? 0.15 + 0.6 * (total / maxTotal) : 0.10,     // none selected: normal
             popupHtml: `<div class="text-xs"><div class="font-semibold">${escHtml(code)}${name ? ` · ${escHtml(name)}` : ""}</div><div>${total.toLocaleString()} interactions</div></div>`,
           },
         };
@@ -149,25 +157,29 @@ export default function PostcodeAreasMap() {
     const pcd = postcodeNodesQuery.data;
     const vfd = venueFlowsQuery.data;
 
-    const relevantVenueIds: Set<number> | null =
-      selected && pcd?.flows?.length
-        ? new Set(
-            pcd.flows
-              .filter((fl) => fl.from_code === selected)
-              .map((fl) => fl.to_location_id),
-          )
-        : null;
-
     const paths: MapPath[] = [];
-    if (vfd?.flows.length) {
+
+    if (selected && pcd?.flows?.length) {
+      // Postcode selected: draw spokes from that postcode centroid to every
+      // venue its visitors attended.  Opacity encodes connection strength.
+      const selectedFlows = pcd.flows.filter((fl) => fl.from_code === selected);
+      const max = Math.max(...selectedFlows.map((fl) => fl.count), 1);
+      for (const fl of selectedFlows) {
+        const frac = fl.count / max;
+        paths.push({
+          id: `pc-${fl.from_code}-${fl.to_location_id}`,
+          coordinates: [[fl.from_lng, fl.from_lat], [fl.to_lng, fl.to_lat]],
+          color: "#2563eb",
+          width: 1.5,
+          opacity: 0.1 + frac * 0.8,
+          popupHtml: `<div class="text-xs"><div class="font-semibold">${escHtml(fl.from_code)} → ${escHtml(fl.to_name)}</div><div>${fl.count.toLocaleString()} visitors</div></div>`,
+        });
+      }
+    } else if (vfd?.flows.length) {
+      // No postcode selected: show venue-to-venue flows.
       const nodeById = new Map(vfd.nodes.map((n) => [n.location_id, n]));
-      const flowsToShow = relevantVenueIds
-        ? vfd.flows.filter(
-            (fl) => relevantVenueIds.has(fl.from_id) || relevantVenueIds.has(fl.to_id),
-          )
-        : vfd.flows;
-      const max = Math.max(...flowsToShow.map((fl) => fl.count), 1);
-      for (const fl of flowsToShow) {
+      const max = Math.max(...vfd.flows.map((fl) => fl.count), 1);
+      for (const fl of vfd.flows) {
         const a = nodeById.get(fl.from_id);
         const b = nodeById.get(fl.to_id);
         if (!a || !b) continue;
@@ -176,8 +188,8 @@ export default function PostcodeAreasMap() {
           id: `v-${fl.from_id}-${fl.to_id}`,
           coordinates: [[a.lng, a.lat], [b.lng, b.lat]],
           color: "#2563eb",
-          width: 1 + frac * 8,
-          opacity: 0.2 + frac * 0.6,
+          width: 1.5,
+          opacity: 0.1 + frac * 0.8,
           popupHtml: `<div class="text-xs"><div class="font-semibold">${escHtml(fl.from_name)} → ${escHtml(fl.to_name)}</div><div>${fl.count.toLocaleString()} visitors</div></div>`,
         });
       }
@@ -188,14 +200,14 @@ export default function PostcodeAreasMap() {
       lng: v.lng,
       lat: v.lat,
       weight: 1,
-      color: v.organisation_id != null && myOrgIds.has(v.organisation_id)
-        ? "#ec4899"
-        : "#3b82f6",
+      color: (f.org || (v.organisation_id != null && myOrgIds.has(v.organisation_id)))
+        ? "#3b82f6"   // blue — current org's venues
+        : "#94a3b8",  // gray — other venues
       popupHtml: `<div class="text-xs font-semibold">${escHtml(v.name)}</div>`,
     }));
 
     return { mapPaths: paths, mapPoints: points };
-  }, [postcodeNodesQuery.data, venueFlowsQuery.data, selected]);
+  }, [postcodeNodesQuery.data, venueFlowsQuery.data, selected, f.org, myOrgIds]);
 
   return (
     <div className="space-y-6">
@@ -208,46 +220,6 @@ export default function PostcodeAreasMap() {
             Plymouth public-transport corridors and common venue-to-venue pathways.
           </p>
         </div>
-      </div>
-
-      {/* District chip picker */}
-      <div className="card p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="heading-sub">Select a district</h2>
-          {selected && (
-            <button
-              onClick={() => setSelected(null)}
-              className="btn-ghost text-xs text-muted"
-            >
-              Clear
-            </button>
-          )}
-        </div>
-        {summary.isLoading ? (
-          <p className="text-sm text-muted">Loading districts…</p>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {districts.map((d) => {
-              const active = d.code === selected;
-              return (
-                <button
-                  key={d.code}
-                  onClick={() => setSelected(active ? null : d.code)}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium border transition-colors ${
-                    active
-                      ? "bg-accent text-white border-accent"
-                      : "border-border hover:bg-border/30"
-                  }`}
-                >
-                  <span>{d.code}</span>
-                  <span className={`text-[10px] ${active ? "text-white/75" : "text-muted"}`}>
-                    {d.total.toLocaleString()}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        )}
       </div>
 
       {/* Map */}
@@ -264,12 +236,12 @@ export default function PostcodeAreasMap() {
             </span>
             {(
               [
-                ["areas", "Postcode areas"],
-                ["corridors", "Transport corridors"],
-                ["flows", "Venue pathways"],
-                ["venues", "Venues"],
-              ] as const
-            ).map(([key, label]) => (
+                ["areas",     "Postcode areas",      MapIcon       ],
+                ["corridors", "Transport corridors", Route         ],
+                ["flows",     "Venue pathways",       ArrowLeftRight],
+                ["venues",    "Venues",               MapPin        ],
+              ] as [keyof typeof layers, string, LucideIcon][]
+            ).map(([key, label, Icon]) => (
               <label
                 key={key}
                 className="inline-flex items-center gap-1.5 text-sm cursor-pointer select-none"
@@ -282,6 +254,7 @@ export default function PostcodeAreasMap() {
                     setLayers((s) => ({ ...s, [key]: e.target.checked }))
                   }
                 />
+                <Icon size={13} className="text-muted shrink-0" />
                 {label}
               </label>
             ))}
@@ -301,69 +274,76 @@ export default function PostcodeAreasMap() {
             </div>
           </div>
 
-          <div className="card overflow-hidden">
-            <Map2D
-              points={mapPoints}
-              paths={layers.flows ? mapPaths : []}
-              areaPolygons={areaPolygons}
-              corridors={corridors}
-              maptilerKey={mapKey}
-              showHeatmap={false}
-              showPoints={layers.venues}
-              showAreas={layers.areas}
-              showCorridors={layers.corridors}
-              onAreaClick={(code) =>
-                setSelected(selected === code ? null : code)
-              }
-            />
+          <div className="flex gap-4 items-start">
+            <div className="card overflow-hidden flex-1 min-w-0">
+              <Map2D
+                points={mapPoints}
+                paths={(layers.flows || Boolean(selected)) ? mapPaths : []}
+                areaPolygons={areaPolygons}
+                corridors={corridors}
+                maptilerKey={mapKey}
+                showHeatmap={false}
+                showPoints={layers.venues}
+                showAreas={layers.areas}
+                showCorridors={layers.corridors}
+                showArrows={false}
+                onAreaClick={(code) =>
+                  setSelected(selected === code ? null : code)
+                }
+              />
+            </div>
+
+            {/* Postcode origins sidebar */}
+            {postcodeNodesQuery.data && (
+              <div className="card p-4 space-y-3 w-56 shrink-0">
+                <div className="flex items-center justify-between">
+                  <h2 className="heading-sub text-xs">Postcode origins</h2>
+                  {selected && (
+                    <button
+                      onClick={() => setSelected(null)}
+                      className="btn-ghost text-[10px] text-muted"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  {postcodeNodesQuery.data.postcode_nodes.map((n) => {
+                    const chipColor = CORE_PLYMOUTH.has(n.code)
+                      ? districtColor(postcodeNodesQuery.data.postcode_nodes, n.code)
+                      : "#94a3b8";
+                    return (
+                      <button
+                        key={n.code}
+                        onClick={() => setSelected(selected === n.code ? null : n.code)}
+                        className={`inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                          selected === n.code
+                            ? "ring-2 ring-offset-1 ring-current"
+                            : "opacity-80 hover:opacity-100"
+                        }`}
+                        style={{
+                          background: chipColor + "22",
+                          borderColor: chipColor,
+                          color: chipColor,
+                        }}
+                      >
+                        <span
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{ background: chipColor }}
+                        />
+                        <span className="flex-1 text-left">{n.code}</span>
+                        <span className="opacity-60 tabular-nums">{n.total.toLocaleString()}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[10px] text-muted leading-snug">
+                  Click an area to highlight it. Darker = more activity.
+                </p>
+              </div>
+            )}
           </div>
         </>
-      )}
-
-      {/* District chip legend below the map */}
-      {postcodeNodesQuery.data && (
-        <div className="card p-4 space-y-2">
-          <h2 className="heading-sub text-xs">Postcode origins</h2>
-          <div className="flex flex-wrap gap-2">
-            {postcodeNodesQuery.data.postcode_nodes.map((n) => (
-              <button
-                key={n.code}
-                onClick={() => setSelected(selected === n.code ? null : n.code)}
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-                  selected === n.code
-                    ? "ring-2 ring-offset-1 ring-current"
-                    : "opacity-80 hover:opacity-100"
-                }`}
-                style={{
-                  background:
-                    districtColor(postcodeNodesQuery.data.postcode_nodes, n.code) + "22",
-                  borderColor: districtColor(
-                    postcodeNodesQuery.data.postcode_nodes,
-                    n.code,
-                  ),
-                  color: districtColor(postcodeNodesQuery.data.postcode_nodes, n.code),
-                }}
-              >
-                <span
-                  className="w-2 h-2 rounded-full shrink-0"
-                  style={{
-                    background: districtColor(
-                      postcodeNodesQuery.data.postcode_nodes,
-                      n.code,
-                    ),
-                  }}
-                />
-                {n.code}
-                <span className="opacity-70">{n.total.toLocaleString()}</span>
-              </button>
-            ))}
-          </div>
-          <p className="text-xs text-muted pt-1">
-            Shaded areas show visitor origin districts (darker = busier) · Coloured
-            lines show Plymouth public-transport corridors · Blue arrows show common
-            venue-to-venue pathways · Click an area to highlight it
-          </p>
-        </div>
       )}
     </div>
   );
