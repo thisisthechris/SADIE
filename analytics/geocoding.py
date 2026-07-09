@@ -16,33 +16,49 @@ DEFAULT_CLUSTER_RADIUS_METERS = 400  # ~0.25 miles / 400m cell
 DEFAULT_MIN_POSTCODES_PER_CLUSTER = 3  # k-anonymity threshold
 DEFAULT_MIN_INTERACTIONS_PER_CLUSTER = 5  # suppress very sparse clusters
 
-# Fallback centroids for Plymouth-area postcode districts (LNG, LAT).
-# Used when API can't geocode partial postcodes (sectors/outcodes).
-# Mirrors existing POSTCODE_CENTROIDS in viz_views.py.
+# Fallback centroids for PL postcode districts (LNG, LAT).
+# Derived from bbox midpoints of the pl-postcode-districts.geojson boundaries.
+# Used when the postcodes.io API can't geocode partial postcodes.
 OUTCODE_CENTROIDS = {
-    "PL1": (-4.1427, 50.3714),
-    "PL2": (-4.1620, 50.3680),
-    "PL3": (-4.1520, 50.3830),
-    "PL4": (-4.1300, 50.3760),
-    "PL5": (-4.1700, 50.3950),
-    "PL6": (-4.1350, 50.4050),
-    "PL7": (-4.0850, 50.3850),
-    "PL8": (-4.0650, 50.3480),
-    "PL9": (-4.0900, 50.3580),
-    "PL10": (-4.2050, 50.3650),
-    "PL11": (-4.2200, 50.3620),
-    "PL12": (-4.2000, 50.3850),
-    "PL13": (-4.4700, 50.3600),
-    "PL14": (-4.3800, 50.4500),
-    "PL15": (-4.3500, 50.5400),
-    "PL17": (-5.0730, 50.2180),  # Penzance area
-    "PL18": (-4.7600, 50.3350),  # St Austell area
-    "PL19": (-4.1000, 50.4200),  # Mid-Devon area
-    "PL20": (-4.0800, 50.5100),
-    "PL21": (-3.9600, 50.3870),
-    "TQ3": (-3.5900, 50.4500),  # Totnes area
-    "TQ7": (-3.7600, 50.5300),  # East Devon/Torquay area
-    "EX8": (-3.9000, 50.6200),  # North Devon
+    "PL1":  (-4.1606, 50.3636),
+    "PL2":  (-4.1659, 50.3901),
+    "PL3":  (-4.1249, 50.3888),
+    "PL4":  (-4.1241, 50.3731),
+    "PL5":  (-4.1658, 50.4210),
+    "PL6":  (-4.1075, 50.4304),
+    "PL7":  (-4.0302, 50.4219),
+    "PL8":  (-4.0134, 50.3252),
+    "PL9":  (-4.0974, 50.3351),
+    "PL10": (-4.2167, 50.3289),
+    "PL11": (-4.2986, 50.3693),
+    "PL12": (-4.2935, 50.4384),
+    "PL13": (-4.4896, 50.3613),
+    "PL14": (-4.4921, 50.4596),
+    "PL15": (-4.4371, 50.6341),
+    "PL16": (-4.2528, 50.6664),
+    "PL17": (-4.3241, 50.5205),
+    "PL18": (-4.2267, 50.5173),
+    "PL19": (-4.1424, 50.5772),
+    "PL20": (-4.0251, 50.5345),
+    "PL21": (-3.9032, 50.4042),
+    "PL22": (-4.6414, 50.4042),
+    "PL23": (-4.6228, 50.3365),
+    "PL24": (-4.7080, 50.3429),
+    "PL25": (-4.7725, 50.3378),
+    "PL26": (-4.8241, 50.3209),
+    "PL27": (-4.9202, 50.5429),
+    "PL28": (-4.9947, 50.5478),
+    "PL29": (-4.8405, 50.5901),
+    "PL30": (-4.7483, 50.4949),
+    "PL31": (-4.7217, 50.4735),
+    "PL32": (-4.6366, 50.6481),
+    "PL33": (-4.7538, 50.6193),
+    "PL34": (-4.7447, 50.6665),
+    "PL35": (-4.6813, 50.6932),
+    # Non-PL fallbacks (approximate geographic centres)
+    "TQ3": (-3.5900, 50.4500),
+    "TQ7": (-3.7600, 50.5300),
+    "EX8": (-3.9000, 50.6200),
 }
 
 
