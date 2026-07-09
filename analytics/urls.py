@@ -73,6 +73,7 @@ urlpatterns = [
     path("viz/org-connections/", viz_views.org_connections, name="viz-org-connections"),
     path("viz/postcode-districts/", viz_views.postcode_districts, name="viz-postcode-districts"),
     path("viz/postcode-flows/", viz_views.postcode_flows, name="viz-postcode-flows"),
+    path("viz/postcode-pathways/", viz_views.postcode_pathways, name="viz-postcode-pathways"),
     # Phase 4 — Recommendations
     path(
         "recommendations/similar/<int:event_id>/",

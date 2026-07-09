@@ -9,10 +9,10 @@ export const DISTRICT_COLORS = [
 ];
 
 export const MODE_COLORS: Record<string, string> = {
-  bus: "#0ea5e9",
-  rail: "#7c3aed",
-  ferry: "#0891b2",
-  park_ride: "#f59e0b",
+  bus:       "#7dd3fc",  // sky-300
+  rail:      "#c4b5fd",  // violet-300
+  ferry:     "#67e8f9",  // cyan-300
+  park_ride: "#fcd34d",  // amber-300
 };
 
 export const MODE_LABELS: Record<string, string> = {

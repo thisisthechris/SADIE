@@ -45,7 +45,7 @@ class Command(BaseCommand):
             self.stdout.write("Retrying all postcodes (including previously failed).")
 
         if not to_geocode:
-            self.stdout.write(self.style.success("All postcodes already geocoded!"))
+            self.stdout.write(self.style.SUCCESS("All postcodes already geocoded!"))
             return
 
         # Process in batches

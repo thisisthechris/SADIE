@@ -29,7 +29,11 @@ from typing import Any
 
 from django.db.models import Q
 
-from analytics.models import PostcodeAreaInteraction, UserHashInteraction
+from analytics.models import (
+    PostcodeAreaInteraction,
+    PostcodeEventInteraction,
+    UserHashInteraction,
+)
 from events.models import Event
 from organisations.models import org_and_descendants_ids
 
@@ -121,6 +125,26 @@ def postcode_qs(p: Mapping[str, str], base=None):
     if p.get("dto"):
         qs = qs.filter(period_end__lte=p["dto"])
     return qs
+
+
+def postcode_event_qs(p: Mapping[str, str], base=None):
+    """Apply filter params to a ``PostcodeEventInteraction`` queryset.
+
+    Postcode-cohort event interactions are ordered by ``interaction_date`` (the
+    event-date basis), so filters mirror ``interactions_qs`` rather than the
+    period-based ``postcode_qs``.
+    """
+    qs = base if base is not None else PostcodeEventInteraction.objects.all()
+    ids = _org_ids_for(p)
+    if ids:
+        qs = qs.filter(organisation_id__in=ids)
+    if p.get("cat"):
+        qs = qs.filter(event__categories__id=p["cat"])
+    if p.get("dfrom"):
+        qs = qs.filter(interaction_date__gte=p["dfrom"])
+    if p.get("dto"):
+        qs = qs.filter(interaction_date__lte=p["dto"])
+    return qs.distinct()
 
 
 def location_coords(loc) -> list[float] | None:

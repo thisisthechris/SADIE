@@ -8,6 +8,7 @@ from rest_framework.views import APIView
 
 from .serializers import (
     PostcodeAreaInteractionUploadSerializer,
+    PostcodeEventInteractionUploadSerializer,
     UserHashInteractionUploadSerializer,
 )
 
@@ -84,6 +85,40 @@ class PostcodeAreaInteractionUploadView(APIView):
         if not isinstance(data, list):
             data = [data]
         serializer = PostcodeAreaInteractionUploadSerializer(data=data, many=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {"created": len(serializer.data)},
+                status=status.HTTP_201_CREATED,
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PostcodeEventInteractionUploadView(APIView):
+    """
+    POST /api/upload/postcode-events/
+    Accepts a list of postcode-cohort event-interaction records: the number of
+    users from a postcode who interacted with a venue via a given event.
+
+    Headers:
+        X-Upload-Token: <UPLOAD_API_TOKEN>
+
+    Body (JSON):
+        [{"postcode": "PL4 0AB", "area": "Lipson", "event": 5,
+          "interaction_count": 42, "interaction_date": "2024-01-15"}, ...]
+
+    ``organisation``, ``location`` and ``interaction_date`` are derived from the
+    event when omitted.
+    """
+
+    permission_classes = [UploadTokenPermission]
+    throttle_classes = [UploadRateThrottle]
+
+    def post(self, request, *args, **kwargs):
+        data = request.data
+        if not isinstance(data, list):
+            data = [data]
+        serializer = PostcodeEventInteractionUploadSerializer(data=data, many=True)
         if serializer.is_valid():
             serializer.save()
             return Response(

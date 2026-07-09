@@ -67,6 +67,53 @@ class PostcodeAreaInteraction(models.Model):
         return f"{self.postcode} ({self.organisation.name}) {self.period_start}–{self.period_end}"
 
 
+class PostcodeEventInteraction(models.Model):
+    """Count of users from a postcode who interacted with a venue via an event.
+
+    A separate dataset from :class:`UserHashInteraction` (which tracks individual
+    anonymised users). Here each row is an *aggregate* cohort: ``interaction_count``
+    users from ``postcode`` who interacted with ``event`` (and therefore its venue).
+
+    Ordering a postcode's rows by ``interaction_date`` yields an ordered sequence
+    of venue visits, so consecutive events form venue→venue connections — mirroring
+    the user-journey model but for postcode cohorts.
+    """
+
+    organisation = models.ForeignKey(
+        Organisation,
+        on_delete=models.CASCADE,
+        related_name="postcode_event_interactions",
+    )
+    postcode = models.CharField(max_length=10, db_index=True)
+    area = models.CharField(max_length=100, blank=True)
+    event = models.ForeignKey(
+        Event,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="postcode_interactions",
+    )
+    location = models.ForeignKey(
+        Location,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="postcode_event_interactions",
+    )
+    interaction_count = models.PositiveIntegerField(default=0)
+    interaction_date = models.DateField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-interaction_date", "-interaction_count"]
+        indexes = [
+            models.Index(fields=["postcode", "interaction_date"]),
+        ]
+
+    def __str__(self):
+        return f"{self.postcode} × {self.interaction_count} on {self.interaction_date}"
+
+
 class PostcodeGeo(models.Model):
     """Geocoding cache for UK postcodes using postcodes.io.
 

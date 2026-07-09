@@ -64,11 +64,16 @@ export default function PostcodeAreasMap() {
     staleTime: 5 * 60_000,
   });
 
-  // Venue-to-venue flow paths (Common Pathways style).
+  // Venue-to-venue flow paths derived from POSTCODE cohorts (mirrors the user
+  // journeys model but sourced from postcode→event uploads, not individual users).
+  // When a district is selected the endpoint scopes the connections to that
+  // postcode's cohort, so clicking an area filters the pathways.
   const venueFlowsQuery = useQuery({
-    queryKey: ["journeys-flows-postcode", q],
+    queryKey: ["postcode-pathways", q, selected],
     queryFn: () =>
-      api<VenueFlowsResp>("/api/analytics/viz/journeys-flows/", { query: q }),
+      api<VenueFlowsResp>("/api/analytics/viz/postcode-pathways/", {
+        query: selected ? { ...q, district: selected } : q,
+      }),
     staleTime: 5 * 60_000,
   });
 
@@ -155,43 +160,33 @@ export default function PostcodeAreasMap() {
 
   // Build venue pins + venue-to-venue flow paths.
   const { mapPaths, mapPoints } = useMemo(() => {
-    const pcd = postcodeNodesQuery.data;
     const vfd = venueFlowsQuery.data;
 
     const paths: MapPath[] = [];
 
-    if (selected && pcd?.flows?.length) {
-      // Postcode selected: draw spokes from that postcode centroid to every
-      // venue its visitors attended.  Opacity encodes connection strength.
-      const selectedFlows = pcd.flows.filter((fl) => fl.from_code === selected);
-      const max = Math.max(...selectedFlows.map((fl) => fl.count), 1);
-      for (const fl of selectedFlows) {
-        const frac = fl.count / max;
-        paths.push({
-          id: `pc-${fl.from_code}-${fl.to_location_id}`,
-          coordinates: [[fl.from_lng, fl.from_lat], [fl.to_lng, fl.to_lat]],
-          color: "#2563eb",
-          width: 1.5,
-          opacity: 0.1 + frac * 0.8,
-          popupHtml: `<div class="text-xs"><div class="font-semibold">${escHtml(fl.from_code)} → ${escHtml(fl.to_name)}</div><div>${fl.count.toLocaleString()} visitors</div></div>`,
-        });
-      }
-    } else if (vfd?.flows.length) {
-      // No postcode selected: show venue-to-venue flows.
+    if (vfd?.flows.length) {
+      // Draw connections BETWEEN venues (never from the postcode centroid — that
+      // is the separate "Visitor origins" Sankey layer). When a postcode is
+      // selected the endpoint has already scoped these flows to that cohort.
       const nodeById = new Map(vfd.nodes.map((n) => [n.location_id, n]));
-      const max = Math.max(...vfd.flows.map((fl) => fl.count), 1);
+
+      // Normalise by share of total rather than relative to the local max.
+      // This keeps shading stable when switching between postcode filters so
+      // you can visually compare how strong each pathway is across selections.
+      const total = vfd.flows.reduce((s, fl) => s + fl.count, 0) || 1;
       for (const fl of vfd.flows) {
         const a = nodeById.get(fl.from_id);
         const b = nodeById.get(fl.to_id);
         if (!a || !b) continue;
-        const frac = fl.count / max;
+        const share = fl.count / total;           // fraction of dataset (0–1)
+        const vis = Math.min(1, share * 8);       // scale up so minority flows are still visible
         paths.push({
           id: `v-${fl.from_id}-${fl.to_id}`,
           coordinates: [[a.lng, a.lat], [b.lng, b.lat]],
           color: "#2563eb",
-          width: 1.5,
-          opacity: 0.1 + frac * 0.8,
-          popupHtml: `<div class="text-xs"><div class="font-semibold">${escHtml(fl.from_name)} → ${escHtml(fl.to_name)}</div><div>${fl.count.toLocaleString()} visitors</div></div>`,
+          width: 2 + vis * 5,
+          opacity: 0.1 + vis * 0.8,
+          popupHtml: `<div class="text-xs"><div class="font-semibold">${escHtml(fl.from_name)} → ${escHtml(fl.to_name)}</div><div>${fl.count.toLocaleString()} visitors (${(share * 100).toFixed(1)}%)</div></div>`,
         });
       }
     }
@@ -208,20 +203,19 @@ export default function PostcodeAreasMap() {
     }));
 
     return { mapPaths: paths, mapPoints: points };
-  }, [postcodeNodesQuery.data, venueFlowsQuery.data, selected, f.org, myOrgIds]);
+  }, [venueFlowsQuery.data, f.org, myOrgIds]);
 
   // Sankey-style paths: postcode centroid → venue, width proportional to visitor count.
-  // Coloured by source district so the geographic origin is readable at a glance.
+  // Only rendered when a district is selected — showing all-origins lines when nothing
+  // is selected creates visual noise and is confusing when deselecting.
   const sankeyPaths = useMemo<MapPath[]>(() => {
     const pcd = postcodeNodesQuery.data;
-    if (!pcd?.flows?.length) return [];
+    if (!selected || !pcd?.flows?.length) return [];
 
-    const allFlows = selected
-      ? pcd.flows.filter((fl) => fl.from_code === selected)
-      : [...pcd.flows].sort((a, b) => b.count - a.count).slice(0, 200);
+    const selectedFlows = pcd.flows.filter((fl) => fl.from_code === selected);
 
-    const max = Math.max(...allFlows.map((fl) => fl.count), 1);
-    return allFlows.map((fl) => {
+    const max = Math.max(...selectedFlows.map((fl) => fl.count), 1);
+    return selectedFlows.map((fl) => {
       const frac = fl.count / max;
       return {
         id: `sk-${fl.from_code}-${fl.to_location_id}`,
@@ -229,8 +223,8 @@ export default function PostcodeAreasMap() {
         color: CORE_PLYMOUTH.has(fl.from_code)
           ? districtColor(districts, fl.from_code)
           : "#94a3b8",
-        width: 1 + frac * 14,
-        opacity: 0.12 + frac * 0.70,
+        width: 0.5 + frac * 4,
+        opacity: 0.25 + frac * 0.55,
         popupHtml: `<div class="text-xs"><div class="font-semibold">${escHtml(fl.from_code)} → ${escHtml(fl.to_name)}</div><div>${fl.count.toLocaleString()} visitors</div></div>`,
       };
     });
@@ -244,7 +238,8 @@ export default function PostcodeAreasMap() {
           <h1 className="heading-small">Postcode Pathways</h1>
           <p className="text-sm text-muted">
             PL postcode district boundaries coloured by visitor activity, with
-            Plymouth public-transport corridors and common venue-to-venue pathways.
+            Plymouth public-transport corridors and venue-to-venue pathways
+            built from the order in which postcode cohorts attend events.
           </p>
         </div>
       </div>
@@ -308,7 +303,7 @@ export default function PostcodeAreasMap() {
                 points={mapPoints}
                 paths={[
                   ...(layers.sankey ? sankeyPaths : []),
-                  ...((layers.flows || Boolean(selected)) ? mapPaths : []),
+                  ...(layers.flows ? mapPaths : []),
                 ]}
                 areaPolygons={areaPolygons}
                 corridors={corridors}

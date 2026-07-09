@@ -25,7 +25,11 @@ except Exception:
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from analytics.models import PostcodeAreaInteraction, UserHashInteraction
+from analytics.models import (
+    PostcodeAreaInteraction,
+    PostcodeEventInteraction,
+    UserHashInteraction,
+)
 from events.models import Category, Event
 from organisations.models import Location, Organisation
 
@@ -404,6 +408,12 @@ class Command(BaseCommand):
         parser.add_argument("--interactions", type=int, default=500, help="Number of user-hash interactions")
         parser.add_argument("--postcodes", type=int, default=1500, help="Number of postcode interaction records")
         parser.add_argument(
+            "--postcode-events",
+            type=int,
+            default=800,
+            help="Number of postcode→event cohort records (users from a postcode who attended an event)",
+        )
+        parser.add_argument(
             "--clear",
             action="store_true",
             help="Delete all existing synthetic data before generating (preserves scraped data)",
@@ -413,6 +423,7 @@ class Command(BaseCommand):
         if options["clear"]:
             self.stdout.write("Clearing existing analytics data…")
             PostcodeAreaInteraction.objects.all().delete()
+            PostcodeEventInteraction.objects.all().delete()
             UserHashInteraction.objects.all().delete()
             # Only delete events without an external_id (synthetic ones)
             synth_count = Event.objects.filter(external_id="").count()
@@ -433,12 +444,18 @@ class Command(BaseCommand):
         self._create_postcode_interactions(orgs, options["postcodes"])
 
         self.stdout.write(
+            f"Creating {options['postcode_events']} postcode→event cohort records…"
+        )
+        self._create_postcode_event_interactions(orgs, events, options["postcode_events"])
+
+        self.stdout.write(
             self.style.SUCCESS(
                 f"\nSynthetic data created:\n"
                 f"  {len(orgs)} organisations (ensured)\n"
                 f"  {len(events)} new events\n"
                 f"  {options['interactions']} user interactions\n"
-                f"  {options['postcodes']} postcode records"
+                f"  {options['postcodes']} postcode records\n"
+                f"  {options['postcode_events']} postcode→event cohort records"
             )
         )
 
@@ -676,3 +693,45 @@ class Command(BaseCommand):
             )
 
         PostcodeAreaInteraction.objects.bulk_create(records, batch_size=500)
+
+    def _create_postcode_event_interactions(self, orgs, events, count):
+        """Create postcode→event cohort records: the number of users from a
+        postcode who interacted with a venue *through* an event.
+
+        Mirrors the user-journey dataset but as aggregate cohorts. Each postcode
+        accumulates several event interactions across venues; ordered by event
+        date these form venue→venue connections (see viz ``postcode_pathways``).
+        """
+        # Only events with a resolvable venue make useful pathway nodes.
+        located_events = [e for e in events if e.location_id] or list(events)
+        if not located_events:
+            self.stdout.write("  No located events available; skipping postcode-event records.")
+            return
+
+        postcodes_with_weights = [(p[0], p[1], p[2]) for p in PLYMOUTH_POSTCODES]
+        codes = [p[0] for p in postcodes_with_weights]
+        areas = [p[1] for p in postcodes_with_weights]
+        weights = [p[2] for p in postcodes_with_weights]
+
+        records = []
+        for _ in range(count):
+            idx = random.choices(range(len(codes)), weights=weights, k=1)[0]
+            event = random.choice(located_events)
+
+            # Cohort size weighted by postcode popularity.
+            base_count = weights[idx] * random.randint(1, 8)
+            interaction_count = max(1, int(base_count * random.uniform(0.3, 2.0)))
+
+            records.append(
+                PostcodeEventInteraction(
+                    organisation=event.organisation,
+                    postcode=codes[idx],
+                    area=areas[idx],
+                    event=event,
+                    location=event.location,
+                    interaction_count=interaction_count,
+                    interaction_date=event.start_datetime.date(),
+                )
+            )
+
+        PostcodeEventInteraction.objects.bulk_create(records, batch_size=500)

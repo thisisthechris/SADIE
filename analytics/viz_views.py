@@ -37,6 +37,7 @@ from .queries import (
     interactions_qs,
     location_coords,
     parse_filter_params,
+    postcode_event_qs,
     postcode_qs,
 )
 
@@ -573,6 +574,97 @@ def postcode_districts(request: Request) -> Response:
     return Response(result)
 
 
+def _postcode_flows_from_events(p, selected: str) -> dict | None:
+    """Build postcode-district → real-venue spokes from event-linked uploads.
+
+    Returns ``None`` when no ``PostcodeEventInteraction`` rows match the filters,
+    so :func:`postcode_flows` can fall back to the org-primary-venue behaviour.
+    Otherwise returns the same payload shape as ``postcode_flows``.
+    """
+    from django.db.models import Q as _Q
+
+    qs = postcode_event_qs(p).select_related(
+        "event", "event__location", "location", "organisation"
+    )
+    if selected:
+        qs = qs.filter(
+            _Q(postcode__iexact=selected) | _Q(postcode__istartswith=f"{selected} ")
+        )
+
+    district_venue: dict[tuple[str, int], int] = {}
+    venue_meta: dict[int, dict] = {}
+    any_rows = False
+
+    for it in qs.iterator():
+        any_rows = True
+        district = _district(it.postcode) or _district(it.area)
+        if not district:
+            continue
+        pc_coords = POSTCODE_CENTROIDS.get(district)
+        if not pc_coords:
+            continue
+        loc = _resolve_location(it)
+        if not loc:
+            continue
+        coords = location_coords(loc)
+        if not coords:
+            continue
+        count = int(it.interaction_count or 0)
+        if count <= 0:
+            continue
+        key = (district, loc.id)
+        district_venue[key] = district_venue.get(key, 0) + count
+        if loc.id not in venue_meta:
+            venue_meta[loc.id] = {
+                "location_id": loc.id,
+                "name": loc.name,
+                "organisation": it.organisation.name if it.organisation_id else "",
+                "lng": coords[0],
+                "lat": coords[1],
+            }
+
+    if not any_rows:
+        return None
+
+    postcode_totals: dict[str, dict] = {}
+    venue_set: dict[int, dict] = {}
+    flows = []
+
+    for (district, lid), count in district_venue.items():
+        pc_coords = POSTCODE_CENTROIDS.get(district)
+        venue = venue_meta.get(lid)
+        if not pc_coords or not venue:
+            continue
+        pt = postcode_totals.setdefault(
+            district,
+            {"code": district, "lng": pc_coords[0], "lat": pc_coords[1], "total": 0},
+        )
+        pt["total"] += count
+        venue_set.setdefault(lid, venue)
+        flows.append(
+            {
+                "from_code": district,
+                "from_lng": pc_coords[0],
+                "from_lat": pc_coords[1],
+                "to_location_id": lid,
+                "to_name": venue["name"],
+                "to_org": venue["organisation"],
+                "to_lng": venue["lng"],
+                "to_lat": venue["lat"],
+                "count": count,
+            }
+        )
+
+    return {
+        "filters": p,
+        "district": selected or None,
+        "postcode_nodes": sorted(postcode_totals.values(), key=lambda x: -x["total"]),
+        "venue_nodes": sorted(venue_set.values(), key=lambda x: x["name"]),
+        "flows": sorted(flows, key=lambda x: -x["count"]),
+        "flow_count": len(flows),
+    }
+
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticatedOrReadOnly])
 def postcode_flows(request: Request) -> Response:
@@ -591,6 +683,13 @@ def postcode_flows(request: Request) -> Response:
 
     p = parse_filter_params(request)
     selected = request.GET.get("district", "").strip().upper()
+
+    # Prefer event-linked postcode data (real attended venues). Falls back to
+    # the org-primary-venue approximation when no PostcodeEventInteraction rows
+    # match the current filters.
+    event_result = _postcode_flows_from_events(p, selected)
+    if event_result is not None:
+        return Response(event_result)
 
     qs = postcode_qs(p)
     if selected:
@@ -874,6 +973,159 @@ def journeys_flows(request: Request) -> Response:
             "flow_count": len(flows),
             "nodes": nodes,
             "flows": flows,
+            "geojson": {"type": "FeatureCollection", "features": features},
+        }
+    )
+
+
+def _postcode_event_sequences(p, *, max_steps: int) -> list[tuple[str, list[dict]]]:
+    """Ordered venue steps per postcode from ``PostcodeEventInteraction`` rows.
+
+    Mirrors :func:`_visitor_sequences` but the "actor" is a postcode cohort and
+    each step carries the uploaded ``interaction_count``. Steps are ordered by
+    ``interaction_date`` (the event-date basis) then ``created_at``/``id``.
+    Postcodes with fewer than two located steps are dropped (no movement).
+    """
+    interactions = (
+        postcode_event_qs(p)
+        .select_related("event", "event__location", "location", "organisation")
+        .order_by("postcode", "interaction_date", "created_at", "id")
+    )
+
+    sequences: dict[str, list[dict]] = {}
+    for it in interactions.iterator():
+        steps = sequences.setdefault(it.postcode.upper(), [])
+        if len(steps) >= max_steps:
+            continue
+        loc = _resolve_location(it)
+        if not loc:
+            continue
+        coords = location_coords(loc)
+        if not coords:
+            continue
+        steps.append(
+            {
+                "location_id": loc.id,
+                "name": loc.name,
+                "organisation": it.organisation.name if it.organisation_id else "",
+                "organisation_id": it.organisation_id,
+                "lng": coords[0],
+                "lat": coords[1],
+                "date": it.interaction_date.isoformat() if it.interaction_date else None,
+                "count": int(it.interaction_count or 0),
+                "event_id": it.event_id,
+                "event_title": (it.event.title if it.event_id and it.event else ""),
+            }
+        )
+
+    located = [(pc, s) for pc, s in sequences.items() if len(s) >= 2]
+    located.sort(key=lambda hs: sum(st["count"] for st in hs[1]), reverse=True)
+    return located
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticatedOrReadOnly])
+def postcode_pathways(request: Request) -> Response:
+    """Venue→venue connections derived from postcode-cohort event sequences.
+
+    Mirrors :func:`journeys_flows` but sourced from ``PostcodeEventInteraction``
+    uploads: for each postcode, its event interactions are ordered by date and
+    consecutive events form venue→venue edges weighted by the smaller of the two
+    cohort counts (a conservative estimate of the shared cohort). The response
+    shape matches ``journeys_flows`` (``nodes`` + ``flows`` + ``geojson``) plus
+    ``postcode_nodes`` (origin districts) for optional origin rendering.
+
+    An optional ``?district=PL1`` restricts the connections to a single origin
+    postcode district's cohort, so clicking a postcode on the map filters the
+    venue→venue pathways to that origin.
+    """
+    p = parse_filter_params(request)
+    selected = request.GET.get("district", "").strip().upper()
+    sequences = _postcode_event_sequences(p, max_steps=200)
+    if selected:
+        sequences = [(pc, steps) for pc, steps in sequences if _district(pc) == selected]
+
+    edges: dict[tuple[int, int], int] = {}
+    node_visits: dict[int, int] = {}
+    node_meta: dict[int, dict] = {}
+    postcode_totals: dict[str, dict] = {}
+
+    for postcode, steps in sequences:
+        district = _district(postcode)
+        pc_coords = POSTCODE_CENTROIDS.get(district)
+        for i, step in enumerate(steps):
+            lid = step["location_id"]
+            node_visits[lid] = node_visits.get(lid, 0) + step["count"]
+            if lid not in node_meta:
+                node_meta[lid] = {
+                    "location_id": lid,
+                    "name": step["name"],
+                    "organisation_id": step.get("organisation_id"),
+                    "lng": step["lng"],
+                    "lat": step["lat"],
+                }
+            if pc_coords and district:
+                pt = postcode_totals.setdefault(
+                    district,
+                    {"code": district, "lng": pc_coords[0], "lat": pc_coords[1], "total": 0},
+                )
+                pt["total"] += step["count"]
+            if i == 0:
+                continue
+            prev = steps[i - 1]
+            if prev["location_id"] == lid:
+                continue
+            weight = min(prev["count"], step["count"])
+            if weight <= 0:
+                continue
+            key = (prev["location_id"], lid)
+            edges[key] = edges.get(key, 0) + weight
+
+    nodes = [{**meta, "visits": node_visits.get(lid, 0)} for lid, meta in node_meta.items()]
+    nodes.sort(key=lambda n: n["visits"], reverse=True)
+
+    flows = []
+    features = []
+    for (src, dst), count in edges.items():
+        a = node_meta[src]
+        b = node_meta[dst]
+        flows.append(
+            {
+                "from_id": src,
+                "from_name": a["name"],
+                "to_id": dst,
+                "to_name": b["name"],
+                "count": count,
+            }
+        )
+        features.append(
+            {
+                "type": "Feature",
+                "geometry": {
+                    "type": "LineString",
+                    "coordinates": [[a["lng"], a["lat"]], [b["lng"], b["lat"]]],
+                },
+                "properties": {
+                    "from_id": src,
+                    "to_id": dst,
+                    "from_name": a["name"],
+                    "to_name": b["name"],
+                    "count": count,
+                },
+            }
+        )
+
+    flows.sort(key=lambda r: r["count"], reverse=True)
+    features.sort(key=lambda f: f["properties"]["count"], reverse=True)
+
+    return Response(
+        {
+            "filters": p,
+            "node_count": len(nodes),
+            "flow_count": len(flows),
+            "nodes": nodes,
+            "flows": flows,
+            "postcode_nodes": sorted(postcode_totals.values(), key=lambda x: -x["total"]),
             "geojson": {"type": "FeatureCollection", "features": features},
         }
     )

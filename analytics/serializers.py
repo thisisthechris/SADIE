@@ -2,7 +2,11 @@ import re
 
 from rest_framework import serializers
 
-from .models import PostcodeAreaInteraction, UserHashInteraction
+from .models import (
+    PostcodeAreaInteraction,
+    PostcodeEventInteraction,
+    UserHashInteraction,
+)
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
@@ -99,5 +103,74 @@ class PostcodeAreaInteractionUploadSerializer(serializers.ModelSerializer):
                     "period_start": "period_start must be before or equal to period_end.",
                     "period_end": "period_end must be after or equal to period_start.",
                 }
+            )
+        return attrs
+
+
+class PostcodeEventInteractionSerializer(serializers.ModelSerializer):
+    organisation_name = serializers.CharField(source="organisation.name", read_only=True)
+    event_title = serializers.CharField(source="event.title", read_only=True, allow_null=True)
+    location_name = serializers.CharField(source="location.name", read_only=True, allow_null=True)
+
+    class Meta:
+        model = PostcodeEventInteraction
+        fields = [
+            "id",
+            "organisation",
+            "organisation_name",
+            "postcode",
+            "area",
+            "event",
+            "event_title",
+            "location",
+            "location_name",
+            "interaction_count",
+            "interaction_date",
+            "created_at",
+        ]
+
+
+class PostcodeEventInteractionUploadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PostcodeEventInteraction
+        fields = [
+            "organisation",
+            "postcode",
+            "area",
+            "event",
+            "location",
+            "interaction_count",
+            "interaction_date",
+        ]
+        extra_kwargs = {
+            "organisation": {"required": False},
+            "location": {"required": False},
+            "interaction_date": {"required": False},
+            "interaction_count": {"required": True},
+        }
+
+    def validate(self, attrs):
+        """Require an event and derive organisation/location/date from it.
+
+        The event is mandatory (a postcode cohort always interacts *through* an
+        event). Organisation, venue and the ordering date default from the event
+        when the uploader omits them, so partners only need to send the postcode,
+        event and count.
+        """
+        event = attrs.get("event")
+        if event is None:
+            raise serializers.ValidationError({"event": "This field is required."})
+
+        if not attrs.get("organisation"):
+            attrs["organisation"] = event.organisation
+        if not attrs.get("location") and event.location_id:
+            attrs["location"] = event.location
+        if not attrs.get("interaction_date"):
+            attrs["interaction_date"] = event.start_datetime.date()
+
+        count = attrs.get("interaction_count")
+        if count is not None and count <= 0:
+            raise serializers.ValidationError(
+                {"interaction_count": "interaction_count must be a positive integer."}
             )
         return attrs

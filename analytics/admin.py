@@ -1,6 +1,10 @@
 from django.contrib import admin
 
-from .models import PostcodeAreaInteraction, UserHashInteraction
+from .models import (
+    PostcodeAreaInteraction,
+    PostcodeEventInteraction,
+    UserHashInteraction,
+)
 
 
 @admin.register(UserHashInteraction)
@@ -41,3 +45,22 @@ class PostcodeAreaInteractionAdmin(admin.ModelAdmin):
     readonly_fields = ["created_at"]
     raw_id_fields = ["organisation"]
     date_hierarchy = "period_end"
+
+
+@admin.register(PostcodeEventInteraction)
+class PostcodeEventInteractionAdmin(admin.ModelAdmin):
+    list_display = [
+        "postcode",
+        "area",
+        "organisation",
+        "event",
+        "location",
+        "interaction_count",
+        "interaction_date",
+        "created_at",
+    ]
+    list_filter = ["organisation", "interaction_date"]
+    search_fields = ["postcode", "area", "organisation__name", "event__title", "location__name"]
+    readonly_fields = ["created_at"]
+    raw_id_fields = ["organisation", "event", "location"]
+    date_hierarchy = "interaction_date"
