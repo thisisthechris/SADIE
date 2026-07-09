@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Map as MapIcon, Route, ArrowLeftRight, MapPin, type LucideIcon } from "lucide-react";
+import { Map as MapIcon, Route, ArrowLeftRight, MapPin, Share2, type LucideIcon } from "lucide-react";
 import { api } from "../lib/api";
 import { useFilters } from "../lib/filters";
 import { useConfig, useMe } from "../lib/auth";
@@ -44,6 +44,7 @@ export default function PostcodeAreasMap() {
     corridors: false,
     flows: false,
     venues: false,
+    sankey: false,
   });
 
   // District summary — needed to merge totals into polygon colours.
@@ -209,6 +210,32 @@ export default function PostcodeAreasMap() {
     return { mapPaths: paths, mapPoints: points };
   }, [postcodeNodesQuery.data, venueFlowsQuery.data, selected, f.org, myOrgIds]);
 
+  // Sankey-style paths: postcode centroid → venue, width proportional to visitor count.
+  // Coloured by source district so the geographic origin is readable at a glance.
+  const sankeyPaths = useMemo<MapPath[]>(() => {
+    const pcd = postcodeNodesQuery.data;
+    if (!pcd?.flows?.length) return [];
+
+    const allFlows = selected
+      ? pcd.flows.filter((fl) => fl.from_code === selected)
+      : [...pcd.flows].sort((a, b) => b.count - a.count).slice(0, 200);
+
+    const max = Math.max(...allFlows.map((fl) => fl.count), 1);
+    return allFlows.map((fl) => {
+      const frac = fl.count / max;
+      return {
+        id: `sk-${fl.from_code}-${fl.to_location_id}`,
+        coordinates: [[fl.from_lng, fl.from_lat], [fl.to_lng, fl.to_lat]] as [[number, number], [number, number]],
+        color: CORE_PLYMOUTH.has(fl.from_code)
+          ? districtColor(districts, fl.from_code)
+          : "#94a3b8",
+        width: 1 + frac * 14,
+        opacity: 0.12 + frac * 0.70,
+        popupHtml: `<div class="text-xs"><div class="font-semibold">${escHtml(fl.from_code)} → ${escHtml(fl.to_name)}</div><div>${fl.count.toLocaleString()} visitors</div></div>`,
+      };
+    });
+  }, [postcodeNodesQuery.data, selected, districts]);
+
   return (
     <div className="space-y-6">
       {/* Header + tab nav */}
@@ -239,6 +266,7 @@ export default function PostcodeAreasMap() {
                 ["areas",     "Postcode areas",      MapIcon       ],
                 ["corridors", "Transport corridors", Route         ],
                 ["flows",     "Venue pathways",       ArrowLeftRight],
+                ["sankey",    "Visitor origins",      Share2        ],
                 ["venues",    "Venues",               MapPin        ],
               ] as [keyof typeof layers, string, LucideIcon][]
             ).map(([key, label, Icon]) => (
@@ -278,7 +306,10 @@ export default function PostcodeAreasMap() {
             <div className="card overflow-hidden flex-1 min-w-0">
               <Map2D
                 points={mapPoints}
-                paths={(layers.flows || Boolean(selected)) ? mapPaths : []}
+                paths={[
+                  ...(layers.sankey ? sankeyPaths : []),
+                  ...((layers.flows || Boolean(selected)) ? mapPaths : []),
+                ]}
                 areaPolygons={areaPolygons}
                 corridors={corridors}
                 maptilerKey={mapKey}
