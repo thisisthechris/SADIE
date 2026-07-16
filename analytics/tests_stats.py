@@ -6,7 +6,7 @@ parity with the numbers shown by the server-rendered dashboard pages,
 since both consume the same helpers in ``analytics.queries``.
 """
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from django.contrib.auth.models import User
 from django.test import TestCase
@@ -184,3 +184,134 @@ class CategoryEndpointTest(TestCase):
         r = self.client.get("/api/events/categories/")
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.json()["count"], 2)
+
+
+class NewChartsStatsEndpointsTest(TestCase):
+    """Tests for peak-times, attendance-frequency, event-lead-time, lead-time-trend."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user("u2", password="pw")
+        cls.org_a = Organisation.objects.create(name="Org A")
+        cls.org_b = Organisation.objects.create(name="Org B")
+
+        tz = timezone.get_current_timezone()
+        cls.e_morning1 = Event.objects.create(
+            organisation=cls.org_a,
+            title="Morning 1",
+            start_datetime=timezone.make_aware(datetime(2026, 1, 5, 9, 0), tz),
+        )
+        cls.e_morning2 = Event.objects.create(
+            organisation=cls.org_a,
+            title="Morning 2",
+            start_datetime=timezone.make_aware(datetime(2026, 1, 6, 9, 30), tz),
+        )
+        cls.e_evening = Event.objects.create(
+            organisation=cls.org_b,
+            title="Evening",
+            start_datetime=timezone.make_aware(datetime(2026, 1, 7, 18, 0), tz),
+        )
+
+        # Backdate created_at (auto_now_add ignores create() kwargs, so use update()).
+        Event.objects.filter(pk=cls.e_morning1.pk).update(
+            created_at=cls.e_morning1.start_datetime - timedelta(days=10)
+        )
+        Event.objects.filter(pk=cls.e_morning2.pk).update(
+            created_at=cls.e_morning2.start_datetime - timedelta(days=20)
+        )
+        Event.objects.filter(pk=cls.e_evening.pk).update(
+            created_at=cls.e_evening.start_datetime - timedelta(days=2)
+        )
+
+        # Backdated listing (created AFTER the event happened) -> excluded from lead-time averages.
+        cls.e_backdated = Event.objects.create(
+            organisation=cls.org_a,
+            title="Backdated",
+            start_datetime=timezone.make_aware(datetime(2026, 1, 1, 12, 0), tz),
+        )
+        Event.objects.filter(pk=cls.e_backdated.pk).update(
+            created_at=cls.e_backdated.start_datetime + timedelta(days=5)
+        )
+
+        # Attendance frequency: v1 attends 1 event, v2 attends 2, v3 attends 3, v4 attends 4 (all).
+        events_pool = [cls.e_morning1, cls.e_morning2, cls.e_evening, cls.e_backdated]
+        attend_counts = {"v1": 1, "v2": 2, "v3": 3, "v4": 4}
+        for user_hash, n in attend_counts.items():
+            for i in range(n):
+                UserHashInteraction.objects.create(
+                    user_hash=user_hash,
+                    interaction_type="event",
+                    organisation=events_pool[i].organisation,
+                    event=events_pool[i],
+                    interaction_date=date.today(),
+                )
+        # Location-only interaction should NOT count as attendance.
+        UserHashInteraction.objects.create(
+            user_hash="v5",
+            interaction_type="location",
+            organisation=cls.org_a,
+            interaction_date=date.today(),
+        )
+
+    def setUp(self):
+        self.client = APIClient()
+        self.client.force_authenticate(self.user)
+
+    def test_peak_times_counts_by_hour(self):
+        r = self.client.get("/api/analytics/stats/peak-times/")
+        self.assertEqual(r.status_code, 200)
+        series = r.json()["series"]
+        self.assertEqual(len(series), 24)
+        by_hour = {row["hour"]: row["events"] for row in series}
+        self.assertEqual(by_hour[9], 2)
+        self.assertEqual(by_hour[18], 1)
+        self.assertEqual(by_hour[12], 1)
+
+    def test_attendance_frequency_buckets(self):
+        r = self.client.get("/api/analytics/stats/attendance-frequency/")
+        self.assertEqual(r.status_code, 200)
+        d = r.json()
+        buckets = {row["bucket"]: row["visitors"] for row in d["series"]}
+        self.assertEqual(buckets["1"], 1)
+        self.assertEqual(buckets["2"], 1)
+        self.assertEqual(buckets["3"], 1)
+        self.assertEqual(buckets["4+"], 1)
+        self.assertEqual(d["summary"]["total_visitors"], 4)
+        self.assertEqual(d["summary"]["gt3_count"], 1)
+
+    def test_event_lead_time_by_org_and_exclusion(self):
+        r = self.client.get("/api/analytics/stats/event-lead-time/")
+        self.assertEqual(r.status_code, 200)
+        d = r.json()
+        self.assertEqual(d["excluded_count"], 1)
+        by_org = {row["organisation__name"]: row for row in d["by_org"]}
+        self.assertAlmostEqual(by_org["Org A"]["avg_days"], 15.0, delta=0.1)
+        self.assertEqual(by_org["Org A"]["event_count"], 2)
+        self.assertAlmostEqual(by_org["Org B"]["avg_days"], 2.0, delta=0.1)
+
+    def test_lead_time_trend_monthly(self):
+        r = self.client.get("/api/analytics/stats/lead-time-trend/")
+        self.assertEqual(r.status_code, 200)
+        series = r.json()["series"]
+        self.assertTrue(any(row["month"] == "2026-01-01" for row in series))
+
+    def test_activity_by_weekday_merges_same_weekday_events(self):
+        """Regression test: two events on the same weekday but different exact
+        start_datetime must be summed, not silently overwrite each other via
+        Event's default Meta.ordering leaking into the GROUP BY clause."""
+        tz = timezone.get_current_timezone()
+        Event.objects.create(
+            organisation=self.org_a,
+            title="Same weekday A",
+            start_datetime=timezone.make_aware(datetime(2026, 1, 5, 9, 0), tz),
+        )
+        Event.objects.create(
+            organisation=self.org_a,
+            title="Same weekday B",
+            start_datetime=timezone.make_aware(datetime(2026, 1, 12, 15, 0), tz),
+        )
+        r = self.client.get("/api/analytics/stats/activity-by-weekday/")
+        self.assertEqual(r.status_code, 200)
+        series = r.json()["series"]
+        monday = next(row for row in series if row["weekday_name"] == "Monday")
+        self.assertGreaterEqual(monday["events"], 2)

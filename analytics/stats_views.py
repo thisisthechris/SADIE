@@ -23,14 +23,18 @@ Endpoints (mounted at /api/analytics/stats/):
     GET category-trends/          -> monthly category interaction trends
     GET top-venues/               -> top locations by event count and interactions
     GET engagement/               -> engagement metrics (buzz, current vs previous month)
+    GET peak-times/               -> event count by hour-of-day
+    GET attendance-frequency/     -> distribution of events attended per visitor
+    GET event-lead-time/          -> avg days between scrape and event, by org
+    GET lead-time-trend/          -> monthly avg scrape-to-event lead time
 """
 
 from __future__ import annotations
 
 from datetime import date, timedelta
 
-from django.db.models import Count, Sum
-from django.db.models.functions import ExtractIsoWeekDay, TruncMonth
+from django.db.models import Avg, Count, DurationField, ExpressionWrapper, F, Sum
+from django.db.models.functions import ExtractHour, ExtractIsoWeekDay, TruncMonth
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.request import Request
@@ -394,10 +398,20 @@ def activity_by_weekday(request: Request) -> Response:
 
     weekday_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
-    event_by_dow = events.annotate(dow=ExtractIsoWeekDay("start_datetime")).values("dow").annotate(count=Count("id"))
+    # NOTE: explicit .order_by() is required on both queries below — otherwise
+    # Django adds each model's default Meta.ordering field (Event's
+    # "start_datetime" / UserHashInteraction's "-interaction_date") to the
+    # GROUP BY clause, splitting a weekday's rows into multiple 1-count groups
+    # that then silently overwrite each other in the dict comprehension below.
+    event_by_dow = (
+        events.annotate(dow=ExtractIsoWeekDay("start_datetime")).values("dow").annotate(count=Count("id")).order_by()
+    )
 
     interaction_by_dow = (
-        interactions.annotate(dow=ExtractIsoWeekDay("interaction_date")).values("dow").annotate(count=Count("id"))
+        interactions.annotate(dow=ExtractIsoWeekDay("interaction_date"))
+        .values("dow")
+        .annotate(count=Count("id"))
+        .order_by()
     )
 
     # Convert to dicts (0-indexed Monday; ExtractIsoWeekDay: 1=Mon, 7=Sun)
@@ -588,3 +602,205 @@ def engagement(request: Request) -> Response:
             "buzz_change": buzz_change,
         }
     )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticatedOrReadOnly])
+def peak_times(request: Request) -> Response:
+    """Event count by hour-of-day (0-23), based on ``start_datetime``.
+
+    Returns: {
+        "filters": {...},
+        "series": [
+            {"hour": 0, "label": "00:00", "events": 3},
+            ...
+            {"hour": 23, "label": "23:00", "events": 1}
+        ]
+    }
+    """
+    p, events, _, _ = _filtered(request)
+
+    # NOTE: explicit .order_by("hour") is required — otherwise Django adds
+    # Event's default Meta.ordering ("start_datetime") to the GROUP BY clause,
+    # splitting events that share an hour but differ in exact start_datetime.
+    by_hour = (
+        events.annotate(hour=ExtractHour("start_datetime"))
+        .values("hour")
+        .annotate(count=Count("id"))
+        .order_by("hour")
+    )
+    hour_dict = {row["hour"]: row["count"] for row in by_hour}
+
+    series = [
+        {
+            "hour": h,
+            "label": f"{h:02d}:00",
+            "events": hour_dict.get(h, 0),
+        }
+        for h in range(24)
+    ]
+
+    return Response({"filters": p, "series": series})
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticatedOrReadOnly])
+def attendance_frequency(request: Request) -> Response:
+    """Distribution of how many distinct events each visitor has attended.
+
+    "Attended" = has an ``interaction_type="event"`` interaction tied to that
+    event. Bucketed as 1 / 2 / 3 / 4+ events attended.
+
+    Returns: {
+        "filters": {...},
+        "series": [
+            {"bucket": "1", "visitors": 120},
+            {"bucket": "2", "visitors": 54},
+            {"bucket": "3", "visitors": 21},
+            {"bucket": "4+", "visitors": 18}
+        ],
+        "summary": {
+            "total_visitors": 213,
+            "gt3_count": 18,
+            "gt3_pct": 8.5
+        }
+    }
+    """
+    p, _, interactions, _ = _filtered(request)
+
+    # NOTE: explicit .order_by() is required — otherwise Django adds
+    # UserHashInteraction's default Meta.ordering ("-interaction_date") to the
+    # GROUP BY clause, splitting a visitor's rows across multiple groups.
+    per_user = (
+        interactions.filter(interaction_type="event", event_id__isnull=False)
+        .values("user_hash")
+        .annotate(n=Count("event_id", distinct=True))
+        .order_by()
+    )
+
+    buckets = {"1": 0, "2": 0, "3": 0, "4+": 0}
+    total_visitors = 0
+    gt3_count = 0
+    for row in per_user:
+        n = row["n"]
+        total_visitors += 1
+        if n >= 4:
+            buckets["4+"] += 1
+            gt3_count += 1
+        elif n == 3:
+            buckets["3"] += 1
+        elif n == 2:
+            buckets["2"] += 1
+        elif n == 1:
+            buckets["1"] += 1
+
+    series = [{"bucket": b, "visitors": buckets[b]} for b in ["1", "2", "3", "4+"]]
+    gt3_pct = round((gt3_count / total_visitors) * 100, 1) if total_visitors else 0.0
+
+    return Response(
+        {
+            "filters": p,
+            "series": series,
+            "summary": {
+                "total_visitors": total_visitors,
+                "gt3_count": gt3_count,
+                "gt3_pct": gt3_pct,
+            },
+        }
+    )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticatedOrReadOnly])
+def event_lead_time(request: Request) -> Response:
+    """Average lead time (days) between an event being scraped in and taking place.
+
+    ``lead_days = start_datetime - created_at``. Events with a negative lead
+    (backdated/backfilled listings created after their start date) are
+    excluded from the averages but counted in ``excluded_count``.
+
+    Returns: {
+        "filters": {...},
+        "overall_avg_days": 12.4,
+        "excluded_count": 3,
+        "by_org": [
+            {"organisation_id": 1, "organisation__name": "Org A", "avg_days": 14.2, "event_count": 40},
+            ...
+        ]
+    }
+    """
+    p, events, _, _ = _filtered(request)
+
+    with_lead = events.annotate(
+        lead=ExpressionWrapper(F("start_datetime") - F("created_at"), output_field=DurationField())
+    )
+    excluded_count = with_lead.filter(lead__lt=timedelta(0)).count()
+    valid = with_lead.filter(lead__gte=timedelta(0))
+
+    overall = valid.aggregate(avg_lead=Avg("lead"))["avg_lead"]
+    overall_avg_days = round(overall.total_seconds() / 86400, 1) if overall else 0.0
+
+    by_org_rows = (
+        valid.values("organisation_id", "organisation__name")
+        .annotate(avg_lead=Avg("lead"), event_count=Count("id"))
+        .order_by("-event_count")
+    )
+    by_org = [
+        {
+            "organisation_id": row["organisation_id"],
+            "organisation__name": row["organisation__name"],
+            "avg_days": round(row["avg_lead"].total_seconds() / 86400, 1) if row["avg_lead"] else 0.0,
+            "event_count": row["event_count"],
+        }
+        for row in by_org_rows
+    ]
+
+    return Response(
+        {
+            "filters": p,
+            "overall_avg_days": overall_avg_days,
+            "excluded_count": excluded_count,
+            "by_org": by_org,
+        }
+    )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticatedOrReadOnly])
+def lead_time_trend(request: Request) -> Response:
+    """Monthly average lead time (days) between scrape and event date.
+
+    Grouped by the event's ``start_datetime`` month. Same exclusion rule as
+    ``event_lead_time`` (negative leads dropped).
+
+    Returns: {
+        "filters": {...},
+        "series": [
+            {"month": "2025-01", "avg_days": 10.5},
+            ...
+        ]
+    }
+    """
+    p, events, _, _ = _filtered(request)
+
+    with_lead = events.annotate(
+        lead=ExpressionWrapper(F("start_datetime") - F("created_at"), output_field=DurationField())
+    ).filter(lead__gte=timedelta(0))
+
+    rows = (
+        with_lead.annotate(month=TruncMonth("start_datetime"))
+        .values("month")
+        .annotate(avg_lead=Avg("lead"))
+        .order_by("month")
+    )
+
+    series = [
+        {
+            "month": r["month"].date().isoformat() if hasattr(r["month"], "date") else r["month"].isoformat(),
+            "avg_days": round(r["avg_lead"].total_seconds() / 86400, 1) if r["avg_lead"] else 0.0,
+        }
+        for r in rows
+        if r["month"]
+    ]
+
+    return Response({"filters": p, "series": series})

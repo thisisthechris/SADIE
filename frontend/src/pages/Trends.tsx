@@ -6,6 +6,10 @@ import EmptyState, { LoadingState } from "../components/EmptyState";
 import { StackedAreaChart } from "../components/StackedAreaChart";
 import { WeekdayBars } from "../components/WeekdayBars";
 import { RankedBar } from "../components/RankedBar";
+import { PeakTimesBar } from "../components/PeakTimesBar";
+import { AttendanceFrequencyBar } from "../components/AttendanceFrequencyBar";
+import { LeadTimeTrendLine } from "../components/LeadTimeTrendLine";
+import TrendCard from "../components/TrendCard";
 
 interface NewReturningData {
   month: string;
@@ -34,13 +38,39 @@ interface TopVenueData {
   interaction_count: number;
 }
 
+interface PeakTimeData {
+  hour: number;
+  label: string;
+  events: number;
+}
+
+interface AttendanceBucket {
+  bucket: string;
+  visitors: number;
+}
+
+interface AttendanceSummary {
+  total_visitors: number;
+  gt3_count: number;
+  gt3_pct: number;
+}
+
+interface LeadTimeByOrg {
+  organisation_id: number;
+  organisation__name: string;
+  avg_days: number;
+  event_count: number;
+}
+
+interface LeadTimeTrendPoint {
+  month: string;
+  avg_days: number;
+}
+
 /**
- * Trends: Multi-section dashboard showing key trends across 5 visualizations.
- * - New vs Returning Visitors (line/area chart)
- * - Weekday Activity (bar chart with events + interactions)
- * - Category Trends (stacked area chart)
- * - Top Venues (horizontal bar chart)
- * - Engagement Summary (metric cards)
+ * Trends: Multi-section dashboard showing key trends across event and
+ * visitor activity. Every chart card can be expanded to fullscreen via
+ * TrendCard's expand toggle.
  */
 export default function Trends() {
   const { org, category, date_from, date_to, search } = useFilters();
@@ -101,6 +131,53 @@ export default function Trends() {
     },
   });
 
+  // Peak Times of Day
+  const peakTimes = useQuery<{ series: PeakTimeData[] }>({
+    queryKey: ["stats", "peak-times", org, category, date_from, date_to],
+    queryFn: async () => {
+      const res = await fetch(`/api/analytics/stats/peak-times/?${params.toString()}`);
+      if (!res.ok) throw new Error("Failed to fetch peak times");
+      return res.json();
+    },
+  });
+
+  // Attendance Frequency
+  const attendanceFrequency = useQuery<{
+    series: AttendanceBucket[];
+    summary: AttendanceSummary;
+  }>({
+    queryKey: ["stats", "attendance-frequency", org, category, date_from, date_to],
+    queryFn: async () => {
+      const res = await fetch(`/api/analytics/stats/attendance-frequency/?${params.toString()}`);
+      if (!res.ok) throw new Error("Failed to fetch attendance frequency");
+      return res.json();
+    },
+  });
+
+  // Event Lead Time (scrape-to-event) by org
+  const eventLeadTime = useQuery<{
+    overall_avg_days: number;
+    excluded_count: number;
+    by_org: LeadTimeByOrg[];
+  }>({
+    queryKey: ["stats", "event-lead-time", org, category, date_from, date_to],
+    queryFn: async () => {
+      const res = await fetch(`/api/analytics/stats/event-lead-time/?${params.toString()}`);
+      if (!res.ok) throw new Error("Failed to fetch event lead time");
+      return res.json();
+    },
+  });
+
+  // Lead Time Trend (monthly)
+  const leadTimeTrend = useQuery<{ series: LeadTimeTrendPoint[] }>({
+    queryKey: ["stats", "lead-time-trend", org, category, date_from, date_to],
+    queryFn: async () => {
+      const res = await fetch(`/api/analytics/stats/lead-time-trend/?${params.toString()}`);
+      if (!res.ok) throw new Error("Failed to fetch lead time trend");
+      return res.json();
+    },
+  });
+
   // Engagement
   const engagement = useQuery<{
     current_month_interactions: number;
@@ -134,78 +211,156 @@ export default function Trends() {
       </div>
 
       {/* New vs Returning */}
-      <div className="card p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <h2 className="heading-small">New vs Returning Visitors</h2>
-          <InfoTooltip text="new_vs_returning" />
-        </div>
-        {newReturning.isLoading ? (
-          <LoadingState />
-        ) : newReturning.data?.series?.length ? (
-          <StackedAreaChart
-            data={newReturning.data.series.map((d) => [
-              { month: d.month, category: "New", count: d.new },
-              { month: d.month, category: "Returning", count: d.returning },
-            ]).flat()}
-            height={300}
-          />
-        ) : (
-          <EmptyState message="No visitor data available for the selected period." />
-        )}
-      </div>
+      <TrendCard title="New vs Returning Visitors" tooltipText="new_vs_returning">
+        {(h) =>
+          newReturning.isLoading ? (
+            <LoadingState />
+          ) : newReturning.data?.series?.length ? (
+            <StackedAreaChart
+              data={newReturning.data.series.map((d) => [
+                { month: d.month, category: "New", count: d.new },
+                { month: d.month, category: "Returning", count: d.returning },
+              ]).flat()}
+              height={h}
+            />
+          ) : (
+            <EmptyState message="No visitor data available for the selected period." />
+          )
+        }
+      </TrendCard>
 
       {/* Weekday Activity */}
-      <div className="card p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <h2 className="heading-small">Activity by Day of Week</h2>
-          <InfoTooltip text="weekday_activity" />
-        </div>
-        {weekdayActivity.isLoading ? (
-          <LoadingState />
-        ) : weekdayActivity.data?.series?.length ? (
-          <WeekdayBars data={weekdayActivity.data.series} height={300} />
-        ) : (
-          <EmptyState message="No activity data available." />
-        )}
-      </div>
+      <TrendCard title="Activity by Day of Week" tooltipText="weekday_activity">
+        {(h) =>
+          weekdayActivity.isLoading ? (
+            <LoadingState />
+          ) : weekdayActivity.data?.series?.length ? (
+            <WeekdayBars data={weekdayActivity.data.series} height={h} />
+          ) : (
+            <EmptyState message="No activity data available." />
+          )
+        }
+      </TrendCard>
+
+      {/* Peak Times of Day */}
+      <TrendCard title="Peak Times of Day" tooltipText="peak_times">
+        {(h) =>
+          peakTimes.isLoading ? (
+            <LoadingState />
+          ) : peakTimes.data?.series?.some((d) => d.events > 0) ? (
+            <PeakTimesBar data={peakTimes.data.series} height={h} />
+          ) : (
+            <EmptyState message="No event start-time data available." />
+          )
+        }
+      </TrendCard>
 
       {/* Category Trends */}
-      <div className="card p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <h2 className="heading-small">Category Trends Over Time</h2>
-          <InfoTooltip text="category_trends" />
-        </div>
-        {categoryTrends.isLoading ? (
-          <LoadingState />
-        ) : categoryTrends.data?.series?.length ? (
-          <StackedAreaChart data={categoryTrends.data.series} height={300} />
-        ) : (
-          <EmptyState message="No category data available." />
-        )}
-      </div>
+      <TrendCard title="Category Trends Over Time" tooltipText="category_trends">
+        {(h) =>
+          categoryTrends.isLoading ? (
+            <LoadingState />
+          ) : categoryTrends.data?.series?.length ? (
+            <StackedAreaChart data={categoryTrends.data.series} height={h} />
+          ) : (
+            <EmptyState message="No category data available." />
+          )
+        }
+      </TrendCard>
 
       {/* Top Venues */}
-      <div className="card p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <h2 className="heading-small">Top Venues by Activity</h2>
-          <InfoTooltip text="venue_popularity" />
-        </div>
-        {topVenues.isLoading ? (
-          <LoadingState />
-        ) : topVenues.data?.results?.length ? (
-          <RankedBar
-            data={topVenues.data.results.map((v) => ({
-              name: v.name,
-              value: v.interaction_count,
-            }))}
-            label="Visitor interactions"
-            color="#14b8a6"
-            height={350}
-          />
-        ) : (
-          <EmptyState message="No venue data available." />
-        )}
-      </div>
+      <TrendCard title="Top Venues by Activity" tooltipText="venue_popularity">
+        {(h) =>
+          topVenues.isLoading ? (
+            <LoadingState />
+          ) : topVenues.data?.results?.length ? (
+            <RankedBar
+              data={topVenues.data.results.map((v) => ({
+                name: v.name,
+                value: v.interaction_count,
+              }))}
+              label="Visitor interactions"
+              color="#14b8a6"
+              height={h}
+            />
+          ) : (
+            <EmptyState message="No venue data available." />
+          )
+        }
+      </TrendCard>
+
+      {/* Attendance Frequency */}
+      <TrendCard title="Attendance Frequency" tooltipText="attendance_frequency">
+        {(h) =>
+          attendanceFrequency.isLoading ? (
+            <LoadingState />
+          ) : attendanceFrequency.data?.series?.some((d) => d.visitors > 0) ? (
+            <div>
+              <div className="mb-4 text-center">
+                <div className="text-2xl font-bold text-accent">
+                  {attendanceFrequency.data.summary.gt3_count.toLocaleString()}
+                  <span className="text-sm font-normal text-muted ml-2">
+                    ({attendanceFrequency.data.summary.gt3_pct}%) of visitors attended more than 3 events
+                  </span>
+                </div>
+              </div>
+              <AttendanceFrequencyBar data={attendanceFrequency.data.series} height={h} />
+            </div>
+          ) : (
+            <EmptyState message="No attendance data available." />
+          )
+        }
+      </TrendCard>
+
+      {/* Event Lead Time by Org */}
+      <TrendCard title="Event Lead Time by Organisation" tooltipText="event_lead_time">
+        {(h) =>
+          eventLeadTime.isLoading ? (
+            <LoadingState />
+          ) : eventLeadTime.data?.by_org?.length ? (
+            <div>
+              <div className="mb-4 text-center">
+                <div className="text-2xl font-bold text-accent">
+                  {eventLeadTime.data.overall_avg_days.toFixed(1)} days
+                  <span className="text-sm font-normal text-muted ml-2">
+                    average time from listing to event
+                  </span>
+                </div>
+                {eventLeadTime.data.excluded_count > 0 && (
+                  <div className="text-xs text-muted mt-1">
+                    {eventLeadTime.data.excluded_count} backdated listing
+                    {eventLeadTime.data.excluded_count !== 1 ? "s" : ""} excluded
+                  </div>
+                )}
+              </div>
+              <RankedBar
+                data={eventLeadTime.data.by_org.map((o) => ({
+                  name: o.organisation__name,
+                  value: o.avg_days,
+                }))}
+                label="Avg days from listing to event"
+                color="#f59e0b"
+                height={h}
+              />
+            </div>
+          ) : (
+            <EmptyState message="No lead time data available." />
+          )
+        }
+      </TrendCard>
+
+      {/* Lead Time Trend */}
+      <TrendCard title="Lead Time Trend" tooltipText="lead_time_trend">
+        {(h) =>
+          leadTimeTrend.isLoading ? (
+            <LoadingState />
+          ) : leadTimeTrend.data?.series?.length ? (
+            <LeadTimeTrendLine data={leadTimeTrend.data.series} height={h} />
+          ) : (
+            <EmptyState message="No lead time trend data available." />
+          )
+        }
+      </TrendCard>
 
       {/* Engagement Summary */}
       {engagement.data && (
@@ -261,3 +416,4 @@ export default function Trends() {
     </div>
   );
 }
+

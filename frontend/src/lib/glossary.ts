@@ -95,6 +95,26 @@ export const GLOSSARY: Record<string, GlossaryTerm> = {
     short: "View two organisations or two time periods side-by-side.",
     long: "Compare two organisations to see which is reaching more people or hosting more events. Or compare two time periods (e.g., last month vs the month before) to spot growth or decline.",
   },
+  peak_times: {
+    term: "Peak Times",
+    short: "The hours of the day when the most events start.",
+    long: "A breakdown of event start times by hour of day (00:00–23:00). Helps partners understand when audiences are most likely to be attending, useful for scheduling new events.",
+  },
+  attendance_frequency: {
+    term: "Attendance Frequency",
+    short: "How many distinct events each visitor has attended.",
+    long: "Groups visitors by how many different events they've attended in the selected period (1, 2, 3, or 4+). Visitors attending more than 3 events are considered highly engaged repeat attendees.",
+  },
+  event_lead_time: {
+    term: "Event Lead Time",
+    short: "Days between an event being listed and it taking place.",
+    long: "The average number of days between when an event was added to SADIE and when it actually takes place, broken down by organisation. A higher number means that organisation typically lists events further in advance.",
+  },
+  lead_time_trend: {
+    term: "Lead Time Trend",
+    short: "How average event lead time changes month to month.",
+    long: "Tracks the average scrape-to-event lead time over time, to see whether organisations are, on average, listing events further in advance or closer to the date.",
+  },
 };
 
 /**
