@@ -4,8 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { Map as MapIcon, Route, ArrowLeftRight, MapPin, Share2, type LucideIcon } from "lucide-react";
 import { api } from "../lib/api";
 import { useFilters } from "../lib/filters";
-import { useConfig, useMe } from "../lib/auth";
-import Map2D, {
+import { useConfig, useMe } from "../lib/auth";import OrgToggle from "../components/OrgToggle";import Map2D, {
   type MapPoint,
   type MapPath,
   type AreaFeatureCollection,
@@ -242,6 +241,7 @@ export default function PostcodeAreasMap() {
             built from the order in which postcode cohorts attend events.
           </p>
         </div>
+        <OrgToggle />
       </div>
 
       {/* Map */}

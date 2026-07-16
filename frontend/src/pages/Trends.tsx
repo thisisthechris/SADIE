@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useFilters } from "../lib/filters";
 import InfoTooltip from "../components/InfoTooltip";
+import OrgToggle from "../components/OrgToggle";
 import EmptyState, { LoadingState } from "../components/EmptyState";
 import { StackedAreaChart } from "../components/StackedAreaChart";
 import { WeekdayBars } from "../components/WeekdayBars";
@@ -122,11 +123,14 @@ export default function Trends() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="heading-main mb-2">Trends</h1>
-        <p className="body-lg">
-          Key patterns across your event and visitor activity.
-        </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="heading-main mb-2">Trends</h1>
+          <p className="body-lg">
+            Key patterns across your event and visitor activity.
+          </p>
+        </div>
+        <OrgToggle />
       </div>
 
       {/* New vs Returning */}

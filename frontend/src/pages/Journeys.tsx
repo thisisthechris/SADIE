@@ -4,6 +4,7 @@ import { api } from "../lib/api";
 import { useFilters } from "../lib/filters";
 import ExportMenu from "../components/ExportMenu";
 import InfoTooltip from "../components/InfoTooltip";
+import OrgToggle from "../components/OrgToggle";
 import { downloadCsv } from "../lib/export";
 
 interface JourneysSummary {
@@ -22,11 +23,14 @@ interface JourneysSummary {
 export default function Journeys() {
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="heading-small">Visitor Activity</h1>
-        <p className="text-sm text-muted">
-          See when and how people interact with events across all partners.
-        </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="heading-small">Visitor Activity</h1>
+          <p className="text-sm text-muted">
+            See when and how people interact with events across all partners.
+          </p>
+        </div>
+        <OrgToggle />
       </div>
       <SummaryView />
     </div>

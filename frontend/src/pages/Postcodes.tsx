@@ -4,6 +4,7 @@ import { api } from "../lib/api";
 import { useFilters } from "../lib/filters";
 import { useConfig } from "../lib/auth";
 import ExportMenu from "../components/ExportMenu";
+import OrgToggle from "../components/OrgToggle";
 import Map2D, { type MapPoint, type HeatmapPoint } from "../viz/Map2D";
 import InfoTooltip from "../components/InfoTooltip";
 import { downloadCsv } from "../lib/export";
@@ -159,40 +160,43 @@ export default function Postcodes() {
             <InfoTooltip text="privacy_grouping" className="mt-1" />
           </div>
         </div>
-        <ExportMenu
-          items={[
-            {
-              label: "CSV districts",
-              disabled: !districts.length,
-              onClick: () =>
-                downloadCsv(
-                  "postcode-districts.csv",
-                  districts,
-                  [
-                    { key: "area", label: "District" },
-                    { key: "total", label: "Total" },
-                  ],
-                ),
-            },
-            {
-              label: "CSV records",
-              disabled: !records.data?.results.length,
-              onClick: () =>
-                downloadCsv(
-                  "postcode-records.csv",
-                  records.data?.results ?? [],
-                  [
-                    { key: "postcode", label: "Postcode" },
-                    { key: "area", label: "Area" },
-                    { key: "organisation", label: "Organisation" },
-                    { key: "interaction_count", label: "Count" },
-                    { key: "period_start", label: "Period start" },
-                    { key: "period_end", label: "Period end" },
-                  ],
-                ),
-            },
-          ]}
-        />
+        <div className="flex items-center gap-2">
+          <OrgToggle />
+          <ExportMenu
+            items={[
+              {
+                label: "CSV districts",
+                disabled: !districts.length,
+                onClick: () =>
+                  downloadCsv(
+                    "postcode-districts.csv",
+                    districts,
+                    [
+                      { key: "area", label: "District" },
+                      { key: "total", label: "Total" },
+                    ],
+                  ),
+              },
+              {
+                label: "CSV records",
+                disabled: !records.data?.results.length,
+                onClick: () =>
+                  downloadCsv(
+                    "postcode-records.csv",
+                    records.data?.results ?? [],
+                    [
+                      { key: "postcode", label: "Postcode" },
+                      { key: "area", label: "Area" },
+                      { key: "organisation", label: "Organisation" },
+                      { key: "interaction_count", label: "Count" },
+                      { key: "period_start", label: "Period start" },
+                      { key: "period_end", label: "Period end" },
+                    ],
+                  ),
+              },
+            ]}
+          />
+        </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">

@@ -4,6 +4,7 @@ import { useFilters } from "../lib/filters";
 import { LoadingState } from "../components/EmptyState";
 import EmptyState from "../components/EmptyState";
 import { BigStat } from "../components/BigStat";
+import OrgToggle from "../components/OrgToggle";
 
 interface SummaryData {
   event_count: number;
@@ -87,11 +88,14 @@ export default function Compare() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="heading-main mb-2">Compare</h1>
-        <p className="body-lg">
-          Side-by-side view of two organisations or two time periods.
-        </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="heading-main mb-2">Compare</h1>
+          <p className="body-lg">
+            Side-by-side view of two organisations or two time periods.
+          </p>
+        </div>
+        <OrgToggle />
       </div>
 
       {/* Mode Selector */}

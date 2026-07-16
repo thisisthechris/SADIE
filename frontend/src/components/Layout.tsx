@@ -9,7 +9,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useMe } from "../lib/auth";
 import { api } from "../lib/api";
 import SearchModal from "./SearchModal";
-import OrgToggle from "./OrgToggle";
 import Logo from "./Logo";
 import BrandShape from "./BrandShape";
 
@@ -164,7 +163,6 @@ export default function Layout() {
                 ⌘K
               </kbd>
             </button>
-            <OrgToggle />
             <NavLink
               to="/insights/help"
               className={({ isActive }) =>

@@ -5,6 +5,7 @@ import { useFilters } from "../lib/filters";
 import { useConfig, useMe } from "../lib/auth";
 import Map2D, { type MapPoint, type MapPath } from "../viz/Map2D";
 import ExportMenu from "../components/ExportMenu";
+import OrgToggle from "../components/OrgToggle";
 import InfoTooltip from "../components/InfoTooltip";
 import { downloadCsv } from "../lib/export";
 import { TimelineSlider, msToDateStr } from "../components/TimelineSlider";
@@ -342,6 +343,7 @@ export default function JourneyMap() {
         </div>
 
         <div className="flex items-center gap-2">
+          <OrgToggle />
           {mode === "flows" && (
             <ExportMenu
               items={[

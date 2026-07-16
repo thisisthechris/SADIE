@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { useFilters } from "../lib/filters";
+import OrgToggle from "../components/OrgToggle";
 import type { EventSummary, Paginated } from "../lib/types";
 
 // Computed once at module load — stable for the lifetime of the page session.
@@ -200,13 +201,16 @@ export default function CalendarPage() {
             </button>
           </div>
         </div>
-        {events.data !== undefined && (
-          <div className="stat text-right">
-            <div className="stat-label">This month</div>
-            <div className="stat-value">{events.data.length.toLocaleString()}</div>
-            <div className="text-[10px] text-muted mt-0.5">events</div>
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          <OrgToggle />
+          {events.data !== undefined && (
+            <div className="stat text-right">
+              <div className="stat-label">This month</div>
+              <div className="stat-value">{events.data.length.toLocaleString()}</div>
+              <div className="text-[10px] text-muted mt-0.5">events</div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── Month grid ── */}

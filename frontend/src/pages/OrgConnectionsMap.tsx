@@ -4,6 +4,7 @@ import { api } from "../lib/api";
 import { useFilters } from "../lib/filters";
 import { useConfig } from "../lib/auth";
 import Map2D, { type MapPoint, type MapPath } from "../viz/Map2D";
+import OrgToggle from "../components/OrgToggle";
 import InfoTooltip from "../components/InfoTooltip";
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -184,19 +185,22 @@ export default function OrgConnectionsMap() {
         </div>
 
         {/* Simple / full toggle */}
-        <div className="inline-flex rounded-lg border border-border overflow-hidden text-sm">
-          <button
-            className={`px-3 py-1.5 ${!showAll ? "bg-accent text-white" : "hover:bg-border/20"}`}
-            onClick={() => setShowAll(false)}
-          >
-            Simple view
-          </button>
-          <button
-            className={`px-3 py-1.5 ${showAll ? "bg-accent text-white" : "hover:bg-border/20"}`}
-            onClick={() => setShowAll(true)}
-          >
-            Show all
-          </button>
+        <div className="flex items-center gap-2">
+          <OrgToggle />
+          <div className="inline-flex rounded-lg border border-border overflow-hidden text-sm">
+            <button
+              className={`px-3 py-1.5 ${!showAll ? "bg-accent text-white" : "hover:bg-border/20"}`}
+              onClick={() => setShowAll(false)}
+            >
+              Simple view
+            </button>
+            <button
+              className={`px-3 py-1.5 ${showAll ? "bg-accent text-white" : "hover:bg-border/20"}`}
+              onClick={() => setShowAll(true)}
+            >
+              Show all
+            </button>
+          </div>
         </div>
       </div>
 

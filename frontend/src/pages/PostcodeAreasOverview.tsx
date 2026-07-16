@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { api } from "../lib/api";
 import { useFilters } from "../lib/filters";
 import ExportMenu from "../components/ExportMenu";
+import OrgToggle from "../components/OrgToggle";
 import { downloadCsv } from "../lib/export";
 import {
   type District,
@@ -54,6 +55,7 @@ export default function PostcodeAreasOverview() {
             each postcode district. Select a district to see the breakdown.
           </p>
         </div>
+        <OrgToggle />
       </div>
 
       {/* District chip picker */}

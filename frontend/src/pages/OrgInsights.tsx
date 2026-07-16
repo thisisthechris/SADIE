@@ -6,6 +6,7 @@ import { BigStat } from "../components/BigStat";
 import { HeadlineAreaChart } from "../components/AreaChart";
 import JourneyFlowsMap from "../components/JourneyFlowsMap";
 import InfoTooltip from "../components/InfoTooltip";
+import OrgToggle from "../components/OrgToggle";
 import { HeadlineResponse } from "../lib/types";
 
 /**
@@ -37,11 +38,14 @@ export const OrgInsights: React.FC = () => {
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="heading-main mb-2">Insights</h1>
-          <p className="body-lg">
-            See how many people are attending events and where they're coming from.
-          </p>
+        <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="heading-main mb-2">Insights</h1>
+            <p className="body-lg">
+              See how many people are attending events and where they're coming from.
+            </p>
+          </div>
+          <OrgToggle />
         </div>
 
         {/* Headline Stats - Two columns on desktop, one on mobile */}

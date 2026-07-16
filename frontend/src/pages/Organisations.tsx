@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { api } from "../lib/api";
 import { useFilters } from "../lib/filters";
 import PartnerBadge from "../components/PartnerBadge";
+import OrgToggle from "../components/OrgToggle";
 import type { OrganisationSummary, Paginated } from "../lib/types";
 
 export default function OrganisationsPage() {
@@ -16,12 +17,15 @@ export default function OrganisationsPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="heading-small">Organisations</h1>
-        <p className="body-lg">
-          Plymouth&rsquo;s arts &amp; cultural organisations being tracked. Click
-          a row to drill in.
-        </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="heading-small">Organisations</h1>
+          <p className="body-lg">
+            Plymouth&rsquo;s arts &amp; cultural organisations being tracked. Click
+            a row to drill in.
+          </p>
+        </div>
+        <OrgToggle />
       </div>
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
