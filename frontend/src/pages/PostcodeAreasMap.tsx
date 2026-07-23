@@ -263,8 +263,8 @@ export default function PostcodeAreasMap() {
       {/* Header + tab nav */}
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="heading-small">Postcode Pathways</h1>
-          <p className="text-sm text-muted">
+          <h1 className="heading-main">Postcode Pathways</h1>
+          <p className="body-lg">
             PL postcode district boundaries coloured by visitor activity, with
             Plymouth public-transport corridors and venue-to-venue pathways
             built from the order in which postcode cohorts attend events.

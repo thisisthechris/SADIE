@@ -54,6 +54,12 @@
     @apply bg-card border border-border rounded-lg shadow-soft;
   }
 
+  /* Interactive variant: subtle lift + deeper shadow on hover, for clickable
+     cards (list rows, grid tiles, related-item links). */
+  .card-hover {
+    @apply transition-all duration-200 hover:shadow-md hover:-translate-y-0.5;
+  }
+
   .btn {
     @apply inline-flex items-center justify-center gap-2 rounded-full px-4 py-1.5
            text-sm font-medium transition-colors disabled:opacity-50;

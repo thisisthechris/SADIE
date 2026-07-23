@@ -58,9 +58,9 @@ export default function Search() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div>
-        <h1 className="heading-small">Search</h1>
+        <h1 className="heading-main">Search</h1>
         <p className="body-lg">
           Hybrid keyword + semantic search across events and organisations.
           {search.data?.vector === false && (

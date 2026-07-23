@@ -77,7 +77,7 @@ export default function InfoTooltip({ text, className = "" }: InfoTooltipProps) 
         <div
           ref={popoverRef}
           id="tooltip-content"
-          className="absolute left-0 top-full mt-2 z-50 w-64 p-3 bg-white border border-border rounded shadow-lg"
+          className="absolute left-0 top-full mt-2 z-50 w-64 p-3 bg-card border border-border rounded shadow-lg animate-fade-in"
           role="tooltip"
         >
           <div className="text-xs font-semibold text-accent mb-1">{title}</div>

@@ -301,8 +301,8 @@ export default function PostcodeAreas() {
     <div className="space-y-6">
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="heading-small">Postcode Areas</h1>
-          <p className="text-sm text-muted">
+          <h1 className="heading-main">Postcode Areas</h1>
+          <p className="body-lg">
             Explore which cultural venues and organisations attract visitors from
             each postcode district. Select a district to see the breakdown.
           </p>

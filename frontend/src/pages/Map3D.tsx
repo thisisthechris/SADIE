@@ -59,9 +59,9 @@ export default function Map3D() {
   }, [q.data]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div>
-        <h1 className="heading-small">3D Event Density</h1>
+        <h1 className="heading-main">3D Event Density</h1>
         <p className="body-lg">
           Hex-binned event counts across Plymouth venues. Bars rise with
           activity; hover for venue totals. Filters apply globally.

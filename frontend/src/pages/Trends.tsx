@@ -12,6 +12,7 @@ import { LeadTimeTrendLine } from "../components/LeadTimeTrendLine";
 import { DistrictStackedBar } from "../components/DistrictStackedBar";
 import { PartySizeBar } from "../components/PartySizeBar";
 import { TicketVolumeTrendLine } from "../components/TicketVolumeTrendLine";
+import AnimatedNumber from "../components/AnimatedNumber";
 import TrendCard from "../components/TrendCard";
 import type { TicketSummaryResp } from "../lib/postcodeAreas";
 
@@ -379,7 +380,7 @@ export default function Trends() {
             <div>
               <div className="mb-4 text-center">
                 <div className="text-2xl font-bold text-accent">
-                  {attendanceFrequency.data.summary.gt3_count.toLocaleString()}
+                  <AnimatedNumber value={attendanceFrequency.data.summary.gt3_count} />
                   <span className="text-sm font-normal text-muted ml-2">
                     ({attendanceFrequency.data.summary.gt3_pct}%) of visitors attended more than 3 events
                   </span>
@@ -402,7 +403,7 @@ export default function Trends() {
             <div>
               <div className="mb-4 text-center">
                 <div className="text-2xl font-bold text-accent">
-                  {eventLeadTime.data.overall_avg_days.toFixed(1)} days
+                  <AnimatedNumber value={eventLeadTime.data.overall_avg_days} format={(n) => n.toFixed(1)} /> days
                   <span className="text-sm font-normal text-muted ml-2">
                     average time from listing to event
                   </span>
@@ -522,7 +523,7 @@ export default function Trends() {
             <div>
               <div className="mb-4 text-center">
                 <div className="text-2xl font-bold text-accent">
-                  {(ticketSummary.data.avg_party_size ?? 0).toLocaleString()} tickets/order
+                  <AnimatedNumber value={ticketSummary.data.avg_party_size ?? 0} format={(n) => n.toLocaleString(undefined, { maximumFractionDigits: 2 })} /> tickets/order
                   <span className="text-sm font-normal text-muted ml-2">
                     average party size
                   </span>
@@ -570,7 +571,7 @@ export default function Trends() {
                 Buzz (current month)
               </div>
               <div className="text-2xl font-bold text-accent">
-                {engagement.data.buzz_current.toFixed(1)}
+                <AnimatedNumber value={engagement.data.buzz_current} format={(n) => n.toFixed(1)} />
               </div>
               <div
                 className={`text-xs font-medium ${
@@ -588,7 +589,7 @@ export default function Trends() {
                 Current Month Events
               </div>
               <div className="text-2xl font-bold text-accent">
-                {engagement.data.current_month_events}
+                <AnimatedNumber value={engagement.data.current_month_events} />
               </div>
               <div className="text-xs text-muted">
                 vs {engagement.data.previous_month_events} last month
@@ -599,7 +600,7 @@ export default function Trends() {
                 Current Month Interactions
               </div>
               <div className="text-2xl font-bold text-accent">
-                {engagement.data.current_month_interactions.toLocaleString()}
+                <AnimatedNumber value={engagement.data.current_month_interactions} />
               </div>
               <div className="text-xs text-muted">
                 vs {engagement.data.previous_month_interactions.toLocaleString()} last month

@@ -76,11 +76,11 @@ export default function TrendCard({
 
       {expanded && (
         <div
-          className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-8"
+          className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-8 animate-fade-in"
           onClick={() => setExpanded(false)}
         >
           <div
-            className="card p-6 w-full max-w-6xl max-h-[90vh] overflow-auto shadow-2xl"
+            className="card p-6 w-full max-w-6xl max-h-[90vh] overflow-auto shadow-2xl animate-fade-in"
             onClick={(e) => e.stopPropagation()}
           >
             {header(true)}

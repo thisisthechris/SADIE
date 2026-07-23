@@ -50,7 +50,8 @@ export function TicketVolumeTrendLine({ data, height = 300 }: TicketVolumeTrendL
           stroke="#f59e0b"
           strokeWidth={2}
           dot={{ r: 3 }}
-          isAnimationActive={false}
+          isAnimationActive
+          animationDuration={400}
         />
         <Line
           type="monotone"
@@ -59,7 +60,8 @@ export function TicketVolumeTrendLine({ data, height = 300 }: TicketVolumeTrendL
           stroke="#6366f1"
           strokeWidth={2}
           dot={{ r: 3 }}
-          isAnimationActive={false}
+          isAnimationActive
+          animationDuration={400}
         />
       </LineChart>
     </ResponsiveContainer>

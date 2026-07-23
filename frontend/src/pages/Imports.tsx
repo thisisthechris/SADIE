@@ -91,10 +91,10 @@ export default function Imports() {
     });
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex items-end justify-between flex-wrap gap-3">
         <div>
-          <h1 className="heading-small">Import review queue</h1>
+          <h1 className="heading-main">Import review queue</h1>
           <p className="body-lg">
             Triage scraped events. Approve to mark for import, then run "Import" to write them
             into the live <code>events</code> table.

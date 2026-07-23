@@ -38,7 +38,7 @@ export function PartySizeBar({ data, height = 300 }: PartySizeBarProps) {
           labelStyle={{ color: "#1f2937", fontWeight: 600 }}
           formatter={(value: number) => [value.toLocaleString(), "Orders"]}
         />
-        <Bar dataKey="orders" name="Orders" isAnimationActive={false} radius={[4, 4, 0, 0]}>
+        <Bar dataKey="orders" name="Orders" isAnimationActive animationDuration={400} radius={[4, 4, 0, 0]}>
           {chartData.map((d) => (
             <Cell key={d.tickets} fill={d.tickets === "5+" ? "#f59e0b" : "#6366f1"} />
           ))}

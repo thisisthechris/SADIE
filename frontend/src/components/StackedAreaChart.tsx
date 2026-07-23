@@ -115,7 +115,8 @@ export function StackedAreaChart({
             stackId="a"
             stroke={COLORS[i % COLORS.length]}
             fill={`url(#grad-${i})`}
-            isAnimationActive={false}
+            isAnimationActive
+            animationDuration={400}
           />
         ))}
       </ComposedChart>

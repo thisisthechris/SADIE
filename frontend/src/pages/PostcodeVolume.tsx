@@ -6,6 +6,7 @@ import ExportMenu from "../components/ExportMenu";
 import OrgToggle from "../components/OrgToggle";
 import { RankedBar } from "../components/RankedBar";
 import { PartySizeBar } from "../components/PartySizeBar";
+import AnimatedNumber from "../components/AnimatedNumber";
 import { downloadCsv } from "../lib/export";
 import type {
   TicketDistrictsResp,
@@ -72,8 +73,8 @@ export default function PostcodeVolume() {
     <div className="space-y-6">
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="heading-small">Ticket Volume</h1>
-          <p className="text-sm text-muted">
+          <h1 className="heading-main">Ticket Volume</h1>
+          <p className="body-lg">
             How many tickets people from each postcode bought per order — average
             party size and group-booking patterns, distinct from raw visitor counts.
           </p>
@@ -86,19 +87,23 @@ export default function PostcodeVolume() {
         <div className="card p-4">
           <p className="text-xs uppercase text-muted">Total tickets</p>
           <p className="text-2xl font-semibold tabular-nums mt-1">
-            {(s?.total_tickets ?? 0).toLocaleString()}
+            <AnimatedNumber value={s?.total_tickets ?? 0} />
           </p>
         </div>
         <div className="card p-4">
           <p className="text-xs uppercase text-muted">Total orders</p>
           <p className="text-2xl font-semibold tabular-nums mt-1">
-            {(s?.total_orders ?? 0).toLocaleString()}
+            <AnimatedNumber value={s?.total_orders ?? 0} />
           </p>
         </div>
         <div className="card p-4">
           <p className="text-xs uppercase text-muted">Avg. party size</p>
           <p className="text-2xl font-semibold tabular-nums mt-1">
-            {(s?.avg_party_size ?? 0).toLocaleString()} tickets/order
+            <AnimatedNumber
+              value={s?.avg_party_size ?? 0}
+              format={(n) => n.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+            />{" "}
+            tickets/order
           </p>
         </div>
       </div>

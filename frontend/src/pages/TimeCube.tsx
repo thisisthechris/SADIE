@@ -145,10 +145,10 @@ export default function TimeCube() {
   }, [q.data, reduceMotion]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div>
         <div className="flex items-center gap-2 mb-2">
-          <h1 className="heading-small">Event Timeline Map</h1>
+          <h1 className="heading-main">Event Timeline Map</h1>
           <InfoTooltip text="time_cube" />
         </div>
         <p className="body-lg">

@@ -171,8 +171,8 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({
   return (
     <div className={`${className}`}>
       <div ref={mapContainer} className="w-full h-96 rounded-lg" />
-      <div className="mt-4 p-4 bg-white border border-gray-200 rounded-lg">
-        <div className="text-sm text-gray-600">
+      <div className="mt-4 p-4 card">
+        <div className="text-sm text-muted">
           <p className="font-semibold mb-2">Legend</p>
           <div className="flex items-center gap-2 mb-2">
             <div className="w-4 h-4" style={{ backgroundColor: "rgba(59, 130, 246, 0.7)" }} />

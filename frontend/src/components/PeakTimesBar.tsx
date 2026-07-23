@@ -38,7 +38,7 @@ export function PeakTimesBar({ data, height = 300 }: PeakTimesBarProps) {
           labelStyle={{ color: "#1f2937", fontWeight: 600 }}
           formatter={(value: number) => value.toLocaleString()}
         />
-        <Bar dataKey="events" fill="#8b5cf6" name="Events starting" isAnimationActive={false} radius={[4, 4, 0, 0]} />
+        <Bar dataKey="events" fill="#8b5cf6" name="Events starting" isAnimationActive animationDuration={400} radius={[4, 4, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );

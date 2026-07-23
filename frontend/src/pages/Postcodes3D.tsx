@@ -58,9 +58,9 @@ export default function Postcodes3D() {
   }, [q.data]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div>
-        <h1 className="heading-small">Postcode Engagement (3D)</h1>
+        <h1 className="heading-main">Postcode Engagement (3D)</h1>
         <p className="body-lg">
           Extruded bars at each Plymouth postcode-district centroid show total
           interaction volume. Cool → warm scales with relative engagement.

@@ -40,7 +40,7 @@ export function AttendanceFrequencyBar({ data, height = 300 }: AttendanceFrequen
           labelStyle={{ color: "#1f2937", fontWeight: 600 }}
           formatter={(value: number) => [value.toLocaleString(), "Visitors"]}
         />
-        <Bar dataKey="visitors" name="Visitors" isAnimationActive={false} radius={[4, 4, 0, 0]}>
+        <Bar dataKey="visitors" name="Visitors" isAnimationActive animationDuration={400} radius={[4, 4, 0, 0]}>
           {chartData.map((d) => (
             <Cell key={d.bucket} fill={d.bucket === "4+" ? "#f59e0b" : "#6366f1"} />
           ))}

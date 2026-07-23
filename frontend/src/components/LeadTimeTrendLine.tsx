@@ -38,7 +38,8 @@ export function LeadTimeTrendLine({ data, height = 300 }: LeadTimeTrendLineProps
           stroke="#14b8a6"
           strokeWidth={2}
           dot={{ r: 3 }}
-          isAnimationActive={false}
+          isAnimationActive
+          animationDuration={400}
         />
       </LineChart>
     </ResponsiveContainer>

@@ -5,6 +5,7 @@ import { api } from "../lib/api";
 import { useFilters } from "../lib/filters";
 import { useMe } from "../lib/auth";
 import PartnerBadge from "../components/PartnerBadge";
+import AnimatedNumber from "../components/AnimatedNumber";
 import type { OrganisationDetail, Paginated } from "../lib/types";
 
 interface PostcodeBarsResp {
@@ -144,7 +145,7 @@ function Header({ org }: { org: OrganisationDetail }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="heading-small">{org.name}</h1>
+            <h1 className="heading-main leading-snug">{org.name}</h1>
             {org.is_partner && <PartnerBadge />}
           </div>
           {org.parent && (
@@ -204,9 +205,11 @@ function StatsStrip({
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="card p-4">
+    <div className="card card-hover p-4">
       <div className="text-xs uppercase tracking-wide text-muted">{label}</div>
-      <div className="mt-1 text-2xl font-semibold tabular-nums">{value}</div>
+      <div className="mt-1 text-2xl font-semibold tabular-nums">
+        <AnimatedNumber value={value} />
+      </div>
     </div>
   );
 }

@@ -14,8 +14,8 @@ export default function SavedViews() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="heading-small">Saved views</h1>
-        <p className="text-sm text-muted">
+        <h1 className="heading-main">Saved views</h1>
+        <p className="body-lg">
           Bookmarked SPA pages with their filter state. Public views get a short shareable link.
         </p>
       </div>
@@ -47,7 +47,10 @@ function Section({
       ) : (
         <ul className="divide-y divide-border">
           {rows.map((v) => (
-            <li key={v.id} className="py-2 flex items-center gap-3">
+            <li
+              key={v.id}
+              className="py-2 px-2 -mx-2 rounded flex items-center gap-3 hover:bg-border/20 transition-colors"
+            >
               <div className="flex-1 min-w-0">
                 <Link
                   to={`/insights/v/${v.slug}`}

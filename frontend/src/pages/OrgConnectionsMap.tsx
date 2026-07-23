@@ -169,15 +169,15 @@ export default function OrgConnectionsMap() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <h1 className="heading-small">Org Connections</h1>
+            <h1 className="heading-main">Org Connections</h1>
             <InfoTooltip text="Shows which organisations share visitors — the thicker the line, the more people visited both. Positions reflect each organisation's venues." />
           </div>
-          <p className="text-sm text-muted">
+          <p className="body-lg">
             Organisations whose visitors overlap, placed at their venue
             locations. Use the filter bar to scope by date or start with a
             single organisation.

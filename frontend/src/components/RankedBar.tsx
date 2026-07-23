@@ -52,7 +52,7 @@ export function RankedBar({
           labelStyle={{ color: "#1f2937", fontWeight: 600 }}
           formatter={(value: number) => value.toLocaleString()}
         />
-        <Bar dataKey="value" fill={color} name={label} isAnimationActive={false} radius={[0, 4, 4, 0]} />
+        <Bar dataKey="value" fill={color} name={label} isAnimationActive animationDuration={400} radius={[0, 4, 4, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );

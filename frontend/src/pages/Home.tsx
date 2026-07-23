@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { api } from "../lib/api";
+import AnimatedNumber from "../components/AnimatedNumber";
 import type { StatsSummary, TimeseriesResponse, Paginated } from "../lib/types";
 
 // ── Inline types for pipeline data ─────────────────────────────────────────
@@ -152,7 +153,7 @@ function Stat({
     <>
       <div className="stat-label">{label}</div>
       <div className={`stat-value${highlight ? " text-accent" : ""}`}>
-        {value === undefined ? "—" : value.toLocaleString()}
+        {value === undefined ? "—" : <AnimatedNumber value={value} />}
       </div>
     </>
   );

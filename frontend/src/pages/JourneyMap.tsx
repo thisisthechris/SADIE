@@ -316,32 +316,14 @@ export default function JourneyMap() {
   const mapPoints = mode === "flows" ? flowNodes : visitorPoints;
 
   return (
-    <div className="space-y-4">
-      {/* ── Mode toggle ── */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="inline-flex rounded-lg border border-border overflow-hidden">
-          <button
-            className={`px-3 py-1.5 text-sm ${
-              mode === "flows"
-                ? "bg-accent text-white"
-                : "bg-white text-muted hover:bg-border/30"
-            }`}
-            onClick={() => setMode("flows")}
-          >
-            Common pathways
-          </button>
-          <button
-            className={`px-3 py-1.5 text-sm ${
-              mode === "visitors"
-                ? "bg-accent text-white"
-                : "bg-white text-muted hover:bg-border/30"
-            }`}
-            onClick={() => setMode("visitors")}
-          >
-            Individual visitors
-          </button>
+    <div className="space-y-6">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="heading-main">Journey Map</h1>
+          <p className="body-lg">
+            Individual visitor routes and the common pathways visitors take between venues.
+          </p>
         </div>
-
         <div className="flex items-center gap-2">
           <OrgToggle />
           {mode === "flows" && (
@@ -361,6 +343,30 @@ export default function JourneyMap() {
             />
           )}
         </div>
+      </div>
+
+      {/* ── Mode toggle ── */}
+      <div className="inline-flex rounded-lg border border-border overflow-hidden">
+        <button
+          className={`px-3 py-1.5 text-sm ${
+            mode === "flows"
+              ? "bg-accent text-white"
+              : "bg-card text-muted hover:bg-border/30"
+          }`}
+          onClick={() => setMode("flows")}
+        >
+          Common pathways
+        </button>
+        <button
+          className={`px-3 py-1.5 text-sm ${
+            mode === "visitors"
+              ? "bg-accent text-white"
+              : "bg-card text-muted hover:bg-border/30"
+          }`}
+          onClick={() => setMode("visitors")}
+        >
+          Individual visitors
+        </button>
       </div>
 
       {mode === "visitors" && (

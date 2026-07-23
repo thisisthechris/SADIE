@@ -25,8 +25,8 @@ export default function Journeys() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="heading-small">Visitor Activity</h1>
-          <p className="text-sm text-muted">
+          <h1 className="heading-main">Visitor Activity</h1>
+          <p className="body-lg">
             See when and how people interact with events across all partners.
           </p>
         </div>

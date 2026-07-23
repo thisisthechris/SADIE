@@ -103,7 +103,8 @@ export function DistrictStackedBar({
             stackId="a"
             fill={COLORS[i % COLORS.length]}
             name={seg}
-            isAnimationActive={false}
+            isAnimationActive
+            animationDuration={400}
           />
         ))}
       </BarChart>

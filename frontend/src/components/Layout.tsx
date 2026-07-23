@@ -178,7 +178,9 @@ export default function Layout() {
         </div>
       </header>
       <main className="flex-1 mx-auto max-w-7xl w-full px-4 py-6">
-        <Outlet />
+        <div key={location.pathname} className="animate-fade-in">
+          <Outlet />
+        </div>
       </main>
       <footer className="border-t border-border text-xs text-muted py-3 text-center flex items-center justify-center gap-2">
         <div className="h-5">

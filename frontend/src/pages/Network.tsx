@@ -100,10 +100,10 @@ export default function Network() {
   }, [q.data, enabled]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div>
         <div className="flex items-center gap-2 mb-2">
-          <h1 className="heading-small">Network</h1>
+          <h1 className="heading-main">Network</h1>
           <InfoTooltip text="network" />
         </div>
         <p className="body-lg">

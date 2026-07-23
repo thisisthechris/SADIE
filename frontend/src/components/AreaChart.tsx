@@ -46,7 +46,7 @@ export const HeadlineAreaChart: React.FC<AreaChartProps> = ({
   if (isLoading) {
     return (
       <div className={`${className} flex items-center justify-center h-96`}>
-        <div className="text-gray-500">Loading...</div>
+        <div className="text-muted">Loading...</div>
       </div>
     );
   }
@@ -54,7 +54,7 @@ export const HeadlineAreaChart: React.FC<AreaChartProps> = ({
   if (error || !data) {
     return (
       <div className={`${className} flex items-center justify-center h-96`}>
-        <div className="text-red-500">Error loading chart data</div>
+        <div className="text-red-600">Error loading chart data</div>
       </div>
     );
   }
@@ -74,7 +74,7 @@ export const HeadlineAreaChart: React.FC<AreaChartProps> = ({
   ];
 
   return (
-    <div className={`bg-white p-6 rounded-lg shadow border border-gray-200 ${className}`}>
+    <div className={`card p-6 ${className}`}>
       <h3 className="heading-sub mb-4">
         Events & Attendees Trend
       </h3>

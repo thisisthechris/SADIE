@@ -39,8 +39,8 @@ export function WeekdayBars({ data, height = 300 }: WeekdayBarsProps) {
           formatter={(value: number) => value.toLocaleString()}
         />
         <Legend wrapperStyle={{ paddingTop: 16, fontSize: 12 }} />
-        <Bar dataKey="events" fill="#6366f1" name="Events" isAnimationActive={false} />
-        <Bar dataKey="interactions" fill="#ec4899" name="Visitor interactions" isAnimationActive={false} />
+        <Bar dataKey="events" fill="#6366f1" name="Events" isAnimationActive animationDuration={400} />
+        <Bar dataKey="interactions" fill="#ec4899" name="Visitor interactions" isAnimationActive animationDuration={400} />
       </BarChart>
     </ResponsiveContainer>
   );
