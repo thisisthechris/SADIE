@@ -69,7 +69,14 @@ services:
     # Run migrations and collectstatic at startup. staticfiles is the container's
     # ephemeral layer (no volume) so Django's collected static always matches the
     # image. web is internal-only now — nginx is the public entrypoint.
-    command: sh -c "python manage.py migrate --noinput && echo '[COLLECTSTATIC] Starting...' && python manage.py collectstatic --noinput --clear --verbosity=2 && echo '[COLLECTSTATIC] Complete!' && gunicorn sadie.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 120 --access-logfile -"
+    #
+    # SEED_DEMO_DATA=true (set in .env) runs the one-shot test-data simulation
+    # (organisations/management/commands/simulate_test_data.py) on every
+    # deploy — venues, demo user, and a cumulative top-up of synthetic events/
+    # interactions/postcodes. Uses `;` (not `&&`) so a failure there can never
+    # stop gunicorn from starting. ONLY set this flag on a test/staging stack's
+    # .env — never on a real production database.
+    command: sh -c "python manage.py migrate --noinput && echo '[COLLECTSTATIC] Starting...' && python manage.py collectstatic --noinput --clear --verbosity=2 && echo '[COLLECTSTATIC] Complete!' ; if [ \"$$SEED_DEMO_DATA\" = \"true\" ]; then echo '[SEED_DEMO_DATA] Running simulate_test_data...' && python manage.py simulate_test_data ; fi ; gunicorn sadie.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 120 --access-logfile -"
     volumes:
       - media_volume:/app/mediafiles
       - embeddings_cache:/root/.cache/fastembed
