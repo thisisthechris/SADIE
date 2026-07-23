@@ -48,6 +48,7 @@ const NAV: NavEntry[] = [
       { to: "/insights/organisations", label: "Organisations", staff: true },
       { to: "/insights/postcodes", label: "Postcodes (legacy)", staff: true },
       { to: "/insights/postcode-areas", label: "Postcode Overview", end: true, staff: true },
+      { to: "/insights/postcode-volume", label: "Ticket Volume", staff: true },
       { to: "/insights/overview", label: "System Overview", staff: true },
       { to: "/insights/imports", label: "Imports", staff: true },
     ],
@@ -79,6 +80,7 @@ const BREADCRUMBS: Record<string, string[]> = (() => {
   out["/insights/journey-map"] = ["Exploration", "Journey Map"];
   out["/insights/postcode-areas"] = ["Internal", "Postcode Overview"];
   out["/insights/postcode-areas/map"] = ["Exploration", "Postcode Pathways"];
+  out["/insights/postcode-volume"] = ["Internal", "Ticket Volume"];
   out["/insights/org-connections"] = ["Exploration", "Org Connections"];
   out["/insights/trends"] = ["Exploration", "Trends"];
   out["/insights/organisations"] = ["Internal", "Organisations"];

@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 from .serializers import (
     PostcodeAreaInteractionUploadSerializer,
     PostcodeEventInteractionUploadSerializer,
+    PostcodeTicketPurchaseUploadSerializer,
     UserHashInteractionUploadSerializer,
 )
 
@@ -119,6 +120,41 @@ class PostcodeEventInteractionUploadView(APIView):
         if not isinstance(data, list):
             data = [data]
         serializer = PostcodeEventInteractionUploadSerializer(data=data, many=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {"created": len(serializer.data)},
+                status=status.HTTP_201_CREATED,
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PostcodeTicketPurchaseUploadView(APIView):
+    """
+    POST /api/upload/postcode-tickets/
+    Accepts a list of per-purchase ticket-volume records: how many tickets were
+    bought in a single order for an event, by someone from a postcode.
+
+    Headers:
+        X-Upload-Token: <UPLOAD_API_TOKEN>
+
+    Body (JSON):
+        [{"postcode": "PL4 0AB", "area": "Lipson", "event": 5,
+          "ticket_quantity": 4, "purchase_date": "2024-01-05"}, ...]
+
+    ``organisation`` and ``location`` are derived from the event when omitted.
+    ``purchase_date`` is required (not derived) — it is the analytical point of
+    this dataset.
+    """
+
+    permission_classes = [UploadTokenPermission]
+    throttle_classes = [UploadRateThrottle]
+
+    def post(self, request, *args, **kwargs):
+        data = request.data
+        if not isinstance(data, list):
+            data = [data]
+        serializer = PostcodeTicketPurchaseUploadSerializer(data=data, many=True)
         if serializer.is_valid():
             serializer.save()
             return Response(

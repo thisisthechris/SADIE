@@ -33,12 +33,14 @@ from organisations.models import Location, Organisation
 from .geocoding import cluster_points
 from .models import PostcodeGeo
 from .queries import (
+    district_of,
     events_qs,
     interactions_qs,
     location_coords,
     parse_filter_params,
     postcode_event_qs,
     postcode_qs,
+    postcode_ticket_qs,
 )
 
 # Centroids for PL postcode districts (lng, lat).
@@ -82,11 +84,9 @@ POSTCODE_CENTROIDS = {
 }
 
 
-def _district(postcode: str) -> str:
-    """Extract the postcode district (e.g. 'PL4 0AB' → 'PL4')."""
-    if not postcode:
-        return ""
-    return postcode.strip().split()[0].upper() if " " in postcode else postcode.strip().upper()
+# Alias kept so every existing call site in this module (_district(...)) keeps
+# working unchanged; the actual implementation is shared with stats_views.py.
+_district = district_of
 
 
 @api_view(["GET"])
@@ -572,6 +572,177 @@ def postcode_districts(request: Request) -> Response:
         ]
 
     return Response(result)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticatedOrReadOnly])
+def postcode_ticket_districts(request: Request) -> Response:
+    """Postcode-district ticket-volume summary with optional org breakdown.
+
+    GET /api/analytics/viz/postcode-ticket-districts/
+    Returns all districts with total tickets, order count and average party
+    size (tickets per order), plus centroids. Mirrors ``postcode_districts``
+    but sourced from ``PostcodeTicketPurchase`` (per-order ticket quantities)
+    rather than ``PostcodeAreaInteraction`` (aggregate interaction counts).
+
+    GET /api/analytics/viz/postcode-ticket-districts/?district=PL1
+    Also returns an org breakdown (tickets + orders) for that district.
+    """
+    p = parse_filter_params(request)
+    selected = request.GET.get("district", "").strip().upper()
+
+    qs = (
+        postcode_ticket_qs(p)
+        .order_by()
+        .values("postcode", "area")
+        .annotate(total_tickets=Sum("ticket_quantity"), order_count=Count("id"))
+    )
+
+    district_map: dict[str, dict] = {}
+    for row in qs:
+        d = _district(row["postcode"]) or _district(row["area"])
+        if not d:
+            continue
+        coords = POSTCODE_CENTROIDS.get(d)
+        if not coords:
+            continue
+        if d not in district_map:
+            district_map[d] = {
+                "code": d,
+                "lng": coords[0],
+                "lat": coords[1],
+                "total_tickets": 0,
+                "order_count": 0,
+            }
+        district_map[d]["total_tickets"] += int(row["total_tickets"] or 0)
+        district_map[d]["order_count"] += int(row["order_count"] or 0)
+
+    for d in district_map.values():
+        d["avg_party_size"] = round(d["total_tickets"] / d["order_count"], 2) if d["order_count"] else 0
+
+    districts = sorted(district_map.values(), key=lambda x: -x["total_tickets"])
+
+    result: dict = {"filters": p, "districts": districts}
+
+    if selected:
+        from django.db.models import Q
+
+        org_rows = (
+            postcode_ticket_qs(p)
+            .filter(Q(postcode__iexact=selected) | Q(postcode__istartswith=f"{selected} "))
+            .order_by()
+            .values("organisation__name", "organisation_id")
+            .annotate(total_tickets=Sum("ticket_quantity"), order_count=Count("id"))
+            .order_by("-total_tickets")
+        )
+
+        result["district"] = selected
+        result["orgs"] = [
+            {
+                "organisation": r["organisation__name"] or "",
+                "organisation_id": r["organisation_id"],
+                "total_tickets": int(r["total_tickets"] or 0),
+                "order_count": int(r["order_count"] or 0),
+            }
+            for r in org_rows
+        ]
+
+    return Response(result)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticatedOrReadOnly])
+def postcode_ticket_summary(request: Request) -> Response:
+    """Headline ticket-volume KPIs, party-size distribution, and top postcodes.
+
+    GET /api/analytics/viz/postcode-ticket-summary/
+    Powers the KPI cards + charts on the Ticket Volume page: overall totals,
+    a party-size histogram (bucketed by ``ticket_quantity``: 1, 2, 3, 4, 5+),
+    and the top 10 postcode districts by total tickets.
+    """
+    p = parse_filter_params(request)
+
+    qs = postcode_ticket_qs(p)
+
+    totals = qs.aggregate(total_tickets=Sum("ticket_quantity"), total_orders=Count("id"))
+    total_tickets = int(totals["total_tickets"] or 0)
+    total_orders = int(totals["total_orders"] or 0)
+    avg_party_size = round(total_tickets / total_orders, 2) if total_orders else 0
+
+    # Party-size distribution: bucket order counts by ticket_quantity (1,2,3,4,5+).
+    bucket_rows = qs.order_by().values("ticket_quantity").annotate(orders=Count("id"))
+    buckets = {"1": 0, "2": 0, "3": 0, "4": 0, "5+": 0}
+    for row in bucket_rows:
+        qty = row["ticket_quantity"] or 0
+        key = str(qty) if qty < 5 else "5+"
+        if key not in buckets:
+            key = "5+"
+        buckets[key] += int(row["orders"] or 0)
+    party_size_distribution = [{"tickets": k, "orders": v} for k, v in buckets.items()]
+
+    # Top 10 postcode districts by total tickets.
+    district_rows = (
+        qs.order_by()
+        .values("postcode", "area")
+        .annotate(total_tickets=Sum("ticket_quantity"), order_count=Count("id"))
+    )
+    district_totals: dict[str, dict] = {}
+    for row in district_rows:
+        d = _district(row["postcode"]) or _district(row["area"])
+        if not d:
+            continue
+        entry = district_totals.setdefault(d, {"code": d, "total_tickets": 0, "order_count": 0})
+        entry["total_tickets"] += int(row["total_tickets"] or 0)
+        entry["order_count"] += int(row["order_count"] or 0)
+    top_postcodes = sorted(district_totals.values(), key=lambda x: -x["total_tickets"])[:10]
+
+    return Response(
+        {
+            "filters": p,
+            "total_tickets": total_tickets,
+            "total_orders": total_orders,
+            "avg_party_size": avg_party_size,
+            "party_size_distribution": party_size_distribution,
+            "top_postcodes": top_postcodes,
+        }
+    )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticatedOrReadOnly])
+def postcode_ticket_records(request: Request) -> Response:
+    """Top-N raw PostcodeTicketPurchase rows under the current filters.
+
+    Powers the ticket-purchase data table on the Ticket Volume page. Honours
+    the standard FilterBar params and an optional ``limit`` (default 200,
+    max 1000), ordered by ``-purchase_date``.
+    """
+    p = parse_filter_params(request)
+    try:
+        limit = max(1, min(int(request.GET.get("limit", "200")), 1000))
+    except (TypeError, ValueError):
+        limit = 200
+
+    qs = (
+        postcode_ticket_qs(p)
+        .select_related("organisation", "event")
+        .order_by("-purchase_date")[:limit]
+    )
+    rows = [
+        {
+            "id": r.id,
+            "postcode": r.postcode,
+            "area": r.area or "",
+            "organisation": r.organisation.name if r.organisation_id else "",
+            "organisation_id": r.organisation_id,
+            "event_title": r.event.title if r.event_id and r.event else "",
+            "event_id": r.event_id,
+            "ticket_quantity": r.ticket_quantity,
+            "purchase_date": r.purchase_date.isoformat() if r.purchase_date else None,
+        }
+        for r in qs
+    ]
+    return Response({"filters": p, "count": len(rows), "limit": limit, "results": rows})
 
 
 def _postcode_flows_from_events(p, selected: str) -> dict | None:

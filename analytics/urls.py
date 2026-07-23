@@ -79,6 +79,26 @@ urlpatterns = [
         stats_views.lead_time_trend,
         name="stats-lead-time-trend",
     ),
+    path(
+        "stats/peak-times-by-postcode/",
+        stats_views.peak_times_by_postcode,
+        name="stats-peak-times-by-postcode",
+    ),
+    path(
+        "stats/event-types-by-postcode/",
+        stats_views.event_types_by_postcode,
+        name="stats-event-types-by-postcode",
+    ),
+    path(
+        "stats/postcode-engagement-trend/",
+        stats_views.postcode_engagement_trend,
+        name="stats-postcode-engagement-trend",
+    ),
+    path(
+        "stats/ticket-volume-trend/",
+        stats_views.ticket_volume_trend,
+        name="stats-ticket-volume-trend",
+    ),
     # Phase 3 — 3D visualisation data
     path("viz/event-points/", viz_views.event_points, name="viz-event-points"),
     path("viz/event-list/", viz_views.event_list, name="viz-event-list"),
@@ -94,6 +114,21 @@ urlpatterns = [
     path("viz/postcode-districts/", viz_views.postcode_districts, name="viz-postcode-districts"),
     path("viz/postcode-flows/", viz_views.postcode_flows, name="viz-postcode-flows"),
     path("viz/postcode-pathways/", viz_views.postcode_pathways, name="viz-postcode-pathways"),
+    path(
+        "viz/postcode-ticket-districts/",
+        viz_views.postcode_ticket_districts,
+        name="viz-postcode-ticket-districts",
+    ),
+    path(
+        "viz/postcode-ticket-summary/",
+        viz_views.postcode_ticket_summary,
+        name="viz-postcode-ticket-summary",
+    ),
+    path(
+        "viz/postcode-ticket-records/",
+        viz_views.postcode_ticket_records,
+        name="viz-postcode-ticket-records",
+    ),
     # Phase 4 — Recommendations
     path(
         "recommendations/similar/<int:event_id>/",

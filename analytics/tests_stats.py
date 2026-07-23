@@ -16,7 +16,12 @@ from rest_framework.test import APIClient
 from events.models import Category, Event
 from organisations.models import Organisation
 
-from .models import PostcodeAreaInteraction, UserHashInteraction
+from .models import (
+    PostcodeAreaInteraction,
+    PostcodeEventInteraction,
+    PostcodeTicketPurchase,
+    UserHashInteraction,
+)
 
 
 class StatsEndpointsTest(TestCase):
@@ -315,3 +320,155 @@ class NewChartsStatsEndpointsTest(TestCase):
         series = r.json()["series"]
         monday = next(row for row in series if row["weekday_name"] == "Monday")
         self.assertGreaterEqual(monday["events"], 2)
+
+
+class PostcodeAndTicketStatsEndpointsTest(TestCase):
+    """Tests for peak-times-by-postcode, event-types-by-postcode,
+    postcode-engagement-trend, and ticket-volume-trend."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user("u3", password="pw")
+        cls.org = Organisation.objects.create(name="Org C")
+        cls.cat_music = Category.objects.create(name="Gig")
+        cls.cat_film = Category.objects.create(name="Screening")
+
+        tz = timezone.get_current_timezone()
+        cls.e_morning = Event.objects.create(
+            organisation=cls.org,
+            title="Morning gig",
+            start_datetime=timezone.make_aware(datetime(2026, 2, 1, 9, 0), tz),
+        )
+        cls.e_morning.categories.add(cls.cat_music)
+        cls.e_evening = Event.objects.create(
+            organisation=cls.org,
+            title="Evening screening",
+            start_datetime=timezone.make_aware(datetime(2026, 2, 2, 19, 0), tz),
+        )
+        cls.e_evening.categories.add(cls.cat_film)
+
+        # PL1 skews morning/music, PL4 skews evening/film.
+        PostcodeEventInteraction.objects.create(
+            organisation=cls.org,
+            postcode="PL1 1AA",
+            area="PL1",
+            event=cls.e_morning,
+            interaction_count=10,
+            interaction_date=date(2026, 2, 1),
+        )
+        PostcodeEventInteraction.objects.create(
+            organisation=cls.org,
+            postcode="PL1 1AA",
+            area="PL1",
+            event=cls.e_evening,
+            interaction_count=2,
+            interaction_date=date(2026, 2, 2),
+        )
+        PostcodeEventInteraction.objects.create(
+            organisation=cls.org,
+            postcode="PL4 6AB",
+            area="PL4",
+            event=cls.e_evening,
+            interaction_count=6,
+            interaction_date=date(2026, 2, 2),
+        )
+
+        PostcodeAreaInteraction.objects.create(
+            organisation=cls.org,
+            postcode="PL1 1AA",
+            area="PL1",
+            interaction_count=50,
+            period_start=date(2026, 1, 1),
+            period_end=date(2026, 1, 31),
+        )
+        PostcodeAreaInteraction.objects.create(
+            organisation=cls.org,
+            postcode="PL4 6AB",
+            area="PL4",
+            interaction_count=5,
+            period_start=date(2026, 1, 1),
+            period_end=date(2026, 1, 31),
+        )
+        PostcodeAreaInteraction.objects.create(
+            organisation=cls.org,
+            postcode="PL1 1AA",
+            area="PL1",
+            interaction_count=20,
+            period_start=date(2026, 2, 1),
+            period_end=date(2026, 2, 28),
+        )
+
+        PostcodeTicketPurchase.objects.create(
+            organisation=cls.org,
+            postcode="PL1 1AA",
+            area="PL1",
+            event=cls.e_morning,
+            ticket_quantity=3,
+            purchase_date=date(2026, 1, 15),
+        )
+        PostcodeTicketPurchase.objects.create(
+            organisation=cls.org,
+            postcode="PL1 1AA",
+            area="PL1",
+            event=cls.e_morning,
+            ticket_quantity=2,
+            purchase_date=date(2026, 1, 20),
+        )
+        PostcodeTicketPurchase.objects.create(
+            organisation=cls.org,
+            postcode="PL4 6AB",
+            area="PL4",
+            event=cls.e_evening,
+            ticket_quantity=4,
+            purchase_date=date(2026, 2, 5),
+        )
+
+    def setUp(self):
+        self.client = APIClient()
+        self.client.force_authenticate(self.user)
+
+    def test_peak_times_by_postcode_buckets_by_daypart(self):
+        r = self.client.get("/api/analytics/stats/peak-times-by-postcode/")
+        self.assertEqual(r.status_code, 200)
+        d = r.json()
+        self.assertEqual(d["dayparts"], ["Morning", "Afternoon", "Evening", "Night"])
+        self.assertIn("PL1", d["districts"])
+        self.assertIn("PL4", d["districts"])
+        pl1_rows = {row["daypart"]: row["count"] for row in d["series"] if row["district"] == "PL1"}
+        self.assertEqual(pl1_rows["Morning"], 10)
+        self.assertEqual(pl1_rows["Evening"], 2)
+        pl4_rows = {row["daypart"]: row["count"] for row in d["series"] if row["district"] == "PL4"}
+        self.assertEqual(pl4_rows["Evening"], 6)
+
+    def test_peak_times_by_postcode_limit(self):
+        r = self.client.get("/api/analytics/stats/peak-times-by-postcode/?limit=1")
+        d = r.json()
+        # PL1's total (10+2=12) outranks PL4's (6), so only PL1 survives the limit.
+        self.assertEqual(d["districts"], ["PL1"])
+
+    def test_event_types_by_postcode(self):
+        r = self.client.get("/api/analytics/stats/event-types-by-postcode/")
+        self.assertEqual(r.status_code, 200)
+        d = r.json()
+        self.assertIn("Gig", d["categories"])
+        self.assertIn("Screening", d["categories"])
+        pl1_rows = {row["category"]: row["count"] for row in d["series"] if row["district"] == "PL1"}
+        self.assertEqual(pl1_rows["Gig"], 10)
+        self.assertEqual(pl1_rows["Screening"], 2)
+
+    def test_postcode_engagement_trend_monthly_by_district(self):
+        r = self.client.get("/api/analytics/stats/postcode-engagement-trend/")
+        self.assertEqual(r.status_code, 200)
+        series = r.json()["series"]
+        pl1_rows = {row["month"]: row["count"] for row in series if row["category"] == "PL1"}
+        self.assertEqual(pl1_rows["2026-01-01"], 50)
+        self.assertEqual(pl1_rows["2026-02-01"], 20)
+
+    def test_ticket_volume_trend_monthly(self):
+        r = self.client.get("/api/analytics/stats/ticket-volume-trend/")
+        self.assertEqual(r.status_code, 200)
+        series = {row["month"]: row for row in r.json()["series"]}
+        self.assertEqual(series["2026-01-01"]["tickets"], 5)
+        self.assertEqual(series["2026-01-01"]["orders"], 2)
+        self.assertEqual(series["2026-02-01"]["tickets"], 4)
+        self.assertEqual(series["2026-02-01"]["orders"], 1)

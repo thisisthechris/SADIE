@@ -3,6 +3,7 @@ from django.contrib import admin
 from .models import (
     PostcodeAreaInteraction,
     PostcodeEventInteraction,
+    PostcodeTicketPurchase,
     UserHashInteraction,
 )
 
@@ -64,3 +65,22 @@ class PostcodeEventInteractionAdmin(admin.ModelAdmin):
     readonly_fields = ["created_at"]
     raw_id_fields = ["organisation", "event", "location"]
     date_hierarchy = "interaction_date"
+
+
+@admin.register(PostcodeTicketPurchase)
+class PostcodeTicketPurchaseAdmin(admin.ModelAdmin):
+    list_display = [
+        "postcode",
+        "area",
+        "organisation",
+        "event",
+        "location",
+        "ticket_quantity",
+        "purchase_date",
+        "created_at",
+    ]
+    list_filter = ["organisation", "purchase_date"]
+    search_fields = ["postcode", "area", "organisation__name", "event__title", "location__name"]
+    readonly_fields = ["created_at"]
+    raw_id_fields = ["organisation", "event", "location"]
+    date_hierarchy = "purchase_date"

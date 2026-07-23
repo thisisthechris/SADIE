@@ -27,6 +27,10 @@ Endpoints (mounted at /api/analytics/stats/):
     GET attendance-frequency/     -> distribution of events attended per visitor
     GET event-lead-time/          -> avg days between scrape and event, by org
     GET lead-time-trend/          -> monthly avg scrape-to-event lead time
+    GET peak-times-by-postcode/   -> interaction volume by daypart, per postcode district
+    GET event-types-by-postcode/  -> interaction volume by event category, per postcode district
+    GET postcode-engagement-trend/ -> monthly interaction totals, top 5 postcode districts
+    GET ticket-volume-trend/      -> monthly ticket-purchase volume (tickets + orders)
 """
 
 from __future__ import annotations
@@ -45,10 +49,13 @@ from organisations.models import Location, Organisation
 
 from .models import UserHashInteraction
 from .queries import (
+    district_of,
     events_qs,
     interactions_qs,
     parse_filter_params,
+    postcode_event_qs,
     postcode_qs,
+    postcode_ticket_qs,
 )
 
 
@@ -463,9 +470,14 @@ def category_trends(request: Request) -> Response:
     series = []
     for row in rows:
         if row["event__categories__name"]:  # Skip NULL categories
+            month = row["month"]
             series.append(
                 {
-                    "month": row["month"].date().isoformat() if row["month"] else None,
+                    "month": (
+                        month.date().isoformat()
+                        if hasattr(month, "date")
+                        else (month.isoformat() if month else None)
+                    ),
                     "category": row["event__categories__name"],
                     "count": row["count"],
                 }
@@ -798,6 +810,211 @@ def lead_time_trend(request: Request) -> Response:
         {
             "month": r["month"].date().isoformat() if hasattr(r["month"], "date") else r["month"].isoformat(),
             "avg_days": round(r["avg_lead"].total_seconds() / 86400, 1) if r["avg_lead"] else 0.0,
+        }
+        for r in rows
+        if r["month"]
+    ]
+
+    return Response({"filters": p, "series": series})
+
+
+DAYPARTS = ["Morning", "Afternoon", "Evening", "Night"]
+
+
+def _daypart(hour: int) -> str:
+    """Bucket an hour-of-day (0-23) into one of four dayparts."""
+    if 5 <= hour <= 11:
+        return "Morning"
+    if 12 <= hour <= 16:
+        return "Afternoon"
+    if 17 <= hour <= 20:
+        return "Evening"
+    return "Night"
+
+
+def _top_districts_limit(request: Request, default: int = 8, maximum: int = 20) -> int:
+    try:
+        return max(1, min(int(request.GET.get("limit", str(default))), maximum))
+    except (TypeError, ValueError):
+        return default
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticatedOrReadOnly])
+def peak_times_by_postcode(request: Request) -> Response:
+    """Interaction volume by daypart (Morning/Afternoon/Evening/Night), per postcode district.
+
+    Sourced from ``PostcodeEventInteraction`` (has an event FK, so we can read the
+    event's ``start_datetime`` hour) weighted by ``interaction_count``. Limited to
+    the top ``limit`` districts (default 8, max 20) by total volume.
+
+    Returns: {
+        "filters": {...},
+        "dayparts": ["Morning", "Afternoon", "Evening", "Night"],
+        "districts": ["PL1", "PL4", ...],  # ranked by total volume desc
+        "series": [{"district": "PL1", "daypart": "Morning", "count": 42}, ...]
+    }
+    """
+    p = parse_filter_params(request)
+    limit = _top_districts_limit(request)
+
+    # NOTE: explicit .order_by() below — see the GROUP BY gotcha documented on
+    # activity_by_weekday()/peak_times() above; PostcodeEventInteraction has a
+    # Meta.ordering that would otherwise leak into the GROUP BY clause.
+    rows = (
+        postcode_event_qs(p)
+        .filter(event__isnull=False, event__start_datetime__isnull=False)
+        .annotate(hour=ExtractHour("event__start_datetime"))
+        .values("postcode", "area", "hour")
+        .annotate(n=Sum("interaction_count"))
+        .order_by()
+    )
+
+    totals: dict[str, dict[str, int]] = {}
+    for row in rows:
+        d = district_of(row["postcode"]) or district_of(row["area"])
+        if not d:
+            continue
+        bucket = _daypart(row["hour"])
+        entry = totals.setdefault(d, {b: 0 for b in DAYPARTS})
+        entry[bucket] += int(row["n"] or 0)
+
+    ranked = sorted(totals.items(), key=lambda kv: -sum(kv[1].values()))[:limit]
+    districts = [d for d, _ in ranked]
+    series = [{"district": d, "daypart": b, "count": counts[b]} for d, counts in ranked for b in DAYPARTS]
+
+    return Response({"filters": p, "dayparts": DAYPARTS, "districts": districts, "series": series})
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticatedOrReadOnly])
+def event_types_by_postcode(request: Request) -> Response:
+    """Interaction volume by event category, per postcode district.
+
+    Sourced from ``PostcodeEventInteraction`` joined to the event's categories,
+    weighted by ``interaction_count``. Limited to the top ``limit`` districts
+    (default 8, max 20) by total volume; all categories present across those
+    districts are included.
+
+    Returns: {
+        "filters": {...},
+        "categories": ["Music", "Theatre", ...],
+        "districts": ["PL1", "PL4", ...],  # ranked by total volume desc
+        "series": [{"district": "PL1", "category": "Music", "count": 42}, ...]
+    }
+    """
+    p = parse_filter_params(request)
+    limit = _top_districts_limit(request)
+
+    rows = (
+        postcode_event_qs(p)
+        .filter(event__isnull=False)
+        .values("postcode", "area", "event__categories__name")
+        .annotate(n=Sum("interaction_count"))
+        .order_by()
+    )
+
+    totals: dict[str, dict[str, int]] = {}
+    categories: set[str] = set()
+    for row in rows:
+        cat = row["event__categories__name"]
+        if not cat:
+            continue
+        d = district_of(row["postcode"]) or district_of(row["area"])
+        if not d:
+            continue
+        categories.add(cat)
+        entry = totals.setdefault(d, {})
+        entry[cat] = entry.get(cat, 0) + int(row["n"] or 0)
+
+    ranked = sorted(totals.items(), key=lambda kv: -sum(kv[1].values()))[:limit]
+    districts = [d for d, _ in ranked]
+    sorted_categories = sorted(categories)
+    series = [
+        {"district": d, "category": cat, "count": counts.get(cat, 0)}
+        for d, counts in ranked
+        for cat in sorted_categories
+    ]
+
+    return Response({"filters": p, "categories": sorted_categories, "districts": districts, "series": series})
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticatedOrReadOnly])
+def postcode_engagement_trend(request: Request) -> Response:
+    """Monthly interaction totals for the top 5 postcode districts.
+
+    Sourced from ``PostcodeAreaInteraction`` (period-based aggregate, grouped by
+    ``period_start`` month). Shaped to match ``category_trends`` — a flat
+    ``{month, category, count}`` series, with the district code standing in for
+    "category" — so it can be fed straight into the existing ``StackedAreaChart``
+    frontend component with no changes.
+
+    Returns: {
+        "filters": {...},
+        "series": [{"month": "2025-01", "category": "PL1", "count": 120}, ...]
+    }
+    """
+    p = parse_filter_params(request)
+
+    rows = (
+        postcode_qs(p)
+        .annotate(month=TruncMonth("period_start"))
+        .values("month", "postcode", "area")
+        .annotate(n=Sum("interaction_count"))
+        .order_by()
+    )
+
+    totals: dict[str, int] = {}
+    by_district_month: dict[str, dict[str, int]] = {}
+    for row in rows:
+        if not row["month"]:
+            continue
+        d = district_of(row["postcode"]) or district_of(row["area"])
+        if not d:
+            continue
+        month = row["month"].date().isoformat() if hasattr(row["month"], "date") else row["month"].isoformat()
+        n = int(row["n"] or 0)
+        totals[d] = totals.get(d, 0) + n
+        by_district_month.setdefault(d, {})
+        by_district_month[d][month] = by_district_month[d].get(month, 0) + n
+
+    top_districts = [d for d, _ in sorted(totals.items(), key=lambda kv: -kv[1])[:5]]
+
+    series = [
+        {"month": month, "category": d, "count": count}
+        for d in top_districts
+        for month, count in sorted(by_district_month.get(d, {}).items())
+    ]
+
+    return Response({"filters": p, "series": series})
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticatedOrReadOnly])
+def ticket_volume_trend(request: Request) -> Response:
+    """Monthly ticket-purchase volume (tickets + orders), from ``PostcodeTicketPurchase``.
+
+    Returns: {
+        "filters": {...},
+        "series": [{"month": "2025-01", "tickets": 340, "orders": 128}, ...]
+    }
+    """
+    p = parse_filter_params(request)
+
+    rows = (
+        postcode_ticket_qs(p)
+        .annotate(month=TruncMonth("purchase_date"))
+        .values("month")
+        .annotate(tickets=Sum("ticket_quantity"), orders=Count("id"))
+        .order_by("month")
+    )
+
+    series = [
+        {
+            "month": r["month"].date().isoformat() if hasattr(r["month"], "date") else r["month"].isoformat(),
+            "tickets": int(r["tickets"] or 0),
+            "orders": int(r["orders"] or 0),
         }
         for r in rows
         if r["month"]

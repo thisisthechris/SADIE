@@ -19,6 +19,7 @@ import {
   type DistrictsResp,
   type FlowsResp,
   type VenueFlowsResp,
+  type TicketDistrictsResp,
 } from "../lib/postcodeAreas";
 
 // Core Plymouth postcode districts — coloured with districtColor; all others shown as gray.
@@ -46,6 +47,10 @@ export default function PostcodeAreasMap() {
     sankey: false,
   });
 
+  // Choropleth metric: aggregate interaction counts (default) or per-purchase
+  // ticket volume (average party size / group bookings).
+  const [metric, setMetric] = useState<"interactions" | "tickets">("interactions");
+
   // District summary — needed to merge totals into polygon colours.
   const summary = useQuery({
     queryKey: ["postcode-districts", q],
@@ -54,6 +59,15 @@ export default function PostcodeAreasMap() {
     staleTime: 5 * 60_000,
   });
   const districts: District[] = summary.data?.districts ?? [];
+
+  // Ticket-volume district totals — only fetched when that metric is active.
+  const ticketDistrictsQuery = useQuery({
+    queryKey: ["postcode-ticket-districts", q],
+    queryFn: () =>
+      api<TicketDistrictsResp>("/api/analytics/viz/postcode-ticket-districts/", { query: q }),
+    enabled: metric === "tickets",
+    staleTime: 5 * 60_000,
+  });
 
   // Postcode → venue flows (used to filter venue-to-venue paths when a district is selected).
   const postcodeNodesQuery = useQuery({
@@ -102,8 +116,16 @@ export default function PostcodeAreasMap() {
   const areaPolygons = useMemo<AreaFeatureCollection | undefined>(() => {
     const fc = boundariesQuery.data;
     if (!fc?.features) return undefined;
-    const totalByCode = new Map(districts.map((d) => [d.code, d.total]));
-    const maxTotal = Math.max(...districts.map((d) => d.total), 1);
+
+    const ticketByCode = new Map(
+      (ticketDistrictsQuery.data?.districts ?? []).map((d) => [d.code, d]),
+    );
+    const totalByCode = new Map(
+      metric === "tickets"
+        ? districts.map((d) => [d.code, ticketByCode.get(d.code)?.total_tickets ?? 0])
+        : districts.map((d) => [d.code, d.total]),
+    );
+    const maxTotal = Math.max(...Array.from(totalByCode.values()), 1);
     return {
       type: "FeatureCollection",
       features: fc.features.map((ft) => {
@@ -111,6 +133,13 @@ export default function PostcodeAreasMap() {
         const code = String(props.district ?? props.code ?? "");
         const name = props.name ? String(props.name) : "";
         const total = totalByCode.get(code) ?? 0;
+        const ticketInfo = ticketByCode.get(code);
+        const popupLabel =
+          metric === "tickets"
+            ? `${total.toLocaleString()} tickets${
+                ticketInfo ? ` · avg party ${ticketInfo.avg_party_size}` : ""
+              }`
+            : `${total.toLocaleString()} interactions`;
         return {
           ...ft,
           properties: {
@@ -124,12 +153,12 @@ export default function PostcodeAreasMap() {
                 ? Math.min(0.85, 0.4 + 0.45 * (total / maxTotal))        // selected: 0.40–0.85
                 : total > 0 ? 0.04 + 0.08 * (total / maxTotal) : 0.06   // others: nearly invisible
               : total > 0 ? 0.15 + 0.6 * (total / maxTotal) : 0.10,     // none selected: normal
-            popupHtml: `<div class="text-xs"><div class="font-semibold">${escHtml(code)}${name ? ` · ${escHtml(name)}` : ""}</div><div>${total.toLocaleString()} interactions</div></div>`,
+            popupHtml: `<div class="text-xs"><div class="font-semibold">${escHtml(code)}${name ? ` · ${escHtml(name)}` : ""}</div><div>${popupLabel}</div></div>`,
           },
         };
       }),
     };
-  }, [boundariesQuery.data, districts, selected]);
+  }, [boundariesQuery.data, districts, selected, metric, ticketDistrictsQuery.data]);
 
   // Colour transport corridors by mode + attach hover tooltips.
   const corridors = useMemo<CorridorFeatureCollection | undefined>(() => {
@@ -281,6 +310,31 @@ export default function PostcodeAreasMap() {
                 {label}
               </label>
             ))}
+
+            {/* Choropleth metric toggle */}
+            <div className="flex items-center rounded-lg border border-border bg-card p-0.5 text-xs font-medium">
+              <button
+                onClick={() => setMetric("interactions")}
+                className={`px-2.5 py-1 rounded-md transition-colors ${
+                  metric === "interactions"
+                    ? "bg-accent text-white shadow-sm"
+                    : "text-muted hover:text-foreground"
+                }`}
+              >
+                Interactions
+              </button>
+              <button
+                onClick={() => setMetric("tickets")}
+                className={`px-2.5 py-1 rounded-md transition-colors ${
+                  metric === "tickets"
+                    ? "bg-accent text-white shadow-sm"
+                    : "text-muted hover:text-foreground"
+                }`}
+              >
+                Ticket volume
+              </button>
+            </div>
+
             <div className="flex flex-wrap items-center gap-3 ml-auto">
               {Object.entries(MODE_LABELS).map(([mode, label]) => (
                 <span

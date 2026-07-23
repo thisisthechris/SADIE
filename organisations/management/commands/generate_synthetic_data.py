@@ -28,6 +28,7 @@ from django.utils import timezone
 from analytics.models import (
     PostcodeAreaInteraction,
     PostcodeEventInteraction,
+    PostcodeTicketPurchase,
     UserHashInteraction,
 )
 from events.models import Category, Event
@@ -414,6 +415,12 @@ class Command(BaseCommand):
             help="Number of postcode→event cohort records (users from a postcode who attended an event)",
         )
         parser.add_argument(
+            "--postcode-tickets",
+            type=int,
+            default=1200,
+            help="Number of postcode ticket-purchase records (individual orders with a ticket quantity)",
+        )
+        parser.add_argument(
             "--clear",
             action="store_true",
             help="Delete all existing synthetic data before generating (preserves scraped data)",
@@ -424,6 +431,7 @@ class Command(BaseCommand):
             self.stdout.write("Clearing existing analytics data…")
             PostcodeAreaInteraction.objects.all().delete()
             PostcodeEventInteraction.objects.all().delete()
+            PostcodeTicketPurchase.objects.all().delete()
             UserHashInteraction.objects.all().delete()
             # Only delete events without an external_id (synthetic ones)
             synth_count = Event.objects.filter(external_id="").count()
@@ -449,13 +457,19 @@ class Command(BaseCommand):
         self._create_postcode_event_interactions(orgs, events, options["postcode_events"])
 
         self.stdout.write(
+            f"Creating {options['postcode_tickets']} postcode ticket-purchase records…"
+        )
+        self._create_postcode_ticket_purchases(orgs, events, options["postcode_tickets"])
+
+        self.stdout.write(
             self.style.SUCCESS(
                 f"\nSynthetic data created:\n"
                 f"  {len(orgs)} organisations (ensured)\n"
                 f"  {len(events)} new events\n"
                 f"  {options['interactions']} user interactions\n"
                 f"  {options['postcodes']} postcode records\n"
-                f"  {options['postcode_events']} postcode→event cohort records"
+                f"  {options['postcode_events']} postcode→event cohort records\n"
+                f"  {options['postcode_tickets']} postcode ticket-purchase records"
             )
         )
 
@@ -735,3 +749,50 @@ class Command(BaseCommand):
             )
 
         PostcodeEventInteraction.objects.bulk_create(records, batch_size=500)
+
+    def _create_postcode_ticket_purchases(self, orgs, events, count):
+        """Create per-order ticket-purchase records: how many tickets an
+        individual bought for an event, from a postcode.
+
+        A separate, transaction-grained dataset from
+        ``_create_postcode_event_interactions`` (aggregate cohort counts). Each
+        row is a single purchase with a realistic party size (skewed toward
+        1-4 tickets, with a long tail of group bookings), bought some lead time
+        before the event.
+        """
+        located_events = [e for e in events if e.location_id] or list(events)
+        if not located_events:
+            self.stdout.write("  No located events available; skipping postcode-ticket records.")
+            return
+
+        postcodes_with_weights = [(p[0], p[1], p[2]) for p in PLYMOUTH_POSTCODES]
+        codes = [p[0] for p in postcodes_with_weights]
+        areas = [p[1] for p in postcodes_with_weights]
+        weights = [p[2] for p in postcodes_with_weights]
+
+        party_sizes = [1, 2, 3, 4, 5, 6, 8, 10]
+        party_weights = [30, 25, 20, 10, 7, 4, 2, 2]
+
+        records = []
+        for _ in range(count):
+            idx = random.choices(range(len(codes)), weights=weights, k=1)[0]
+            event = random.choice(located_events)
+            ticket_quantity = random.choices(party_sizes, weights=party_weights, k=1)[0]
+
+            # Tickets are bought some time before the event (1-90 days lead time).
+            lead_days = random.randint(1, 90)
+            purchase_date = event.start_datetime.date() - timedelta(days=lead_days)
+
+            records.append(
+                PostcodeTicketPurchase(
+                    organisation=event.organisation,
+                    postcode=codes[idx],
+                    area=areas[idx],
+                    event=event,
+                    location=event.location,
+                    ticket_quantity=ticket_quantity,
+                    purchase_date=purchase_date,
+                )
+            )
+
+        PostcodeTicketPurchase.objects.bulk_create(records, batch_size=500)

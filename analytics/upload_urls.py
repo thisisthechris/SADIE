@@ -3,6 +3,7 @@ from django.urls import path
 from .upload_views import (
     PostcodeAreaInteractionUploadView,
     PostcodeEventInteractionUploadView,
+    PostcodeTicketPurchaseUploadView,
     UserHashInteractionUploadView,
 )
 
@@ -13,5 +14,10 @@ urlpatterns = [
         "postcode-events/",
         PostcodeEventInteractionUploadView.as_view(),
         name="upload-postcode-events",
+    ),
+    path(
+        "postcode-tickets/",
+        PostcodeTicketPurchaseUploadView.as_view(),
+        name="upload-postcode-tickets",
     ),
 ]

@@ -32,6 +32,7 @@ from django.db.models import Q
 from analytics.models import (
     PostcodeAreaInteraction,
     PostcodeEventInteraction,
+    PostcodeTicketPurchase,
     UserHashInteraction,
 )
 from events.models import Event
@@ -145,6 +146,38 @@ def postcode_event_qs(p: Mapping[str, str], base=None):
     if p.get("dto"):
         qs = qs.filter(interaction_date__lte=p["dto"])
     return qs.distinct()
+
+
+def postcode_ticket_qs(p: Mapping[str, str], base=None):
+    """Apply filter params to a ``PostcodeTicketPurchase`` queryset.
+
+    Ticket purchases are filtered by ``purchase_date`` (the transaction date),
+    mirroring ``postcode_event_qs`` but against the actual purchase timestamp
+    rather than the event date.
+    """
+    qs = base if base is not None else PostcodeTicketPurchase.objects.all()
+    ids = _org_ids_for(p)
+    if ids:
+        qs = qs.filter(organisation_id__in=ids)
+    if p.get("cat"):
+        qs = qs.filter(event__categories__id=p["cat"])
+    if p.get("dfrom"):
+        qs = qs.filter(purchase_date__gte=p["dfrom"])
+    if p.get("dto"):
+        qs = qs.filter(purchase_date__lte=p["dto"])
+    return qs.distinct()
+
+
+def district_of(postcode: str) -> str:
+    """Extract the postcode district (e.g. 'PL4 0AB' -> 'PL4').
+
+    Shared by viz_views.py (postcode_districts, postcode_ticket_districts, etc.)
+    and stats_views.py (peak_times_by_postcode, event_types_by_postcode,
+    postcode_engagement_trend) so district-grouping logic lives in one place.
+    """
+    if not postcode:
+        return ""
+    return postcode.strip().split()[0].upper() if " " in postcode else postcode.strip().upper()
 
 
 def location_coords(loc) -> list[float] | None:

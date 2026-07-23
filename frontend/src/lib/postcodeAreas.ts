@@ -93,3 +93,67 @@ export function escHtml(s: string) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
+
+// ── Postcode ticket-volume (per-purchase) ───────────────────────────────────
+// Used by the PostcodeVolume page + the ticket-volume layer on
+// PostcodeAreasMap. Distinct from `District`/`DistrictsResp` above, which are
+// sourced from aggregate interaction counts rather than ticket purchases.
+
+export interface TicketDistrict {
+  code: string;
+  lng: number;
+  lat: number;
+  total_tickets: number;
+  order_count: number;
+  avg_party_size: number;
+}
+
+export interface TicketOrgRow {
+  organisation: string;
+  organisation_id: number | null;
+  total_tickets: number;
+  order_count: number;
+}
+
+export interface TicketDistrictsResp {
+  districts: TicketDistrict[];
+  district?: string;
+  orgs?: TicketOrgRow[];
+}
+
+export interface PartySizeBucket {
+  tickets: string;
+  orders: number;
+}
+
+export interface TopTicketPostcode {
+  code: string;
+  total_tickets: number;
+  order_count: number;
+}
+
+export interface TicketSummaryResp {
+  total_tickets: number;
+  total_orders: number;
+  avg_party_size: number;
+  party_size_distribution: PartySizeBucket[];
+  top_postcodes: TopTicketPostcode[];
+}
+
+export interface TicketRecord {
+  id: number;
+  postcode: string;
+  area: string;
+  organisation: string;
+  organisation_id: number | null;
+  event_title: string;
+  event_id: number | null;
+  ticket_quantity: number;
+  purchase_date: string | null;
+}
+
+export interface TicketRecordsResp {
+  count: number;
+  limit: number;
+  results: TicketRecord[];
+}

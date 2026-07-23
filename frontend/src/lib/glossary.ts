@@ -115,6 +115,36 @@ export const GLOSSARY: Record<string, GlossaryTerm> = {
     short: "How average event lead time changes month to month.",
     long: "Tracks the average scrape-to-event lead time over time, to see whether organisations are, on average, listing events further in advance or closer to the date.",
   },
+  peak_times_by_postcode: {
+    term: "Peak Times by Postcode",
+    short: "When each postcode district's audience shows up, by time of day.",
+    long: "Breaks down interaction volume into four dayparts (Morning, Afternoon, Evening, Night) for the top postcode districts by volume. Useful for spotting whether a district's audience prefers daytime or evening events.",
+  },
+  event_types_by_postcode: {
+    term: "Event Types by Postcode",
+    short: "Which event categories each postcode district engages with most.",
+    long: "Shows interaction volume broken down by event category for the top postcode districts by volume. Helps identify which areas respond to which kinds of programming.",
+  },
+  postcode_engagement_trend: {
+    term: "Postcode Engagement Trend",
+    short: "How interaction volume from the top postcode districts changes over time.",
+    long: "Monthly interaction totals for the 5 postcode districts with the highest overall volume, so you can see which areas are growing or declining in engagement.",
+  },
+  ticket_volume_trend: {
+    term: "Ticket Volume Trend",
+    short: "Tickets purchased and orders placed, month by month.",
+    long: "Tracks total ticket-purchase volume over time: the number of tickets bought and the number of separate orders placed each month, across all postcodes.",
+  },
+  party_size_distribution: {
+    term: "Party Size Distribution",
+    short: "How many tickets people buy per order.",
+    long: "Groups ticket orders by quantity (1, 2, 3, 4, or 5+ tickets) to show typical group-booking patterns, alongside the overall average party size.",
+  },
+  top_postcodes_tickets: {
+    term: "Top Postcodes by Ticket Volume",
+    short: "The postcode districts buying the most tickets.",
+    long: "Ranks postcode districts by total tickets purchased (not just interaction counts), highlighting where the highest-value bookings are coming from.",
+  },
 };
 
 /**

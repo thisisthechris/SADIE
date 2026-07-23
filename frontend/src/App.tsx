@@ -25,6 +25,7 @@ const Journeys = lazy(() => import("./pages/Journeys"));
 const JourneyMap = lazy(() => import("./pages/JourneyMap"));
 const PostcodeAreasOverview = lazy(() => import("./pages/PostcodeAreasOverview"));
 const PostcodeAreasMap = lazy(() => import("./pages/PostcodeAreasMap"));
+const PostcodeVolume = lazy(() => import("./pages/PostcodeVolume"));
 const OrgConnectionsMap = lazy(() => import("./pages/OrgConnectionsMap"));
 
 const VizFallback = (
@@ -104,6 +105,10 @@ export default function App() {
         <Route
           path="postcode-areas/map"
           element={<Suspense fallback={VizFallback}><PostcodeAreasMap /></Suspense>}
+        />
+        <Route
+          path="postcode-volume"
+          element={<Suspense fallback={VizFallback}><PostcodeVolume /></Suspense>}
         />
         <Route
           path="org-connections"

@@ -114,6 +114,52 @@ class PostcodeEventInteraction(models.Model):
         return f"{self.postcode} × {self.interaction_count} on {self.interaction_date}"
 
 
+class PostcodeTicketPurchase(models.Model):
+    """A single ticket purchase: how many tickets were bought for an event, from a postcode.
+
+    A separate dataset from :class:`PostcodeEventInteraction` (which counts an
+    *aggregate cohort of people* who interacted with an event). Here each row is
+    one transaction: ``ticket_quantity`` tickets bought in a single purchase by
+    someone from ``postcode`` for ``event``. This enables ticket-volume metrics
+    (e.g. average party size, group-booking distribution) that a people-count
+    aggregate can't express, since one purchase can cover several tickets.
+    """
+
+    organisation = models.ForeignKey(
+        Organisation,
+        on_delete=models.CASCADE,
+        related_name="postcode_ticket_purchases",
+    )
+    postcode = models.CharField(max_length=10, db_index=True)
+    area = models.CharField(max_length=100, blank=True)
+    event = models.ForeignKey(
+        Event,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="postcode_ticket_purchases",
+    )
+    location = models.ForeignKey(
+        Location,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="postcode_ticket_purchases",
+    )
+    ticket_quantity = models.PositiveIntegerField(default=1)
+    purchase_date = models.DateField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-purchase_date"]
+        indexes = [
+            models.Index(fields=["postcode", "purchase_date"]),
+        ]
+
+    def __str__(self):
+        return f"{self.postcode} × {self.ticket_quantity} tickets on {self.purchase_date}"
+
+
 class PostcodeGeo(models.Model):
     """Geocoding cache for UK postcodes using postcodes.io.
 

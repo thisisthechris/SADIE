@@ -9,7 +9,11 @@ import { RankedBar } from "../components/RankedBar";
 import { PeakTimesBar } from "../components/PeakTimesBar";
 import { AttendanceFrequencyBar } from "../components/AttendanceFrequencyBar";
 import { LeadTimeTrendLine } from "../components/LeadTimeTrendLine";
+import { DistrictStackedBar } from "../components/DistrictStackedBar";
+import { PartySizeBar } from "../components/PartySizeBar";
+import { TicketVolumeTrendLine } from "../components/TicketVolumeTrendLine";
 import TrendCard from "../components/TrendCard";
+import type { TicketSummaryResp } from "../lib/postcodeAreas";
 
 interface NewReturningData {
   month: string;
@@ -65,6 +69,25 @@ interface LeadTimeByOrg {
 interface LeadTimeTrendPoint {
   month: string;
   avg_days: number;
+}
+
+interface PostcodeSegmentDatum {
+  district: string;
+  daypart?: string;
+  category?: string;
+  count: number;
+}
+
+interface PostcodeEngagementPoint {
+  month: string;
+  category: string;
+  count: number;
+}
+
+interface TicketVolumeTrendPoint {
+  month: string;
+  tickets: number;
+  orders: number;
 }
 
 /**
@@ -174,6 +197,64 @@ export default function Trends() {
     queryFn: async () => {
       const res = await fetch(`/api/analytics/stats/lead-time-trend/?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch lead time trend");
+      return res.json();
+    },
+  });
+
+  // Peak Times by Postcode
+  const peakTimesByPostcode = useQuery<{
+    dayparts: string[];
+    districts: string[];
+    series: PostcodeSegmentDatum[];
+  }>({
+    queryKey: ["stats", "peak-times-by-postcode", org, category, date_from, date_to],
+    queryFn: async () => {
+      const res = await fetch(`/api/analytics/stats/peak-times-by-postcode/?${params.toString()}`);
+      if (!res.ok) throw new Error("Failed to fetch peak times by postcode");
+      return res.json();
+    },
+  });
+
+  // Event Types by Postcode
+  const eventTypesByPostcode = useQuery<{
+    categories: string[];
+    districts: string[];
+    series: PostcodeSegmentDatum[];
+  }>({
+    queryKey: ["stats", "event-types-by-postcode", org, category, date_from, date_to],
+    queryFn: async () => {
+      const res = await fetch(`/api/analytics/stats/event-types-by-postcode/?${params.toString()}`);
+      if (!res.ok) throw new Error("Failed to fetch event types by postcode");
+      return res.json();
+    },
+  });
+
+  // Postcode Engagement Trend (top 5 districts, monthly)
+  const postcodeEngagementTrend = useQuery<{ series: PostcodeEngagementPoint[] }>({
+    queryKey: ["stats", "postcode-engagement-trend", org, category, date_from, date_to],
+    queryFn: async () => {
+      const res = await fetch(`/api/analytics/stats/postcode-engagement-trend/?${params.toString()}`);
+      if (!res.ok) throw new Error("Failed to fetch postcode engagement trend");
+      return res.json();
+    },
+  });
+
+  // Ticket Volume Trend (monthly tickets + orders)
+  const ticketVolumeTrend = useQuery<{ series: TicketVolumeTrendPoint[] }>({
+    queryKey: ["stats", "ticket-volume-trend", org, category, date_from, date_to],
+    queryFn: async () => {
+      const res = await fetch(`/api/analytics/stats/ticket-volume-trend/?${params.toString()}`);
+      if (!res.ok) throw new Error("Failed to fetch ticket volume trend");
+      return res.json();
+    },
+  });
+
+  // Ticket Summary (party-size distribution + top postcodes by ticket volume)
+  const ticketSummary = useQuery<TicketSummaryResp>({
+    queryKey: ["viz", "postcode-ticket-summary", org, category, date_from, date_to],
+    queryFn: async () => {
+      const res = await fetch(`/api/analytics/viz/postcode-ticket-summary/?${params.toString()}`);
+      if (!res.ok) throw new Error("Failed to fetch postcode ticket summary");
       return res.json();
     },
   });
@@ -358,6 +439,120 @@ export default function Trends() {
             <LeadTimeTrendLine data={leadTimeTrend.data.series} height={h} />
           ) : (
             <EmptyState message="No lead time trend data available." />
+          )
+        }
+      </TrendCard>
+
+      {/* Peak Times by Postcode */}
+      <TrendCard title="Peak Times by Postcode" tooltipText="peak_times_by_postcode">
+        {(h) =>
+          peakTimesByPostcode.isLoading ? (
+            <LoadingState />
+          ) : peakTimesByPostcode.data?.series?.length ? (
+            <DistrictStackedBar
+              data={peakTimesByPostcode.data.series.map((d) => ({
+                district: d.district,
+                segment: d.daypart!,
+                count: d.count,
+              }))}
+              districts={peakTimesByPostcode.data.districts}
+              segments={peakTimesByPostcode.data.dayparts}
+              height={h}
+            />
+          ) : (
+            <EmptyState message="No postcode interaction-time data available." />
+          )
+        }
+      </TrendCard>
+
+      {/* Event Types by Postcode */}
+      <TrendCard title="Event Types by Postcode" tooltipText="event_types_by_postcode">
+        {(h) =>
+          eventTypesByPostcode.isLoading ? (
+            <LoadingState />
+          ) : eventTypesByPostcode.data?.series?.length ? (
+            <DistrictStackedBar
+              data={eventTypesByPostcode.data.series.map((d) => ({
+                district: d.district,
+                segment: d.category!,
+                count: d.count,
+              }))}
+              districts={eventTypesByPostcode.data.districts}
+              segments={eventTypesByPostcode.data.categories}
+              height={h}
+            />
+          ) : (
+            <EmptyState message="No postcode category data available." />
+          )
+        }
+      </TrendCard>
+
+      {/* Postcode Engagement Trend */}
+      <TrendCard title="Postcode Engagement Trend" tooltipText="postcode_engagement_trend">
+        {(h) =>
+          postcodeEngagementTrend.isLoading ? (
+            <LoadingState />
+          ) : postcodeEngagementTrend.data?.series?.length ? (
+            <StackedAreaChart data={postcodeEngagementTrend.data.series} height={h} />
+          ) : (
+            <EmptyState message="No postcode engagement trend data available." />
+          )
+        }
+      </TrendCard>
+
+      {/* Ticket Volume Trend */}
+      <TrendCard title="Ticket Volume Trend" tooltipText="ticket_volume_trend">
+        {(h) =>
+          ticketVolumeTrend.isLoading ? (
+            <LoadingState />
+          ) : ticketVolumeTrend.data?.series?.length ? (
+            <TicketVolumeTrendLine data={ticketVolumeTrend.data.series} height={h} />
+          ) : (
+            <EmptyState message="No ticket purchase data available for the selected period." />
+          )
+        }
+      </TrendCard>
+
+      {/* Party Size Distribution */}
+      <TrendCard title="Party Size Distribution" tooltipText="party_size_distribution">
+        {(h) =>
+          ticketSummary.isLoading ? (
+            <LoadingState />
+          ) : ticketSummary.data?.party_size_distribution?.some((d) => d.orders > 0) ? (
+            <div>
+              <div className="mb-4 text-center">
+                <div className="text-2xl font-bold text-accent">
+                  {(ticketSummary.data.avg_party_size ?? 0).toLocaleString()} tickets/order
+                  <span className="text-sm font-normal text-muted ml-2">
+                    average party size
+                  </span>
+                </div>
+              </div>
+              <PartySizeBar data={ticketSummary.data.party_size_distribution} height={h} />
+            </div>
+          ) : (
+            <EmptyState message="No ticket purchase data available." />
+          )
+        }
+      </TrendCard>
+
+      {/* Top Postcodes by Ticket Volume */}
+      <TrendCard title="Top Postcodes by Ticket Volume" tooltipText="top_postcodes_tickets">
+        {(h) =>
+          ticketSummary.isLoading ? (
+            <LoadingState />
+          ) : ticketSummary.data?.top_postcodes?.length ? (
+            <RankedBar
+              data={ticketSummary.data.top_postcodes.map((p) => ({
+                name: p.code,
+                value: p.total_tickets,
+              }))}
+              label="Tickets purchased"
+              color="#ec4899"
+              height={h}
+            />
+          ) : (
+            <EmptyState message="No ticket purchase data available." />
           )
         }
       </TrendCard>

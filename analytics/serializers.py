@@ -5,6 +5,7 @@ from rest_framework import serializers
 from .models import (
     PostcodeAreaInteraction,
     PostcodeEventInteraction,
+    PostcodeTicketPurchase,
     UserHashInteraction,
 )
 
@@ -172,5 +173,72 @@ class PostcodeEventInteractionUploadSerializer(serializers.ModelSerializer):
         if count is not None and count <= 0:
             raise serializers.ValidationError(
                 {"interaction_count": "interaction_count must be a positive integer."}
+            )
+        return attrs
+
+
+class PostcodeTicketPurchaseSerializer(serializers.ModelSerializer):
+    organisation_name = serializers.CharField(source="organisation.name", read_only=True)
+    event_title = serializers.CharField(source="event.title", read_only=True, allow_null=True)
+    location_name = serializers.CharField(source="location.name", read_only=True, allow_null=True)
+
+    class Meta:
+        model = PostcodeTicketPurchase
+        fields = [
+            "id",
+            "organisation",
+            "organisation_name",
+            "postcode",
+            "area",
+            "event",
+            "event_title",
+            "location",
+            "location_name",
+            "ticket_quantity",
+            "purchase_date",
+            "created_at",
+        ]
+
+
+class PostcodeTicketPurchaseUploadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PostcodeTicketPurchase
+        fields = [
+            "organisation",
+            "postcode",
+            "area",
+            "event",
+            "location",
+            "ticket_quantity",
+            "purchase_date",
+        ]
+        extra_kwargs = {
+            "organisation": {"required": False},
+            "location": {"required": False},
+            "ticket_quantity": {"required": True},
+            "purchase_date": {"required": True},
+        }
+
+    def validate(self, attrs):
+        """Require an event and derive organisation/location from it.
+
+        Unlike ``PostcodeEventInteractionUploadSerializer``, ``purchase_date`` is
+        NOT defaulted from the event — the whole point of this dataset is the
+        actual purchase date (usually well before the event), so partners must
+        supply it.
+        """
+        event = attrs.get("event")
+        if event is None:
+            raise serializers.ValidationError({"event": "This field is required."})
+
+        if not attrs.get("organisation"):
+            attrs["organisation"] = event.organisation
+        if not attrs.get("location") and event.location_id:
+            attrs["location"] = event.location
+
+        quantity = attrs.get("ticket_quantity")
+        if quantity is not None and quantity <= 0:
+            raise serializers.ValidationError(
+                {"ticket_quantity": "ticket_quantity must be a positive integer."}
             )
         return attrs
