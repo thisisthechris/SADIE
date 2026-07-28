@@ -1,0 +1,7 @@
+﻿Order_ID,Event_Name,Event_Date,First_Name,Last_Name,Email,Postcode,Ticket_Type,Quantity,Ticket_Price,Purchase_Date,Attendance_Status
+EVB-PC-491969,Skills Workshop,2026-10-01,Poppy,Taylor,poppy.taylor44@outlook.com,PL6 3 WQ,General Admission,2,1.58,2026-07-25 10:00:00.000003,Partial
+EVB-PC-992146,Skills Workshop,2026-10-01,Amelia,Williams,amelia.williams52@outlook.com,PL6 4 WD,General Admission,1,1.58,2026-07-12 09:00,Attended
+EVB-PC-928672,Skills Workshop,2026-10-01,Grace,Perry,grace.perry61@outlook.com,PL4 5 YZ,General Admission,2,1.58,2026-09-03 07:59:59.999997,Attended
+EVB-PC-875420,Skills Workshop,2026-10-01,Amelia,Walker,amelia.walker5@outlook.com,EX3 8 JX,General Admission,1,1.58,2026-08-19 15:00,Attended
+EVB-PC-461491,Skills Workshop,2026-10-01,Samuel,Smith,samuel.smith77@outlook.com,PL6 3 HP,General Admission,2,1.58,2026-07-31 09:00,Attended
+EVB-PC-856742,Skills Workshop,2026-10-01,Jessica,Roberts,jessica.roberts16@icloud.com,PL2 2 HG,General Admission,1,1.58,2026-08-18 18:00,No-show

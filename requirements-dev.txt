@@ -1,5 +1,9 @@
 ruff==0.15.4
 
+# Test tooling for mcp_server/tests.py (pytest-style, factory-boy based)
+pytest==8.3.5
+pytest-django==4.9.0
+
 # GIS data assembly (scripts/gis/) — see scripts/gis/README.md
 # requests: required for both builders (Overpass + boundary download)
 requests==2.32.3

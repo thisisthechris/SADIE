@@ -38,15 +38,9 @@ class JourneyPathwayTest(TestCase):
         _set_point(cls.loc_c, -4.15, 50.39)
 
         now = timezone.now()
-        cls.ev_a = Event.objects.create(
-            organisation=cls.org, title="At A", start_datetime=now, location=cls.loc_a
-        )
-        cls.ev_b = Event.objects.create(
-            organisation=cls.org, title="At B", start_datetime=now, location=cls.loc_b
-        )
-        cls.ev_c = Event.objects.create(
-            organisation=cls.org, title="At C", start_datetime=now, location=cls.loc_c
-        )
+        cls.ev_a = Event.objects.create(organisation=cls.org, title="At A", start_datetime=now, location=cls.loc_a)
+        cls.ev_b = Event.objects.create(organisation=cls.org, title="At B", start_datetime=now, location=cls.loc_b)
+        cls.ev_c = Event.objects.create(organisation=cls.org, title="At C", start_datetime=now, location=cls.loc_c)
 
         today = date.today()
         # Visitor 1: A → B → C across three days (a clear multi-stop journey).

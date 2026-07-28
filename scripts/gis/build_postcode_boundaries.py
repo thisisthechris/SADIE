@@ -28,6 +28,7 @@ Usage
 Dependencies: requests (always); geopandas + shapely (only for shapefile input
 or when --tolerance > 0). See requirements-dev.txt.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -36,18 +37,9 @@ import re
 import sys
 from pathlib import Path
 
-MISSINGLINK_URL = (
-    "https://raw.githubusercontent.com/missinglink/uk-postcode-polygons/"
-    "master/geojson/{area}.geojson"
-)
+MISSINGLINK_URL = "https://raw.githubusercontent.com/missinglink/uk-postcode-polygons/master/geojson/{area}.geojson"
 
-DEFAULT_OUT = (
-    Path(__file__).resolve().parents[2]
-    / "frontend"
-    / "public"
-    / "data"
-    / "pl-postcode-districts.geojson"
-)
+DEFAULT_OUT = Path(__file__).resolve().parents[2] / "frontend" / "public" / "data" / "pl-postcode-districts.geojson"
 
 # Human-readable names for the Plymouth-area districts (best-effort; extend as
 # needed). Districts without an entry fall back to the bare code.
@@ -206,18 +198,14 @@ def main() -> None:
         default=None,
         help="Local GeoJSON or ODL shapefile. Omit to download the area GeoJSON.",
     )
-    parser.add_argument(
-        "--area", default="PL", help="Postcode area prefix to keep (default: PL)."
-    )
+    parser.add_argument("--area", default="PL", help="Postcode area prefix to keep (default: PL).")
     parser.add_argument(
         "--tolerance",
         type=float,
         default=0.0,
         help="Simplification tolerance in degrees (~0.0005≈50m). 0 disables.",
     )
-    parser.add_argument(
-        "--out", type=Path, default=DEFAULT_OUT, help="Output GeoJSON path."
-    )
+    parser.add_argument("--out", type=Path, default=DEFAULT_OUT, help="Output GeoJSON path.")
     args = parser.parse_args()
     build(args.source, args.area, args.tolerance, args.out)
 

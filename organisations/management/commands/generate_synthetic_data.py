@@ -451,14 +451,10 @@ class Command(BaseCommand):
         self.stdout.write(f"Creating {options['postcodes']} postcode interaction records…")
         self._create_postcode_interactions(orgs, options["postcodes"])
 
-        self.stdout.write(
-            f"Creating {options['postcode_events']} postcode→event cohort records…"
-        )
+        self.stdout.write(f"Creating {options['postcode_events']} postcode→event cohort records…")
         self._create_postcode_event_interactions(orgs, events, options["postcode_events"])
 
-        self.stdout.write(
-            f"Creating {options['postcode_tickets']} postcode ticket-purchase records…"
-        )
+        self.stdout.write(f"Creating {options['postcode_tickets']} postcode ticket-purchase records…")
         self._create_postcode_ticket_purchases(orgs, events, options["postcode_tickets"])
 
         self.stdout.write(

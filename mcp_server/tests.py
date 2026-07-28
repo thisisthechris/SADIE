@@ -7,9 +7,9 @@ properly with the Django ORM. Uses factory-boy for test data.
 
 from datetime import date, timedelta
 
+import factory
 import pytest
-from django.test import TestCase
-from factory import SubFactory
+from factory import SelfAttribute, SubFactory
 from factory.django import DjangoModelFactory
 
 from analytics.models import PostcodeAreaInteraction, UserHashInteraction
@@ -17,7 +17,6 @@ from events.models import Category, Event
 from organisations.models import Location, Organisation
 
 from . import tools
-
 
 # ============================================================================
 # FACTORIES
@@ -28,8 +27,7 @@ class OrganisationFactory(DjangoModelFactory):
     class Meta:
         model = Organisation
 
-    name = "Test Organisation"
-    slug = "test-org"
+    name = factory.Sequence(lambda n: f"Test Organisation {n}")
     is_partner = False
 
 
@@ -47,8 +45,7 @@ class CategoryFactory(DjangoModelFactory):
     class Meta:
         model = Category
 
-    name = "Music"
-    slug = "music"
+    name = factory.Sequence(lambda n: f"Music {n}")
 
 
 class EventFactory(DjangoModelFactory):
@@ -56,7 +53,7 @@ class EventFactory(DjangoModelFactory):
         model = Event
 
     organisation = SubFactory(OrganisationFactory)
-    location = SubFactory(LocationFactory, organisation=SubFactory(OrganisationFactory))
+    location = SubFactory(LocationFactory, organisation=SelfAttribute("..organisation"))
     title = "Test Event"
     description = "A test event"
     start_datetime = date.today()
@@ -93,7 +90,7 @@ class TestSearchTools:
 
     def test_search_sadie_limit(self):
         """Limit is capped at 50."""
-        result = tools.search_sadie(query="test", limit=100)
+        tools.search_sadie(query="test", limit=100)
         # Result should succeed, limit is internally capped
 
 
@@ -161,7 +158,7 @@ class TestBrowseOrganisations:
 
     def test_list_organisations_with_data(self):
         """List organisations returns correct shape."""
-        org = OrganisationFactory()
+        OrganisationFactory()
         result = tools.list_organisations(limit=10)
         assert result["count"] >= 1
         assert "id" in result["results"][0]
@@ -209,7 +206,7 @@ class TestCategories:
 
     def test_list_categories_with_data(self):
         """List categories returns correct shape."""
-        cat = CategoryFactory()
+        CategoryFactory()
         result = tools.list_categories()
         assert len(result["results"]) >= 1
         assert "id" in result["results"][0]

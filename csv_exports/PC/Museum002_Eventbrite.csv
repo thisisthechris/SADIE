@@ -1,0 +1,8 @@
+﻿Order_ID,Event_Name,Event_Date,First_Name,Last_Name,Email,Postcode,Ticket_Type,Quantity,Ticket_Price,Purchase_Date,Attendance_Status
+EVB-PC-325491,Exhibition Tour,2026-12-01,Evie,Hall,evie.hall50@hotmail.co.uk,PL2 5 WG,General Admission,1,0,2026-10-02 10:59:59.999997,Attended
+EVB-PC-731716,Exhibition Tour,2026-12-01,Max,Smith,max.smith89@icloud.com,PL2 9 CO,General Admission,1,0,2026-10-30 13:59:59.999997,Attended
+EVB-PC-339195,Exhibition Tour,2026-12-01,Thomas,Ward,thomas.ward77@gmail.com,PL5 6 QU,General Admission,1,0,2026-10-12 09:00,No-show
+EVB-PC-632370,Exhibition Tour,2026-12-01,Alfie,Cook,alfie.cook59@icloud.com,PL7 6 OF,General Admission,1,0,2026-10-01 19:59:59.999997,Attended
+EVB-PC-539396,Exhibition Tour,2026-12-01,Alice,Clarke,alice.clarke97@outlook.com,PL3 3 OZ,General Admission,1,0,2026-10-31 13:00:00.000003,Attended
+EVB-PC-666898,Exhibition Tour,2026-12-01,Lily,Walker,lily.walker80@outlook.com,TR1 6 FE,General Admission,2,0,2026-10-18 13:00:00.000003,Attended
+EVB-PC-834625,Exhibition Tour,2026-12-01,Ella,King,ella.king83@icloud.com,EX4 2 PR,General Admission,1,0,2026-11-09 10:00:00.000003,Attended

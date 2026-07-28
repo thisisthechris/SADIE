@@ -77,9 +77,7 @@ class Command(BaseCommand):
 
         self._step("Ensuring Plymouth venues + categories exist", "setup_plymouth_culture", venues_only=True)
 
-        self._step(
-            "Ensuring demo user + org hierarchy exist", "setup_demo_user", no_synthetic_data=True, verbosity=1
-        )
+        self._step("Ensuring demo user + org hierarchy exist", "setup_demo_user", no_synthetic_data=True, verbosity=1)
 
         self._step(
             "Adding a fresh batch of synthetic events/interactions/postcodes",

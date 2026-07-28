@@ -21,6 +21,7 @@ const TimeCube = lazy(() => import("./pages/TimeCube"));
 const SavedViews = lazy(() => import("./pages/SavedViews"));
 const ViewResolver = lazy(() => import("./pages/ViewResolver"));
 const Imports = lazy(() => import("./pages/Imports"));
+const AddAccount = lazy(() => import("./pages/AddAccount"));
 const Journeys = lazy(() => import("./pages/Journeys"));
 const JourneyMap = lazy(() => import("./pages/JourneyMap"));
 const PostcodeAreasOverview = lazy(() => import("./pages/PostcodeAreasOverview"));
@@ -89,6 +90,10 @@ export default function App() {
         <Route
           path="imports"
           element={<Suspense fallback={VizFallback}><Imports /></Suspense>}
+        />
+        <Route
+          path="accounts"
+          element={<Suspense fallback={VizFallback}><AddAccount /></Suspense>}
         />
         <Route
           path="journeys"

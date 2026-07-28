@@ -1,0 +1,30 @@
+# docker-compose.demo.yml — overlay for a standalone demo/test environment
+# pre-loaded with the partner CSV test data (csv_exports/), fully isolated
+# from your regular dev stack's database.
+#
+# This does NOT auto-seed on startup — run the import command yourself
+# (see below) whenever you want a fresh, deterministic dataset.
+#
+# Usage:
+#   Bring up:  docker compose -f docker-compose.yml -f docker-compose.demo.yml up -d
+#   Seed:      docker compose -f docker-compose.yml -f docker-compose.demo.yml \
+#                exec web python manage.py import_partner_csv --clear
+#   Geocode:   docker compose -f docker-compose.yml -f docker-compose.demo.yml \
+#                exec web python manage.py geocode_venues
+#              (run this right after seeding — import_partner_csv does not
+#              geocode venues itself, so maps/venue views stay empty until
+#              this step runs; safe to re-run any time, add --force to
+#              re-geocode venues that already have a point)
+#   Tear down: docker compose -f docker-compose.yml -f docker-compose.demo.yml down
+#
+# Migrations + collectstatic still run automatically via the base `web`
+# service command. Only the Postgres volume is overridden here so this
+# stack's data never collides with your regular dev environment's DB.
+
+services:
+  db:
+    volumes:
+      - postgres_data_demo:/var/lib/postgresql/data
+
+volumes:
+  postgres_data_demo:

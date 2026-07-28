@@ -71,7 +71,6 @@ class Command(BaseCommand):
 
     def _run_stdio(self) -> None:
         """Run the server over stdio (SSE)."""
-        from mcp.server import Server
         import mcp.server.stdio
 
         from mcp_server.server import server
@@ -92,6 +91,7 @@ class Command(BaseCommand):
         """Run the server over HTTP with uvicorn ASGI server."""
         try:
             import uvicorn
+
             from mcp_server.server import server
 
             logger.info(f"Running MCP server over HTTP at {host}:{port}...")

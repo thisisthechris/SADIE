@@ -1,0 +1,24 @@
+﻿Order_ID,Event_Name,Event_Date,First_Name,Last_Name,Email,Postcode,Ticket_Type,Quantity,Ticket_Price,Purchase_Date,Attendance_Status
+EVB-PC-706680,Artist Residency Event,2026-06-12,Evie,Thomas,evie.thomas29@icloud.com,TR7 7 FE,General Admission,3,10.59,2026-03-28 18:00,Attended
+EVB-PC-596926,Artist Residency Event,2026-06-12,Jacob,Harris,jacob.harris98@gmail.com,PL1 7 JK,General Admission,1,10.59,2026-03-31 18:00,Attended
+EVB-PC-369089,Artist Residency Event,2026-06-12,Lily,Ward,lily.ward61@hotmail.co.uk,EX1 3 RK,General Admission,1,10.59,2026-04-13 10:59:59.999997,Attended
+EVB-PC-215361,Artist Residency Event,2026-06-12,Amelia,Thomas,amelia.thomas7@yahoo.co.uk,TA6 8 FW,General Admission,1,10.59,2026-03-30 18:00,Attended
+EVB-PC-452120,Artist Residency Event,2026-06-12,Joshua,Evans,joshua.evans43@gmail.com,TQ2 9 TZ,General Admission,1,10.59,2026-03-22 16:59:59.999997,Attended
+EVB-PC-773415,Artist Residency Event,2026-06-12,Emily,Scott,emily.scott75@yahoo.co.uk,PL4 4 HH,General Admission,1,10.59,2026-04-10 12:00,Attended
+EVB-PC-230924,Artist Residency Event,2026-06-12,Samuel,Evans,samuel.evans7@outlook.com,PL7 4 CB,General Admission,1,10.59,2026-05-07 15:00,Attended
+EVB-PC-215816,Artist Residency Event,2026-06-12,Max,Collins,max.collins78@icloud.com,PL1 5 GF,General Admission,1,10.59,2026-04-25 16:00:00.000003,Attended
+EVB-PC-975136,Artist Residency Event,2026-06-12,William,Perry,william.perry92@icloud.com,PL9 8 JZ,General Admission,1,10.59,2026-03-20 13:59:59.999997,Attended
+EVB-PC-604343,Artist Residency Event,2026-06-12,Lucas,Jackson,lucas.jackson59@hotmail.co.uk,PL5 4 SC,General Admission,1,10.59,2026-04-04 10:00:00.000003,Attended
+EVB-PC-293614,Artist Residency Event,2026-06-12,William,Young,william.young28@yahoo.co.uk,PL21 9 UW,General Admission,1,10.59,2026-05-11 19:00:00.000003,Attended
+EVB-PC-706964,Artist Residency Event,2026-06-12,Phoebe,Green,phoebe.green92@gmail.com,PL6 4 RE,General Admission,1,10.59,2026-03-28 12:00,Attended
+EVB-PC-767075,Artist Residency Event,2026-06-12,Mia,Johnson,mia.johnson59@yahoo.co.uk,TQ12 3 PT,General Admission,1,10.59,2026-05-20 09:00,Attended
+EVB-PC-715602,Artist Residency Event,2026-06-12,Sophie,Cook,sophie.cook41@yahoo.co.uk,PL4 7 OG,General Admission,3,10.59,2026-04-21 10:59:59.999997,Attended
+EVB-PC-815580,Artist Residency Event,2026-06-12,Freya,Wood,freya.wood53@yahoo.co.uk,TQ12 5 AU,General Admission,1,10.59,2026-04-02 12:00,Attended
+EVB-PC-646743,Artist Residency Event,2026-06-12,Oscar,Wood,oscar.wood13@yahoo.co.uk,PL5 5 GK,General Admission,2,10.59,2026-05-24 16:00:00.000003,Attended
+EVB-PC-781458,Artist Residency Event,2026-06-12,Joshua,Evans,joshua.evans39@yahoo.co.uk,PL6 5 OT,General Admission,1,10.59,2026-04-15 12:00,Attended
+EVB-PC-805369,Artist Residency Event,2026-06-12,Samuel,Allen,samuel.allen37@icloud.com,PL5 5 HC,General Admission,1,10.59,2026-04-29 10:59:59.999997,No-show
+EVB-PC-102286,Artist Residency Event,2026-06-12,Henry,Singh,henry.singh71@icloud.com,PL7 2 ZR,General Admission,1,10.59,2026-04-02 13:59:59.999997,Attended
+EVB-PC-669116,Artist Residency Event,2026-06-12,Charlie,Patel,charlie.patel78@icloud.com,TQ12 7 ST,General Admission,2,10.59,2026-05-30 18:00,Partial
+EVB-PC-107999,Artist Residency Event,2026-06-12,George,Wilson,george.wilson62@hotmail.co.uk,PL1 5 WE,General Admission,2,10.59,2026-06-08 07:59:59.999997,Partial
+EVB-PC-345438,Artist Residency Event,2026-06-12,Lucas,Harris,lucas.harris77@outlook.com,PL14 9 CD,General Admission,1,10.59,2026-04-05 13:00:00.000003,Attended
+EVB-PC-620829,Artist Residency Event,2026-06-12,Alice,Scott,alice.scott26@yahoo.co.uk,PL4 3 UA,General Admission,1,10.59,2026-04-03 19:00:00.000003,Attended

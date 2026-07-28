@@ -113,9 +113,7 @@ class Command(BaseCommand):
                 else:
                     self.stdout.write(f"  Already child: {name}")
             except Organisation.DoesNotExist:
-                self.stdout.write(
-                    self.style.WARNING(f"  Child org not found, skipping: {name}")
-                )
+                self.stdout.write(self.style.WARNING(f"  Child org not found, skipping: {name}"))
 
         if assigned:
             self.stdout.write(self.style.SUCCESS(f"Assigned {assigned} child orgs to {PARENT_ORG_NAME}"))
@@ -146,8 +144,7 @@ class Command(BaseCommand):
             org.members.add(user)
         self.stdout.write(
             self.style.SUCCESS(
-                f"Added {email} as member of {len(all_orgs)} orgs "
-                f"({parent.name} + {len(all_orgs) - 1} children)"
+                f"Added {email} as member of {len(all_orgs)} orgs ({parent.name} + {len(all_orgs) - 1} children)"
             )
         )
 

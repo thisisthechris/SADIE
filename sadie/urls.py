@@ -19,6 +19,7 @@ urlpatterns = [
     path("api/auth/login/", auth_views.login_view, name="api-auth-login"),
     path("api/auth/logout/", auth_views.logout_view, name="api-auth-logout"),
     path("api/auth/users/", auth_views.users_search, name="api-auth-users"),
+    path("api/auth/accounts/", auth_views.create_account, name="api-auth-create-account"),
     path("api/search/", search_view, name="api-search"),
     path("api/organisations/", include("organisations.urls")),
     path("api/events/", include("events.urls")),

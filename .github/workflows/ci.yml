@@ -43,9 +43,42 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
 
       - name: Run tests
         run: python manage.py test --settings=sadie.settings_test
         env:
           DEBUG: "True"
+
+      - name: Run mcp_server tests (pytest-style)
+        run: pytest mcp_server/
+        env:
+          DEBUG: "True"
+
+  frontend:
+    name: Frontend (typecheck + tests)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Run tests
+        run: npm run test

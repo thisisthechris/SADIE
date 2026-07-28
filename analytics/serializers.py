@@ -171,9 +171,7 @@ class PostcodeEventInteractionUploadSerializer(serializers.ModelSerializer):
 
         count = attrs.get("interaction_count")
         if count is not None and count <= 0:
-            raise serializers.ValidationError(
-                {"interaction_count": "interaction_count must be a positive integer."}
-            )
+            raise serializers.ValidationError({"interaction_count": "interaction_count must be a positive integer."})
         return attrs
 
 
@@ -238,7 +236,5 @@ class PostcodeTicketPurchaseUploadSerializer(serializers.ModelSerializer):
 
         quantity = attrs.get("ticket_quantity")
         if quantity is not None and quantity <= 0:
-            raise serializers.ValidationError(
-                {"ticket_quantity": "ticket_quantity must be a positive integer."}
-            )
+            raise serializers.ValidationError({"ticket_quantity": "ticket_quantity must be a positive integer."})
         return attrs

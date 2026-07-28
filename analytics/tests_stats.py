@@ -224,9 +224,7 @@ class NewChartsStatsEndpointsTest(TestCase):
         Event.objects.filter(pk=cls.e_morning2.pk).update(
             created_at=cls.e_morning2.start_datetime - timedelta(days=20)
         )
-        Event.objects.filter(pk=cls.e_evening.pk).update(
-            created_at=cls.e_evening.start_datetime - timedelta(days=2)
-        )
+        Event.objects.filter(pk=cls.e_evening.pk).update(created_at=cls.e_evening.start_datetime - timedelta(days=2))
 
         # Backdated listing (created AFTER the event happened) -> excluded from lead-time averages.
         cls.e_backdated = Event.objects.create(

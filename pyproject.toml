@@ -13,3 +13,11 @@ select = ["E", "F", "W", "I", "UP"]
 [tool.ruff.lint.per-file-ignores]
 # Settings files use wildcard imports intentionally
 "sadie/settings*.py" = ["F401", "F403", "F405"]
+# Long lines here are raw CSV fixture rows used as test input, not real code
+"imports/tests.py" = ["E501"]
+
+[tool.pytest.ini_options]
+# mcp_server/tests.py uses pytest-style classes (not unittest.TestCase), so it
+# must be run via `pytest`, not `manage.py test` (which silently skips them).
+DJANGO_SETTINGS_MODULE = "sadie.settings_test"
+python_files = ["tests.py", "test_*.py"]

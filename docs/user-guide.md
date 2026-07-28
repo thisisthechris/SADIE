@@ -285,6 +285,8 @@ Scrape run logs are available in **Scraping → Scrape runs** in the admin panel
 | `docker compose exec web python manage.py setup_plymouth_culture` | Seed venues and categories |
 | `docker compose exec web python manage.py migrate` | Apply database migrations |
 | `docker compose exec web python manage.py collectstatic` | Collect static files |
+| `docker compose -f docker-compose.yml -f docker-compose.demo.yml exec web python manage.py import_partner_csv --clear` | Reseed the standalone demo dataset from `csv_exports/` |
+| `docker compose -f docker-compose.yml -f docker-compose.demo.yml exec web python manage.py geocode_venues` | Geocode venues after reseeding the demo dataset (required for maps/venue views to show data) |
 
 ### Key URLs
 

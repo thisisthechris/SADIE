@@ -1,0 +1,9 @@
+﻿Order_ID,Event_Name,Event_Date,First_Name,Last_Name,Email,Postcode,Ticket_Type,Quantity,Ticket_Price,Purchase_Date,Attendance_Status
+EVB-PC-661501,Open Studio Day,2026-05-28,Megan,Young,megan.young85@gmail.com,PL2 5 DT,General Admission,2,7.74,2026-04-30 18:00,Attended
+EVB-PC-610395,Open Studio Day,2026-05-28,Henry,Ahmed,henry.ahmed46@gmail.com,PL4 2 BR,General Admission,4,7.74,2026-04-15 19:00:00.000003,Attended
+EVB-PC-525995,Open Studio Day,2026-05-28,Grace,Perry,grace.perry61@outlook.com,PL4 5 YZ,General Admission,1,7.74,2026-05-07 19:00:00.000003,Attended
+EVB-PC-443069,Open Studio Day,2026-05-28,Jacob,Harris,jacob.harris98@gmail.com,PL1 7 JK,General Admission,1,7.74,2026-04-15 18:00,Attended
+EVB-PC-763957,Open Studio Day,2026-05-28,Chloe,Bennett,chloe.bennett9@hotmail.co.uk,PL1 5 XW,General Admission,1,7.74,2026-05-02 19:59:59.999997,Attended
+EVB-PC-184102,Open Studio Day,2026-05-28,Ruby,White,ruby.white93@gmail.com,PL3 9 IK,General Admission,1,7.74,2026-04-08 16:00:00.000003,Attended
+EVB-PC-682725,Open Studio Day,2026-05-28,Charlotte,Davies,charlotte.davies79@hotmail.co.uk,PL6 6 WF,General Admission,1,7.74,2026-05-27 16:00:00.000003,Attended
+EVB-PC-475480,Open Studio Day,2026-05-28,Harry,Johnson,harry.johnson21@outlook.com,PL12 8 UF,General Admission,1,7.74,2026-03-21 07:59:59.999997,Attended

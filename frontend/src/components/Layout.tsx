@@ -51,6 +51,7 @@ const NAV: NavEntry[] = [
       { to: "/insights/postcode-volume", label: "Ticket Volume", staff: true },
       { to: "/insights/overview", label: "System Overview", staff: true },
       { to: "/insights/imports", label: "Imports", staff: true },
+      { to: "/insights/accounts", label: "Accounts", staff: true },
     ],
     staff: true,
   },

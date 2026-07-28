@@ -1,0 +1,4 @@
+﻿Order_ID,Event_Name,Event_Date,First_Name,Last_Name,Email,Postcode,Ticket_Type,Quantity,Ticket_Price,Purchase_Date,Attendance_Status
+EVB-PC-614955,Artist Talk,2026-03-26,Lily,Evans,lily.evans69@outlook.com,EX2 1 MV,General Admission,1,4.62,2026-01-24 19:59:59.999997,Partial
+EVB-PC-666813,Artist Talk,2026-03-26,Alice,Cooper,alice.cooper8@yahoo.co.uk,PL4 5 MW,General Admission,1,4.62,2026-01-02 12:00,Partial
+EVB-PC-649668,Artist Talk,2026-03-26,Noah,Smith,noah.smith36@icloud.com,PL2 5 ZG,General Admission,1,4.62,2026-01-17 16:00:00.000003,Partial

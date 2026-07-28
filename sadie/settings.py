@@ -37,6 +37,8 @@ INSTALLED_APPS = [
     "dashboard",
     "scraping",
     "embeddings",
+    "imports",
+    "anymail",
 ]
 
 MIDDLEWARE = [
@@ -158,6 +160,15 @@ if not UPLOAD_API_TOKEN:
         raise ValueError("UPLOAD_API_TOKEN environment variable must be set in production.")
     UPLOAD_API_TOKEN = "dev-upload-token"
 
+# Secret salt/pepper for hashing PII (e.g. partner CSV import emails) into
+# user_hash values. Never log or store the raw identifier once hashed — see
+# imports/hashing.py.
+PII_HASH_SALT = os.environ.get("PII_HASH_SALT", "")
+if not PII_HASH_SALT:
+    if not DEBUG:
+        raise ValueError("PII_HASH_SALT environment variable must be set in production.")
+    PII_HASH_SALT = "dev-pii-hash-salt"
+
 # CORS – allow browser-based integrations to POST to upload endpoints.
 # Populate CORS_ALLOWED_ORIGINS (comma-separated) via env var in production.
 CORS_ALLOWED_ORIGINS = [o.strip() for o in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",") if o.strip()]
@@ -171,6 +182,22 @@ CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.environ.get("CSRF_TRUSTED_ORIGINS"
 # MapTiler key surfaced to the SPA at runtime via /api/config/.
 # Never bake this into the JS bundle so it can be rotated without a rebuild.
 MAPTILER_API_KEY = os.environ.get("MAPTILER_API_KEY", "")
+
+# Email (Mailgun via django-anymail). Falls back to Django's console backend
+# (prints emails to stdout) whenever MAILGUN_API_KEY is unset, so local dev
+# and CI never need real Mailgun credentials.
+MAILGUN_API_KEY = os.environ.get("MAILGUN_API_KEY", "")
+MAILGUN_SENDER_DOMAIN = os.environ.get("MAILGUN_SENDER_DOMAIN", "")
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "SADIE <no-reply@example.com>")
+
+if MAILGUN_API_KEY:
+    EMAIL_BACKEND = "anymail.backends.mailgun.EmailBackend"
+    ANYMAIL = {
+        "MAILGUN_API_KEY": MAILGUN_API_KEY,
+        "MAILGUN_SENDER_DOMAIN": MAILGUN_SENDER_DOMAIN,
+    }
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 # Embeddings (Phase 2 search). fastembed loads the ONNX model lazily.
 EMBEDDING_PROVIDER = os.environ.get("EMBEDDING_PROVIDER", "fastembed")

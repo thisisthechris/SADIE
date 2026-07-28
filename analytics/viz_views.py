@@ -46,15 +46,15 @@ from .queries import (
 # Centroids for PL postcode districts (lng, lat).
 # Derived from bbox midpoints of the pl-postcode-districts.geojson boundaries.
 POSTCODE_CENTROIDS = {
-    "PL1":  [-4.1606, 50.3636],
-    "PL2":  [-4.1659, 50.3901],
-    "PL3":  [-4.1249, 50.3888],
-    "PL4":  [-4.1241, 50.3731],
-    "PL5":  [-4.1658, 50.4210],
-    "PL6":  [-4.1075, 50.4304],
-    "PL7":  [-4.0302, 50.4219],
-    "PL8":  [-4.0134, 50.3252],
-    "PL9":  [-4.0974, 50.3351],
+    "PL1": [-4.1606, 50.3636],
+    "PL2": [-4.1659, 50.3901],
+    "PL3": [-4.1249, 50.3888],
+    "PL4": [-4.1241, 50.3731],
+    "PL5": [-4.1658, 50.4210],
+    "PL6": [-4.1075, 50.4304],
+    "PL7": [-4.0302, 50.4219],
+    "PL8": [-4.0134, 50.3252],
+    "PL9": [-4.0974, 50.3351],
     "PL10": [-4.2167, 50.3289],
     "PL11": [-4.2986, 50.3693],
     "PL12": [-4.2935, 50.4384],
@@ -527,9 +527,7 @@ def postcode_districts(request: Request) -> Response:
     selected = request.GET.get("district", "").strip().upper()
 
     # Aggregate all postcode records into district buckets.
-    qs = postcode_qs(p).order_by().values("postcode", "area").annotate(
-        total=Sum("interaction_count")
-    )
+    qs = postcode_qs(p).order_by().values("postcode", "area").annotate(total=Sum("interaction_count"))
 
     district_map: dict[str, dict] = {}
     for row in qs:
@@ -723,11 +721,7 @@ def postcode_ticket_records(request: Request) -> Response:
     except (TypeError, ValueError):
         limit = 200
 
-    qs = (
-        postcode_ticket_qs(p)
-        .select_related("organisation", "event")
-        .order_by("-purchase_date")[:limit]
-    )
+    qs = postcode_ticket_qs(p).select_related("organisation", "event").order_by("-purchase_date")[:limit]
     rows = [
         {
             "id": r.id,
@@ -754,13 +748,9 @@ def _postcode_flows_from_events(p, selected: str) -> dict | None:
     """
     from django.db.models import Q as _Q
 
-    qs = postcode_event_qs(p).select_related(
-        "event", "event__location", "location", "organisation"
-    )
+    qs = postcode_event_qs(p).select_related("event", "event__location", "location", "organisation")
     if selected:
-        qs = qs.filter(
-            _Q(postcode__iexact=selected) | _Q(postcode__istartswith=f"{selected} ")
-        )
+        qs = qs.filter(_Q(postcode__iexact=selected) | _Q(postcode__istartswith=f"{selected} "))
 
     district_venue: dict[tuple[str, int], int] = {}
     venue_meta: dict[int, dict] = {}
@@ -864,9 +854,7 @@ def postcode_flows(request: Request) -> Response:
 
     qs = postcode_qs(p)
     if selected:
-        qs = qs.filter(
-            _Q(postcode__iexact=selected) | _Q(postcode__istartswith=f"{selected} ")
-        )
+        qs = qs.filter(_Q(postcode__iexact=selected) | _Q(postcode__istartswith=f"{selected} "))
 
     # Aggregate: district × org → total interactions
     rows = list(
@@ -938,29 +926,33 @@ def postcode_flows(request: Request) -> Response:
         if lid not in venue_set:
             venue_set[lid] = venue
 
-        flows.append({
-            "from_code": district,
-            "from_lng": pc_coords[0],
-            "from_lat": pc_coords[1],
-            "to_location_id": lid,
-            "to_name": venue["name"],
-            "to_org": venue["organisation"],
-            "to_lng": venue["lng"],
-            "to_lat": venue["lat"],
-            "count": count,
-        })
+        flows.append(
+            {
+                "from_code": district,
+                "from_lng": pc_coords[0],
+                "from_lat": pc_coords[1],
+                "to_location_id": lid,
+                "to_name": venue["name"],
+                "to_org": venue["organisation"],
+                "to_lng": venue["lng"],
+                "to_lat": venue["lat"],
+                "count": count,
+            }
+        )
 
     postcode_nodes = sorted(postcode_totals.values(), key=lambda x: -x["total"])
     venue_nodes = sorted(venue_set.values(), key=lambda x: x["name"])
 
-    return Response({
-        "filters": p,
-        "district": selected or None,
-        "postcode_nodes": postcode_nodes,
-        "venue_nodes": venue_nodes,
-        "flows": sorted(flows, key=lambda x: -x["count"]),
-        "flow_count": len(flows),
-    })
+    return Response(
+        {
+            "filters": p,
+            "district": selected or None,
+            "postcode_nodes": postcode_nodes,
+            "venue_nodes": venue_nodes,
+            "flows": sorted(flows, key=lambda x: -x["count"]),
+            "flow_count": len(flows),
+        }
+    )
 
 
 def _resolve_location(it) -> Location | None:

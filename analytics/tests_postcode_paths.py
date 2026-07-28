@@ -49,9 +49,7 @@ class PostcodePathwayTest(TestCase):
         cls.ev_b = Event.objects.create(
             organisation=cls.org, title="At B", start_datetime=now - timedelta(days=1), location=cls.loc_b
         )
-        cls.ev_c = Event.objects.create(
-            organisation=cls.org, title="At C", start_datetime=now, location=cls.loc_c
-        )
+        cls.ev_c = Event.objects.create(organisation=cls.org, title="At C", start_datetime=now, location=cls.loc_c)
 
         # Postcode PL1 cohort: A(50) → B(30) → C(20). Ordering by event date.
         for ev, count in [(cls.ev_a, 50), (cls.ev_b, 30), (cls.ev_c, 20)]:
@@ -174,9 +172,7 @@ class PostcodePathwayTest(TestCase):
         self.assertEqual(venue_ids, {self.loc_a.pk, self.loc_b.pk, self.loc_c.pk})
 
         # PL1 → Venue A spoke carries the uploaded cohort count (50).
-        pl1_to_a = [
-            f for f in body["flows"] if f["from_code"] == "PL1" and f["to_location_id"] == self.loc_a.pk
-        ]
+        pl1_to_a = [f for f in body["flows"] if f["from_code"] == "PL1" and f["to_location_id"] == self.loc_a.pk]
         self.assertEqual(len(pl1_to_a), 1)
         self.assertEqual(pl1_to_a[0]["count"], 50)
 

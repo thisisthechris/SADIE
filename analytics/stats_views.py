@@ -474,9 +474,7 @@ def category_trends(request: Request) -> Response:
             series.append(
                 {
                     "month": (
-                        month.date().isoformat()
-                        if hasattr(month, "date")
-                        else (month.isoformat() if month else None)
+                        month.date().isoformat() if hasattr(month, "date") else (month.isoformat() if month else None)
                     ),
                     "category": row["event__categories__name"],
                     "count": row["count"],
@@ -636,10 +634,7 @@ def peak_times(request: Request) -> Response:
     # Event's default Meta.ordering ("start_datetime") to the GROUP BY clause,
     # splitting events that share an hour but differ in exact start_datetime.
     by_hour = (
-        events.annotate(hour=ExtractHour("start_datetime"))
-        .values("hour")
-        .annotate(count=Count("id"))
-        .order_by("hour")
+        events.annotate(hour=ExtractHour("start_datetime")).values("hour").annotate(count=Count("id")).order_by("hour")
     )
     hour_dict = {row["hour"]: row["count"] for row in by_hour}
 

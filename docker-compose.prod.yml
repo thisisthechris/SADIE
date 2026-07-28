@@ -17,6 +17,12 @@
 #   UPLOAD_API_TOKEN, ALLOWED_HOSTS, CSRF_TRUSTED_ORIGINS, DB_PASSWORD
 #   (see .env.example for the full list)
 #
+# Optional but recommended in production: MAILGUN_API_KEY, MAILGUN_SENDER_DOMAIN,
+# DEFAULT_FROM_EMAIL — without these, account-creation notification emails
+# (sadie/auth_views.py's create_account endpoint) fall back to Django's console
+# backend and are only written to the `web` container's stdout, never actually
+# delivered.
+#
 # Reverse proxy (Nginx Proxy Manager on the Unraid host):
 #   Point your proxy host at http://<host>:${WEB_PORT:-8000} (the nginx service).
 #   NPM terminates TLS and forwards X-Forwarded-Proto, which nginx passes to

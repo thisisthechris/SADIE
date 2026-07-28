@@ -10,12 +10,11 @@ sadie/search_views.py to ensure consistency with existing endpoints.
 
 import logging
 from datetime import date
-from typing import Any
 
 from django.db.models import Count, Sum
 from django.db.models.functions import TruncMonth
 
-from analytics.models import PostcodeAreaInteraction, UserHashInteraction
+from analytics.models import UserHashInteraction
 from analytics.queries import (
     events_qs,
     interactions_qs,
@@ -279,10 +278,7 @@ def get_organisation(identifier: str | int) -> dict:
         location_count = org.locations.count()
         total_interactions = org.interactions.count()
 
-        locations = [
-            {"id": loc.id, "name": loc.name, "address": loc.address}
-            for loc in org.locations.all()[:20]
-        ]
+        locations = [{"id": loc.id, "name": loc.name, "address": loc.address} for loc in org.locations.all()[:20]]
 
         children_ids = list(org.children.values_list("id", "name", "slug"))
         children = [{"id": cid, "name": cname, "slug": cslug} for cid, cname, cslug in children_ids]
@@ -316,10 +312,7 @@ def list_categories() -> dict:
     """
     try:
         cats = Category.objects.annotate(n_events=Count("events")).order_by("-n_events")
-        results = [
-            {"id": c.id, "name": c.name, "slug": c.slug, "event_count": c.n_events}
-            for c in cats
-        ]
+        results = [{"id": c.id, "name": c.name, "slug": c.slug, "event_count": c.n_events} for c in cats]
         return {"results": results}
     except Exception as exc:
         logger.exception("list_categories error: %s", exc)
@@ -393,7 +386,9 @@ def get_stats_summary(
                 "location": {
                     "id": u["location_id"],
                     "name": u["location__name"],
-                } if u["location_id"] else None,
+                }
+                if u["location_id"]
+                else None,
             }
             for u in upcoming
         ]
@@ -648,15 +643,9 @@ def postcode_aggregates(
 
         postcodes = postcode_qs(params)
 
-        by_area = list(
-            postcodes.values("area")
-            .annotate(total=Sum("interaction_count"))
-            .order_by("-total")[:100]
-        )
+        by_area = list(postcodes.values("area").annotate(total=Sum("interaction_count")).order_by("-total")[:100])
         by_postcode = list(
-            postcodes.values("postcode", "area")
-            .annotate(total=Sum("interaction_count"))
-            .order_by("-total")[:200]
+            postcodes.values("postcode", "area").annotate(total=Sum("interaction_count")).order_by("-total")[:200]
         )
 
         return {

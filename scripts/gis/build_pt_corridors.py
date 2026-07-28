@@ -25,6 +25,7 @@ Usage
 
 Dependencies: requests (see requirements-dev.txt).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -47,13 +48,7 @@ HTTP_HEADERS = {"User-Agent": "SADIE-GIS/1.0 (postcode-area pathway map)"}
 # Plymouth-area bounding box: (south, west, north, east).
 DEFAULT_BBOX = (50.30, -4.25, 50.47, -3.95)
 
-DEFAULT_OUT = (
-    Path(__file__).resolve().parents[2]
-    / "frontend"
-    / "public"
-    / "data"
-    / "plymouth-pt-corridors.geojson"
-)
+DEFAULT_OUT = Path(__file__).resolve().parents[2] / "frontend" / "public" / "data" / "plymouth-pt-corridors.geojson"
 
 # Normalise OSM route values to the four modes the frontend legend supports.
 ROUTE_TO_MODE = {
@@ -240,9 +235,7 @@ def build(bbox: tuple[float, float, float, float], out: Path) -> None:
     try:
         import requests  # noqa: WPS433
     except ImportError:
-        raise SystemExit(
-            "requests is required. Install dev deps: pip install -r requirements-dev.txt"
-        )
+        raise SystemExit("requests is required. Install dev deps: pip install -r requirements-dev.txt")
 
     query = _build_query(bbox)
     print(f"Querying Overpass for Plymouth transport routes (bbox={bbox}) …")
@@ -250,9 +243,7 @@ def build(bbox: tuple[float, float, float, float], out: Path) -> None:
     elements: list[dict] = []
     for url in OVERPASS_MIRRORS:
         try:
-            resp = requests.post(
-                url, data={"data": query}, headers=HTTP_HEADERS, timeout=200
-            )
+            resp = requests.post(url, data={"data": query}, headers=HTTP_HEADERS, timeout=200)
             resp.raise_for_status()
             elements = resp.json().get("elements", [])
             print(f"  ok via {url} ({len(elements)} elements)")

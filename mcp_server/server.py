@@ -56,7 +56,9 @@ async def list_tools_impl() -> list[Tool]:
         ),
         Tool(
             name="list_events",
-            description="List events with optional filtering by organisation, category, date range, search text, or period.",
+            description=(
+                "List events with optional filtering by organisation, category, date range, search text, or period."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -157,7 +159,10 @@ async def list_tools_impl() -> list[Tool]:
         ),
         Tool(
             name="get_stats_summary",
-            description="Top-line dashboard stats: organisation/location/event/interaction counts, unique visitors, postcode count, and upcoming events.",
+            description=(
+                "Top-line dashboard stats: organisation/location/event/interaction counts, "
+                "unique visitors, postcode count, and upcoming events."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -536,7 +541,8 @@ async def read_resource_impl(uri: str) -> str:
         return """# SADIE Data Model & Query Guide
 
 ## Overview
-SADIE is a Django-based event analytics platform for Plymouth, UK. The backend tracks events, organisations, locations, user interactions (anonymized), and postcode-level data.
+SADIE is a Django-based event analytics platform for Plymouth, UK. The backend tracks events, organisations,
+locations, user interactions (anonymized), and postcode-level data.
 
 ## Core Data Models
 

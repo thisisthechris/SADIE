@@ -6,14 +6,18 @@ session cookies + CSRF (no JWT, no separate identity provider).
 
 Endpoints:
 
-    GET  /api/config/        public runtime config (e.g. MapTiler key)
-    GET  /api/auth/me/       current user (200 with payload, or 401)
-    POST /api/auth/login/    username + password -> session cookie
-    POST /api/auth/logout/   destroy the session
-    GET  /api/auth/csrf/     issue a CSRF cookie (for SPA bootstrap)
+    GET  /api/config/            public runtime config (e.g. MapTiler key)
+    GET  /api/auth/me/           current user (200 with payload, or 401)
+    POST /api/auth/login/        username + password -> session cookie
+    POST /api/auth/logout/       destroy the session
+    GET  /api/auth/csrf/         issue a CSRF cookie (for SPA bootstrap)
+    GET  /api/auth/users/        staff-only user autocomplete
+    POST /api/auth/accounts/     staff-only account creation
 """
 
 from __future__ import annotations
+
+import logging
 
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
@@ -24,6 +28,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
+
+logger = logging.getLogger(__name__)
 
 
 def _user_payload(user):
@@ -132,3 +138,92 @@ def users_search(request: Request) -> Response:
             ]
         }
     )
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def create_account(request: Request) -> Response:
+    """Staff-only account creation for the SPA.
+
+    Any staff member may create an account, but only superusers may grant
+    ``is_staff`` on the new account (privilege-escalation guard). The staff
+    member sets the password directly; the notification email sent to the
+    new user never contains the password itself — it points them at the
+    self-service ``/accounts/password_reset/`` flow instead.
+    """
+    if not request.user.is_staff:
+        return Response({"detail": "Forbidden."}, status=status.HTTP_403_FORBIDDEN)
+
+    from django.contrib.auth import get_user_model
+    from django.contrib.auth.password_validation import validate_password
+    from django.core.exceptions import ValidationError as DjangoValidationError
+    from django.core.mail import send_mail
+
+    from organisations.models import Organisation
+
+    username = (request.data.get("username") or "").strip()
+    email = (request.data.get("email") or "").strip()
+    first_name = (request.data.get("first_name") or "").strip()
+    last_name = (request.data.get("last_name") or "").strip()
+    password = request.data.get("password") or ""
+    make_staff = bool(request.data.get("is_staff"))
+    organisation_ids = request.data.get("organisation_ids") or []
+
+    if not username or not email or not password:
+        return Response(
+            {"detail": "username, email and password are required."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if make_staff and not request.user.is_superuser:
+        return Response(
+            {"detail": "Only superusers can grant staff access."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    User = get_user_model()
+    if User.objects.filter(username=username).exists():
+        return Response(
+            {"detail": "A user with that username already exists."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        validate_password(password)
+    except DjangoValidationError as exc:
+        return Response({"detail": " ".join(exc.messages)}, status=status.HTTP_400_BAD_REQUEST)
+
+    user = User.objects.create_user(
+        username=username,
+        email=email,
+        first_name=first_name,
+        last_name=last_name,
+        password=password,
+        is_staff=make_staff,
+    )
+
+    if organisation_ids:
+        orgs = Organisation.objects.filter(id__in=organisation_ids)
+        user.member_organisations.set(orgs)
+
+    try:
+        send_mail(
+            subject="Your SADIE account has been created",
+            message=(
+                f"Hi {first_name or username},\n\n"
+                f"An account has been created for you on SADIE (username: {username}).\n\n"
+                "Your password was set by the staff member who created your account. "
+                "If you'd like to change it, use the self-service reset form:\n\n"
+                f"{request.build_absolute_uri('/accounts/password_reset/')}\n\n"
+                "— SADIE"
+            ),
+            from_email=None,  # uses settings.DEFAULT_FROM_EMAIL
+            recipient_list=[email],
+            fail_silently=False,
+        )
+    except Exception:
+        # Account creation should still succeed even if the notification
+        # email fails to send (e.g. Mailgun misconfigured/unreachable).
+        logger.exception("Failed to send account-creation notification email to %s", email)
+
+    return Response(_user_payload(user), status=status.HTTP_201_CREATED)
