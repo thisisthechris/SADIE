@@ -24,7 +24,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.middleware.csrf import get_token
 from django.views.decorators.csrf import ensure_csrf_cookie
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -52,8 +52,17 @@ def _user_payload(user):
 
 @api_view(["GET"])
 @permission_classes([AllowAny])
+@throttle_classes([])
 def config(request: Request) -> Response:
-    """Public runtime config consumed by the SPA on bootstrap."""
+    """Public runtime config consumed by the SPA on bootstrap.
+
+    Exempt from the default anonymous rate limit: every page load calls this
+    (so real users behind a shared/NAT'd IP would get throttled from normal
+    use alone), and it also doubles as Render's healthCheckPath (render.yaml),
+    which polls it every few seconds — that alone exhausts the default
+    1000/day anon throttle bucket within a few hours, causing the health
+    check itself to start receiving 429s.
+    """
     return Response(
         {
             "maptiler_api_key": getattr(settings, "MAPTILER_API_KEY", ""),
