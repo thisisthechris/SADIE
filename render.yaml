@@ -90,8 +90,11 @@ services:
     plan: starter
     region: frankfurt
     healthCheckPath: /api/config/
-    preDeployCommand: "python manage.py enable_postgis && python manage.py migrate --noinput"
-    initialDeployHook: "python manage.py createsuperuser --noinput || true; python manage.py render_seed"
+    # NOTE: Render does not run preDeployCommand/initialDeployHook through a
+    # shell — it execs the string directly, so shell operators like && and ;
+    # are NOT interpreted unless explicitly wrapped in `sh -c "..."` below.
+    preDeployCommand: 'sh -c "python manage.py enable_postgis && python manage.py migrate --noinput"'
+    initialDeployHook: 'sh -c "python manage.py createsuperuser --noinput || true; python manage.py render_seed"'
     disk:
       name: media
       mountPath: /app/mediafiles
