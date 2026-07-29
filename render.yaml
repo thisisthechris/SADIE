@@ -1,0 +1,209 @@
+# render.yaml — Render Blueprint for a standalone SADIE deployment (Frankfurt,
+# paid Starter-tier services).
+#
+# This is a fully independent deployment target. It does NOT replace, modify,
+# or depend on the existing Docker Compose / Portainer / GHCR stack
+# (docker-compose.yml, docker-compose.prod.yml, docker-compose.demo.yml,
+# nginx/, .github/workflows/deploy.yml) — that stack is left entirely as-is.
+# Render builds directly from this repo's root Dockerfile via git-based Docker
+# builds, rather than pulling the GHCR images deploy.yml produces.
+#
+# Deploy: Render Dashboard -> New -> Blueprint -> connect this repo -> Render
+# parses this file -> fill in the prompted secrets (Mailgun keys, superuser
+# credentials, optionally a MapTiler key) -> Deploy Blueprint.
+#
+# Architecture (a Render Static Site + rewrite routes replaces nginx's job):
+#   sadie-frontend      — Static Site. Serves the built React SPA and rewrites
+#                         dynamic paths (/api/*, /accounts/*, etc.) to sadie-web.
+#   sadie-web           — Docker web service (Django/gunicorn). Public.
+#   sadie-celery        — Docker background worker (Celery worker).
+#   sadie-celery-beat   — Docker background worker (Celery beat scheduler).
+#   sadie-db            — Render Postgres. PostGIS is enabled automatically via
+#                         the `enable_postgis` management command in
+#                         sadie-web's preDeployCommand (runs before `migrate`).
+#   sadie-redis         — Render Key Value. Celery broker + result backend.
+#
+# One-time manual step after the FIRST deploy: sadie-web's actual onrender.com
+# hostname may differ from the one hardcoded in sadie-frontend's routes below,
+# if "sadie-web" is already taken by another Render user (Render then appends
+# a random suffix). If so, open sadie-frontend -> Redirects/Rewrites in the
+# Render Dashboard and correct the destination URLs to match sadie-web's real
+# hostname (faster than editing this file and re-syncing the Blueprint).
+#
+# Seeding: sadie-web's initialDeployHook runs ONCE, after the first successful
+# deploy — it creates the superuser (from the DJANGO_SUPERUSER_* secrets) and
+# runs render_seed (waits for the Celery broker, then imports + geocodes the
+# partner CSV test data in csv_exports/). It will not re-run on later deploys.
+
+databases:
+  - name: sadie-db
+    databaseName: sadie
+    plan: basic-1gb
+    region: frankfurt
+
+envVarGroups:
+  - name: sadie-common
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: .onrender.com
+      - key: CSRF_TRUSTED_ORIGINS
+        value: https://*.onrender.com
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://*.onrender.com
+      - key: UPLOAD_API_TOKEN
+        generateValue: true
+      - key: PII_HASH_SALT
+        generateValue: true
+      - key: MEDIA_ROOT
+        value: /app/mediafiles
+      - key: MAILGUN_API_KEY
+        sync: false
+      - key: MAILGUN_SENDER_DOMAIN
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
+      - key: MAPTILER_API_KEY
+        sync: false
+      - key: DJANGO_SUPERUSER_USERNAME
+        sync: false
+      - key: DJANGO_SUPERUSER_EMAIL
+        sync: false
+      - key: DJANGO_SUPERUSER_PASSWORD
+        sync: false
+
+services:
+  - type: keyvalue
+    name: sadie-redis
+    region: frankfurt
+    plan: starter
+    maxmemoryPolicy: noeviction
+    ipAllowList: [] # internal (private network) connections only
+
+  - type: web
+    name: sadie-web
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    region: frankfurt
+    healthCheckPath: /api/config/
+    preDeployCommand: "python manage.py enable_postgis && python manage.py migrate --noinput"
+    initialDeployHook: "python manage.py createsuperuser --noinput || true; python manage.py render_seed"
+    disk:
+      name: media
+      mountPath: /app/mediafiles
+      sizeGB: 5
+    envVars:
+      - fromGroup: sadie-common
+      - key: DATABASE_URL
+        fromDatabase:
+          name: sadie-db
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: keyvalue
+          name: sadie-redis
+          property: connectionString
+      - key: CELERY_RESULT_BACKEND
+        fromService:
+          type: keyvalue
+          name: sadie-redis
+          property: connectionString
+
+  - type: worker
+    name: sadie-celery
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerCommand: "celery -A sadie worker --loglevel=info --concurrency 2"
+    plan: starter
+    region: frankfurt
+    envVars:
+      - fromGroup: sadie-common
+      - key: DATABASE_URL
+        fromDatabase:
+          name: sadie-db
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: keyvalue
+          name: sadie-redis
+          property: connectionString
+      - key: CELERY_RESULT_BACKEND
+        fromService:
+          type: keyvalue
+          name: sadie-redis
+          property: connectionString
+
+  - type: worker
+    name: sadie-celery-beat
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerCommand: "celery -A sadie beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler"
+    plan: starter
+    region: frankfurt
+    envVars:
+      - fromGroup: sadie-common
+      - key: DATABASE_URL
+        fromDatabase:
+          name: sadie-db
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: keyvalue
+          name: sadie-redis
+          property: connectionString
+      - key: CELERY_RESULT_BACKEND
+        fromService:
+          type: keyvalue
+          name: sadie-redis
+          property: connectionString
+
+  - type: web
+    name: sadie-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    routes:
+      # Dynamic backend paths (mirrors nginx/default.conf's proxy rules).
+      # These MUST come before the SPA catch-all below (first match wins).
+      - type: rewrite
+        source: /api/*
+        destination: https://sadie-web.onrender.com/api/*
+      - type: rewrite
+        source: /accounts/*
+        destination: https://sadie-web.onrender.com/accounts/*
+      - type: rewrite
+        source: /herebedragons/*
+        destination: https://sadie-web.onrender.com/herebedragons/*
+      - type: rewrite
+        source: /static/*
+        destination: https://sadie-web.onrender.com/static/*
+      - type: rewrite
+        source: /media/*
+        destination: https://sadie-web.onrender.com/media/*
+      - type: rewrite
+        source: /calendar.ics
+        destination: https://sadie-web.onrender.com/calendar.ics
+      - type: rewrite
+        source: /calendar/*
+        destination: https://sadie-web.onrender.com/calendar/*
+      - type: rewrite
+        source: /events.json
+        destination: https://sadie-web.onrender.com/events.json
+      - type: rewrite
+        source: /events.rss
+        destination: https://sadie-web.onrender.com/events.rss
+      - type: rewrite
+        source: /rss/*
+        destination: https://sadie-web.onrender.com/rss/*
+      - type: rewrite
+        source: /v/*
+        destination: https://sadie-web.onrender.com/v/*
+      # SPA client-side routing catch-all — MUST be last.
+      - type: rewrite
+        source: /*
+        destination: /index.html

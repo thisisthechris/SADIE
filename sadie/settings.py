@@ -80,6 +80,12 @@ DATABASES = {
         conn_max_age=600,
     )
 }
+# Force the PostGIS backend regardless of DATABASE_URL's scheme. dj-database-url
+# only selects django.contrib.gis.db.backends.postgis for a "postgis://" URL,
+# but managed Postgres providers (e.g. Render) only ever hand out a plain
+# "postgres://" URL. The app always needs GIS support, so pin the engine here
+# rather than relying on callers to rewrite the URL scheme.
+DATABASES["default"]["ENGINE"] = "django.contrib.gis.db.backends.postgis"
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},

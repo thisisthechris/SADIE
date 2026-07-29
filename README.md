@@ -149,6 +149,25 @@ python manage.py generate_synthetic_data
 
 ---
 
+## Deploying to Render
+
+`render.yaml` (repo root) is a [Render Blueprint](https://render.com/docs/blueprint-spec) that deploys a full, standalone instance of SADIE — including the partner CSV test dataset — to [Render](https://render.com). It's entirely independent of the Docker Compose / Portainer / GHCR deployment above; neither setup depends on or affects the other.
+
+**What it provisions** (Frankfurt region, paid Starter-tier throughout, ~$51/mo — see cost breakdown in the Blueprint's comments): a Postgres database, a Key Value (Redis) instance for Celery, a Docker web service running Django/gunicorn (with a 5GB persistent disk for uploaded media), two Docker background workers (Celery worker + beat), and a Static Site serving the built React SPA — which replaces nginx's job of reverse-proxying `/api/`, `/accounts/`, etc. via rewrite rules instead.
+
+**Deploy:**
+
+1. In the [Render Dashboard](https://dashboard.render.com), click *New → Blueprint* and connect this GitHub repo.
+2. Render detects `render.yaml` and lists the services it will create. You'll be prompted for a handful of secret values (`sync: false` in the Blueprint): `MAILGUN_API_KEY`, `MAILGUN_SENDER_DOMAIN`, `DEFAULT_FROM_EMAIL`, `DJANGO_SUPERUSER_USERNAME`/`_EMAIL`/`_PASSWORD`, and optionally `MAPTILER_API_KEY`.
+3. Click *Deploy Blueprint*. The web service's `initialDeployHook` automatically creates the superuser and runs `render_seed` (which waits for the Celery broker to come up, then imports + geocodes the partner CSV test data) on its first successful deploy — no manual shell/CLI access needed. `enable_postgis` (in `preDeployCommand`) similarly retries for a while if the database isn't accepting connections yet on the very first deploy attempt.
+4. If the very first deploy still fails (e.g. the database took longer than the retry window to come up), just trigger *Manual Deploy → Deploy latest commit* on `sadie-web` from the Dashboard — `enable_postgis`/`migrate` and the seed step are all safe to re-run.
+5. **One manual follow-up step:** the `sadie-web` service's rewrite destinations in `render.yaml` assume its hostname is exactly `sadie-web.onrender.com`. If that name was already taken by another Render user, Render will have appended a random suffix — check the real hostname on `sadie-web`'s page in the Dashboard, and if it differs, open `sadie-frontend → Redirects/Rewrites` and correct the destination URLs there directly (faster than editing `render.yaml` and re-syncing).
+6. Once all six resources show *Live*/*Available*, visit `sadie-frontend`'s URL, log in with the superuser credentials from step 2, and confirm the seeded test data (organisations, events, geocoded venues) appears.
+
+The [Render CLI](https://render.com/docs/cli) isn't required for any of this — it's only useful afterwards for tailing logs or validating `render.yaml` locally (`render blueprints validate render.yaml`).
+
+---
+
 ## API Endpoints
 
 | Endpoint | Method | Auth required | Description |
