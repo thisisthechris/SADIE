@@ -42,6 +42,11 @@ databases:
     region: frankfurt
 
 envVarGroups:
+  # NOTE: `sync: false` (prompted secret) env vars CANNOT live in an
+  # envVarGroup — Render silently ignores the `sync: false` flag there and
+  # never prompts for a value. Only non-secret / generateValue vars belong
+  # here; actual secrets are defined directly on the services that need them
+  # below (sadie-web).
   - name: sadie-common
     envVars:
       - key: SECRET_KEY
@@ -60,20 +65,6 @@ envVarGroups:
         generateValue: true
       - key: MEDIA_ROOT
         value: /app/mediafiles
-      - key: MAILGUN_API_KEY
-        sync: false
-      - key: MAILGUN_SENDER_DOMAIN
-        sync: false
-      - key: DEFAULT_FROM_EMAIL
-        sync: false
-      - key: MAPTILER_API_KEY
-        sync: false
-      - key: DJANGO_SUPERUSER_USERNAME
-        sync: false
-      - key: DJANGO_SUPERUSER_EMAIL
-        sync: false
-      - key: DJANGO_SUPERUSER_PASSWORD
-        sync: false
 
 services:
   - type: keyvalue
@@ -115,6 +106,23 @@ services:
           type: keyvalue
           name: sadie-redis
           property: connectionString
+      # Secrets (only sadie-web needs these: Mailgun is only used by the
+      # create_account email view, MapTiler by /api/config/, and the
+      # superuser vars only by this service's initialDeployHook).
+      - key: MAILGUN_API_KEY
+        sync: false
+      - key: MAILGUN_SENDER_DOMAIN
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
+      - key: MAPTILER_API_KEY
+        sync: false
+      - key: DJANGO_SUPERUSER_USERNAME
+        sync: false
+      - key: DJANGO_SUPERUSER_EMAIL
+        sync: false
+      - key: DJANGO_SUPERUSER_PASSWORD
+        sync: false
 
   - type: worker
     name: sadie-celery
