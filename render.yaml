@@ -81,11 +81,15 @@ services:
     plan: starter
     region: frankfurt
     healthCheckPath: /api/config/
-    # NOTE: Render does not run preDeployCommand/initialDeployHook through a
-    # shell — it execs the string directly, so shell operators like && and ;
-    # are NOT interpreted unless explicitly wrapped in `sh -c "..."` below.
-    preDeployCommand: 'sh -c "python manage.py enable_postgis && python manage.py migrate --noinput"'
-    initialDeployHook: 'sh -c "python manage.py createsuperuser --noinput || true; python manage.py render_seed"'
+    # NOTE: Render's preDeployCommand/initialDeployHook do NOT reliably run
+    # multi-step "cmd1 && cmd2" / "cmd1 || true; cmd2" strings through a shell
+    # (observed: shell operators passed through as literal argv tokens,
+    # producing "unrecognized arguments" / "not found" errors either way).
+    # Using standalone scripts (see scripts/render_predeploy.sh and
+    # scripts/render_initial_deploy.sh) avoids the issue entirely, since each
+    # command here is just a single, space-free-of-operators invocation.
+    preDeployCommand: sh scripts/render_predeploy.sh
+    initialDeployHook: sh scripts/render_initial_deploy.sh
     disk:
       name: media
       mountPath: /app/mediafiles
