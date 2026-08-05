@@ -5,9 +5,11 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMe } from "../lib/auth";
+import { useFilters } from "../lib/filters";
 import { api } from "../lib/api";
+import type { OrganisationSummary, Paginated } from "../lib/types";
 import SearchModal from "./SearchModal";
 import Logo from "./Logo";
 import BrandShape from "./BrandShape";
@@ -178,6 +180,7 @@ export default function Layout() {
           </div>
         </div>
       </header>
+      <ActiveFilterBanner />
       <main className="flex-1 mx-auto max-w-7xl w-full px-4 py-6">
         <div key={location.pathname} className="animate-fade-in">
           <Outlet />
@@ -189,6 +192,50 @@ export default function Layout() {
         </div>
       </footer>
       <SearchModal open={cmdOpen} onClose={() => setCmdOpen(false)} />
+    </div>
+  );
+}
+
+/**
+ * ActiveFilterBanner: the global org/category/date filter store (useFilters)
+ * persists across page navigation in-memory, but several pages (e.g.
+ * Calendar) don't render the filter controls themselves — so a filter set
+ * on one page can silently keep applying on another with no visible cue.
+ * This banner surfaces whatever's active, everywhere, with a one-click clear.
+ */
+function ActiveFilterBanner() {
+  const f = useFilters();
+  const hasFilters = Boolean(f.org || f.category || f.date_from || f.date_to || f.period || f.search);
+
+  const orgs = useQuery({
+    queryKey: ["filter-orgs-banner"],
+    queryFn: () =>
+      api<Paginated<OrganisationSummary>>("/api/organisations/", {
+        query: { page_size: 200, ordering: "name" },
+      }),
+    staleTime: 5 * 60_000,
+    enabled: Boolean(f.org),
+  });
+
+  if (!hasFilters) return null;
+
+  const orgName = f.org ? orgs.data?.results.find((o) => String(o.id) === f.org)?.name ?? `#${f.org}` : null;
+  const parts: string[] = [];
+  if (orgName) parts.push(`Organisation: ${orgName}`);
+  if (f.category) parts.push("Category filter");
+  if (f.period) parts.push(`Period: ${f.period}`);
+  if (f.date_from || f.date_to) parts.push(`Dates: ${f.date_from || "…"} – ${f.date_to || "…"}`);
+  if (f.search) parts.push(`Search: "${f.search}"`);
+
+  return (
+    <div className="bg-accent/10 border-b border-accent/20 text-xs">
+      <div className="mx-auto max-w-7xl px-4 py-1.5 flex items-center gap-3 flex-wrap">
+        <span className="font-medium text-accent">Filtered</span>
+        <span className="text-muted">{parts.join(" · ")}</span>
+        <button onClick={f.reset} className="btn-ghost text-xs ml-auto">
+          Clear filters
+        </button>
+      </div>
     </div>
   );
 }
