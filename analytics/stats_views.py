@@ -31,6 +31,8 @@ Endpoints (mounted at /api/analytics/stats/):
     GET event-types-by-postcode/  -> interaction volume by event category, per postcode district
     GET postcode-engagement-trend/ -> monthly interaction totals, top 5 postcode districts
     GET ticket-volume-trend/      -> monthly ticket-purchase volume (tickets + orders)
+    GET peak-times-tickets/       -> ticket volume by hour-of-day (via linked event's start time)
+    GET weather-correlation/      -> daily interactions/tickets joined with Plymouth weather
 """
 
 from __future__ import annotations
@@ -47,7 +49,7 @@ from rest_framework.response import Response
 from events.models import Category
 from organisations.models import Location, Organisation
 
-from .models import UserHashInteraction
+from .models import DailyWeather, UserHashInteraction
 from .queries import (
     district_of,
     events_qs,
@@ -1078,5 +1080,95 @@ def ticket_volume_trend(request: Request) -> Response:
         for r in rows
         if r["month"]
     ]
+
+    return Response({"filters": p, "series": series})
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticatedOrReadOnly])
+def peak_times_tickets(request: Request) -> Response:
+    """Ticket volume by hour-of-day, based on the linked event's start time.
+
+    Mirrors ``peak-times/`` (which counts *events* by hour) but sums ticket
+    quantity from ``PostcodeTicketPurchase`` instead — answers "what time of
+    day do the most tickets get bought for" rather than "when do events
+    start", so it's a genuinely different cut even though both are keyed by
+    hour-of-day.
+
+    Returns: {
+        "filters": {...},
+        "series": [{"hour": 0, "label": "00:00", "tickets": 12}, ..., {"hour": 23, ...}]
+    }
+    """
+    p = parse_filter_params(request)
+    qs = postcode_ticket_qs(p).filter(event__isnull=False)
+
+    # Explicit .order_by("hour") — see the GROUP BY gotcha noted for
+    # peak_times() above: without it, PostcodeTicketPurchase's default
+    # Meta.ordering ("-purchase_date") would leak into the GROUP BY clause.
+    by_hour = (
+        qs.annotate(hour=ExtractHour("event__start_datetime"))
+        .values("hour")
+        .annotate(tickets=Sum("ticket_quantity"))
+        .order_by("hour")
+    )
+    hour_dict = {row["hour"]: int(row["tickets"] or 0) for row in by_hour}
+
+    series = [{"hour": h, "label": f"{h:02d}:00", "tickets": hour_dict.get(h, 0)} for h in range(24)]
+    return Response({"filters": p, "series": series})
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticatedOrReadOnly])
+def weather_correlation(request: Request) -> Response:
+    """Daily interactions + ticket volume joined with Plymouth weather.
+
+    Powers the Trends page's weather-vs-attendance chart. Requires
+    ``DailyWeather`` rows to have been backfilled first (see the
+    ``backfill_weather`` management command) — days with no matching weather
+    row are still returned, with null weather fields, so the frontend can
+    show a partial chart / prompt to run the backfill.
+
+    Returns: {
+        "filters": {...},
+        "series": [
+            {"date": "2026-01-05", "interactions": 42, "tickets": 18,
+             "temp_max_c": 9.2, "precipitation_mm": 4.1, "weather_code": 61},
+            ...
+        ]
+    }
+    """
+    p, _, interactions, _ = _filtered(request)
+
+    interactions_rows = interactions.values("interaction_date").annotate(n=Count("id")).order_by("interaction_date")
+    interactions_by_day = {r["interaction_date"]: r["n"] for r in interactions_rows}
+
+    tickets_rows = (
+        postcode_ticket_qs(p)
+        .values("purchase_date")
+        .annotate(n=Sum("ticket_quantity"))
+        .order_by("purchase_date")
+    )
+    tickets_by_day = {r["purchase_date"]: r["n"] for r in tickets_rows}
+
+    all_days = sorted(set(interactions_by_day) | set(tickets_by_day))
+    if not all_days:
+        return Response({"filters": p, "series": []})
+
+    weather_by_day = {w.date: w for w in DailyWeather.objects.filter(date__gte=all_days[0], date__lte=all_days[-1])}
+
+    series = []
+    for d in all_days:
+        w = weather_by_day.get(d)
+        series.append(
+            {
+                "date": d.isoformat(),
+                "interactions": int(interactions_by_day.get(d, 0)),
+                "tickets": int(tickets_by_day.get(d, 0) or 0),
+                "temp_max_c": w.temp_max_c if w else None,
+                "precipitation_mm": w.precipitation_mm if w else None,
+                "weather_code": w.weather_code if w else None,
+            }
+        )
 
     return Response({"filters": p, "series": series})

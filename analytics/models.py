@@ -192,3 +192,28 @@ class PostcodeGeo(models.Model):
         if self.latitude is not None and self.longitude is not None:
             return f"{self.postcode} {status_icon} ({self.latitude:.4f}, {self.longitude:.4f})"
         return f"{self.postcode} {status_icon}"
+
+
+class DailyWeather(models.Model):
+    """Daily historical weather for Plymouth, backfilled from Open-Meteo's free
+    historical-weather API (no key required) — see
+    ``analytics/management/commands/backfill_weather.py``.
+
+    Powers the Trends page's weather-vs-attendance correlation chart. One row
+    per calendar day; ``weather_code`` follows the WMO code table used by
+    Open-Meteo (e.g. 0=clear, 61-65=rain, 71-77=snow).
+    """
+
+    date = models.DateField(unique=True, db_index=True)
+    temp_max_c = models.FloatField(null=True, blank=True)
+    temp_min_c = models.FloatField(null=True, blank=True)
+    precipitation_mm = models.FloatField(null=True, blank=True)
+    weather_code = models.PositiveSmallIntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["date"]
+
+    def __str__(self):
+        return f"{self.date} (max {self.temp_max_c}°C, {self.precipitation_mm}mm)"

@@ -145,6 +145,16 @@ export const GLOSSARY: Record<string, GlossaryTerm> = {
     short: "The postcode districts buying the most tickets.",
     long: "Ranks postcode districts by total tickets purchased (not just interaction counts), highlighting where the highest-value bookings are coming from.",
   },
+  peak_times_tickets: {
+    term: "Time of Day vs Ticket Volume",
+    short: "When tickets actually get bought, by hour of day.",
+    long: "Breaks down ticket purchase volume by the hour-of-day of the linked event's start time. Compare against Peak Times (which counts events, not tickets) to see whether the busiest listing times are also the highest-selling ones.",
+  },
+  weather_correlation: {
+    term: "Weather vs Attendance",
+    short: "Daily interactions and ticket volume against Plymouth's weather.",
+    long: "Plots daily interaction counts (bars) against the day's maximum temperature (line), with rainfall shown in the tooltip, so you can spot whether weather visibly affects attendance. Weather data is backfilled from a free historical weather API and may be incomplete until the backfill has been run.",
+  },
 };
 
 /**

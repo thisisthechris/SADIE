@@ -99,6 +99,16 @@ urlpatterns = [
         stats_views.ticket_volume_trend,
         name="stats-ticket-volume-trend",
     ),
+    path(
+        "stats/peak-times-tickets/",
+        stats_views.peak_times_tickets,
+        name="stats-peak-times-tickets",
+    ),
+    path(
+        "stats/weather-correlation/",
+        stats_views.weather_correlation,
+        name="stats-weather-correlation",
+    ),
     # Phase 3 — 3D visualisation data
     path("viz/event-points/", viz_views.event_points, name="viz-event-points"),
     path("viz/event-list/", viz_views.event_list, name="viz-event-list"),

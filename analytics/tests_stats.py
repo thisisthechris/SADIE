@@ -21,6 +21,7 @@ from .models import (
     PostcodeEventInteraction,
     PostcodeTicketPurchase,
     UserHashInteraction,
+    DailyWeather,
 )
 
 
@@ -470,6 +471,34 @@ class PostcodeAndTicketStatsEndpointsTest(TestCase):
         self.assertEqual(series["2026-01-01"]["orders"], 2)
         self.assertEqual(series["2026-02-01"]["tickets"], 4)
         self.assertEqual(series["2026-02-01"]["orders"], 1)
+
+    def test_peak_times_tickets_buckets_by_hour(self):
+        r = self.client.get("/api/analytics/stats/peak-times-tickets/")
+        self.assertEqual(r.status_code, 200)
+        series = r.json()["series"]
+        self.assertEqual(len(series), 24)
+        by_hour = {row["hour"]: row["tickets"] for row in series}
+        # e_morning (09:00): 3 + 2 = 5 tickets. e_evening (19:00): 4 tickets.
+        self.assertEqual(by_hour[9], 5)
+        self.assertEqual(by_hour[19], 4)
+        self.assertEqual(by_hour[0], 0)
+
+    def test_weather_correlation_joins_by_date(self):
+        DailyWeather.objects.create(
+            date=date(2026, 1, 15), temp_max_c=8.5, temp_min_c=2.0, precipitation_mm=1.2, weather_code=61
+        )
+        r = self.client.get("/api/analytics/stats/weather-correlation/")
+        self.assertEqual(r.status_code, 200)
+        series = {row["date"]: row for row in r.json()["series"]}
+        # 2026-01-15 has a ticket purchase (3 tickets) and a matching weather row.
+        self.assertIn("2026-01-15", series)
+        self.assertEqual(series["2026-01-15"]["tickets"], 3)
+        self.assertEqual(series["2026-01-15"]["temp_max_c"], 8.5)
+        self.assertEqual(series["2026-01-15"]["precipitation_mm"], 1.2)
+        # 2026-01-20 has a ticket purchase but no weather row backfilled — should
+        # still appear, with null weather fields rather than being dropped.
+        self.assertIn("2026-01-20", series)
+        self.assertIsNone(series["2026-01-20"]["temp_max_c"])
 
 
 class EngagementEndpointTest(TestCase):

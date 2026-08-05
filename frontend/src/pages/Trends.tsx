@@ -6,6 +6,8 @@ import { StackedAreaChart } from "../components/StackedAreaChart";
 import { WeekdayBars } from "../components/WeekdayBars";
 import { RankedBar } from "../components/RankedBar";
 import { PeakTimesBar } from "../components/PeakTimesBar";
+import { PeakTimesTicketsBar } from "../components/PeakTimesTicketsBar";
+import { WeatherCorrelationChart } from "../components/WeatherCorrelationChart";
 import { AttendanceFrequencyBar } from "../components/AttendanceFrequencyBar";
 import { LeadTimeTrendLine } from "../components/LeadTimeTrendLine";
 import { DistrictStackedBar } from "../components/DistrictStackedBar";
@@ -89,6 +91,21 @@ interface TicketVolumeTrendPoint {
   month: string;
   tickets: number;
   orders: number;
+}
+
+interface PeakTimeTicketData {
+  hour: number;
+  label: string;
+  tickets: number;
+}
+
+interface WeatherCorrelationPoint {
+  date: string;
+  interactions: number;
+  tickets: number;
+  temp_max_c: number | null;
+  precipitation_mm: number | null;
+  weather_code: number | null;
 }
 
 /**
@@ -260,6 +277,25 @@ export default function Trends() {
     },
   });
 
+  // Time of Day x Ticket Volume
+  const peakTimesTickets = useQuery<{ series: PeakTimeTicketData[] }>({
+    queryKey: ["stats", "peak-times-tickets", org, category, date_from, date_to],
+    queryFn: async () => {
+      const res = await fetch(`/api/analytics/stats/peak-times-tickets/?${params.toString()}`);
+      if (!res.ok) throw new Error("Failed to fetch peak times tickets");
+      return res.json();
+    },
+  });
+
+  // Weather vs Attendance
+  const weatherCorrelation = useQuery<{ series: WeatherCorrelationPoint[] }>({
+    queryKey: ["stats", "weather-correlation", org, category, date_from, date_to],
+    queryFn: async () => {
+      const res = await fetch(`/api/analytics/stats/weather-correlation/?${params.toString()}`);
+      if (!res.ok) throw new Error("Failed to fetch weather correlation");
+      return res.json();
+    },
+  });
 
   return (
     <div className="space-y-6">
@@ -314,6 +350,32 @@ export default function Trends() {
             <PeakTimesBar data={peakTimes.data.series} height={h} />
           ) : (
             <EmptyState message="No event start-time data available." />
+          )
+        }
+      </TrendCard>
+
+      {/* Time of Day vs Ticket Volume */}
+      <TrendCard title="Time of Day vs Ticket Volume" tooltipText="peak_times_tickets">
+        {(h) =>
+          peakTimesTickets.isLoading ? (
+            <LoadingState />
+          ) : peakTimesTickets.data?.series?.some((d) => d.tickets > 0) ? (
+            <PeakTimesTicketsBar data={peakTimesTickets.data.series} height={h} />
+          ) : (
+            <EmptyState message="No ticket purchase time-of-day data available." />
+          )
+        }
+      </TrendCard>
+
+      {/* Weather vs Attendance */}
+      <TrendCard title="Weather vs Attendance" tooltipText="weather_correlation">
+        {(h) =>
+          weatherCorrelation.isLoading ? (
+            <LoadingState />
+          ) : weatherCorrelation.data?.series?.length ? (
+            <WeatherCorrelationChart data={weatherCorrelation.data.series} height={h} />
+          ) : (
+            <EmptyState message="No weather data available — run the backfill_weather management command." />
           )
         }
       </TrendCard>
