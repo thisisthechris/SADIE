@@ -112,7 +112,11 @@ export default function PostcodeAreasMap() {
     staleTime: Infinity,
   });
 
-  // Merge interaction totals into boundary polygons: colour + opacity + popup.
+  // Merge interaction/ticket totals into boundary polygons: colour + opacity + popup.
+  // "Interactions" keeps the existing per-district rainbow palette; "Ticket volume"
+  // uses a single rose/pink tint (matching the ticket charts elsewhere in the app)
+  // so switching metrics is visually obvious even when the shading pattern is similar.
+  const TICKET_TINT = "#ec4899";
   const areaPolygons = useMemo<AreaFeatureCollection | undefined>(() => {
     const fc = boundariesQuery.data;
     if (!fc?.features) return undefined;
@@ -140,25 +144,45 @@ export default function PostcodeAreasMap() {
                 ticketInfo ? ` · avg party ${ticketInfo.avg_party_size}` : ""
               }`
             : `${total.toLocaleString()} interactions`;
+        const isCore = CORE_PLYMOUTH.has(code);
         return {
           ...ft,
           properties: {
             ...props,
             code,
             total,
-            color: CORE_PLYMOUTH.has(code) ? districtColor(districts, code) : "#94a3b8",
+            color: isCore
+              ? metric === "tickets"
+                ? TICKET_TINT
+                : districtColor(districts, code)
+              : "#94a3b8",
             selected: selected === code,
+            // Lightened ceiling — this was previously reported as "too dark":
+            // max opacity capped around 0.55 (unselected) / 0.7 (selected)
+            // instead of 0.75–0.85, so the basemap stays legible underneath.
             fillOpacity: selected
               ? selected === code
-                ? Math.min(0.85, 0.4 + 0.45 * (total / maxTotal))        // selected: 0.40–0.85
-                : total > 0 ? 0.04 + 0.08 * (total / maxTotal) : 0.06   // others: nearly invisible
-              : total > 0 ? 0.15 + 0.6 * (total / maxTotal) : 0.10,     // none selected: normal
+                ? Math.min(0.7, 0.3 + 0.4 * (total / maxTotal))          // selected: 0.30–0.70
+                : total > 0 ? 0.03 + 0.05 * (total / maxTotal) : 0.04   // others: nearly invisible
+              : total > 0 ? 0.1 + 0.45 * (total / maxTotal) : 0.08,     // none selected: 0.10–0.55
             popupHtml: `<div class="text-xs"><div class="font-semibold">${escHtml(code)}${name ? ` · ${escHtml(name)}` : ""}</div><div>${popupLabel}</div></div>`,
           },
         };
       }),
     };
   }, [boundariesQuery.data, districts, selected, metric, ticketDistrictsQuery.data]);
+
+  // Total across core Plymouth districts for the active metric — shown next
+  // to the toggle so switching between Interactions/Ticket volume gives
+  // explicit numeric feedback even when the map shading looks similar.
+  const metricTotal = useMemo(() => {
+    if (metric === "tickets") {
+      return (ticketDistrictsQuery.data?.districts ?? [])
+        .filter((d) => CORE_PLYMOUTH.has(d.code))
+        .reduce((s, d) => s + d.total_tickets, 0);
+    }
+    return districts.filter((d) => CORE_PLYMOUTH.has(d.code)).reduce((s, d) => s + d.total, 0);
+  }, [metric, districts, ticketDistrictsQuery.data]);
 
   // Colour transport corridors by mode + attach hover tooltips.
   const corridors = useMemo<CorridorFeatureCollection | undefined>(() => {
@@ -334,6 +358,13 @@ export default function PostcodeAreasMap() {
                 Ticket volume
               </button>
             </div>
+            <span className="text-xs text-muted">
+              Showing{" "}
+              <strong className="font-semibold text-foreground">
+                {metricTotal.toLocaleString()}
+              </strong>{" "}
+              {metric === "tickets" ? "tickets" : "interactions"} across Plymouth districts
+            </span>
 
             <div className="flex flex-wrap items-center gap-3 ml-auto">
               {Object.entries(MODE_LABELS).map(([mode, label]) => (
