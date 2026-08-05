@@ -71,32 +71,35 @@ export default function OrgConnectionsMap() {
   const nodes = data.data?.nodes ?? [];
   const flows = data.data?.flows ?? [];
 
+  // How many orgs Simple view shows by default when no org filter/manual
+  // selection is active. Fixed (not expanded via connections) so it stays
+  // visibly distinct from "Show all" even with a small/densely-connected
+  // dataset — connection-based 1-hop expansion used to swallow almost the
+  // whole graph in test data with only a handful of organisations.
+  const SIMPLE_VIEW_TOP_N = 5;
+
   // Determine which org IDs are "in view" for the focused / simple mode.
   const viewIds = useMemo((): Set<number> | null => {
     if (showAll) return null; // null = all visible
 
-    // Seed from the API org filter org IDs if available, then expand with
-    // any manually added focused IDs.
+    // Seed from the API org filter org IDs if available, then add any
+    // manually added focused IDs ("Add organisations" panel).
     const seed: Set<number> = new Set(focusedIds);
     if (hasOrgFilter && nodes.length > 0) {
-      // Add any org node whose visit_count is highest (i.e., the filtered org
-      // is already the only org returned by the API when org= is set, so just
-      // include all returned nodes in focused mode too).
+      // The filtered org is already the only org returned by the API when
+      // org= is set, so just include all returned nodes in focused mode too.
       nodes.forEach((n) => seed.add(n.id));
     }
     if (seed.size === 0 && nodes.length > 0) {
-      // No filter: default to the top org by visit count.
-      seed.add(nodes[0].id);
+      // No filter and nothing manually added yet: default to the top N orgs
+      // by visit count — a fixed, curated baseline rather than expanding to
+      // every neighbour, so Simple view stays meaningfully smaller than
+      // Show all regardless of how interconnected the dataset is.
+      nodes.slice(0, SIMPLE_VIEW_TOP_N).forEach((n) => seed.add(n.id));
     }
 
-    // Expand to include all orgs directly connected to a seed org.
-    const connected = new Set(seed);
-    flows.forEach((fl) => {
-      if (seed.has(fl.from_id)) connected.add(fl.to_id);
-      if (seed.has(fl.to_id)) connected.add(fl.from_id);
-    });
-    return connected;
-  }, [showAll, focusedIds, nodes, flows, hasOrgFilter]);
+    return seed;
+  }, [showAll, focusedIds, nodes, hasOrgFilter]);
 
   const visibleNodes = useMemo(
     () => (viewIds ? nodes.filter((n) => viewIds.has(n.id)) : nodes),
@@ -179,8 +182,9 @@ export default function OrgConnectionsMap() {
           </div>
           <p className="body-lg">
             Organisations whose visitors overlap, placed at their venue
-            locations. Use the filter bar to scope by date or start with a
-            single organisation.
+            locations. Simple view starts with the top {SIMPLE_VIEW_TOP_N} busiest
+            organisations — add more from the panel below, or switch to "Show
+            all" for the full network.
           </p>
         </div>
 
