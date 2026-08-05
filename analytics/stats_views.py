@@ -552,7 +552,7 @@ def top_venues(request: Request) -> Response:
 @api_view(["GET"])
 @permission_classes([IsAuthenticatedOrReadOnly])
 def engagement(request: Request) -> Response:
-    """Engagement metrics: current month vs previous, plus buzz (interactions per event).
+    """Engagement metrics: current month/quarter vs previous, plus buzz (interactions per event).
 
     Returns: {
         "filters": {...},
@@ -562,7 +562,16 @@ def engagement(request: Request) -> Response:
         "previous_month_events": 38,
         "buzz_current": 29.4,  # interactions / events
         "buzz_previous": 28.9,
-        "buzz_change": 0.5  # percentage change
+        "buzz_change": 0.5,  # percentage change
+        "current_quarter_interactions": 3500,
+        "current_quarter_events": 120,
+        "previous_quarter_interactions": 3100,
+        "previous_quarter_events": 105,
+        "quarter_events_pct_change": 14.3,
+        "quarter_interactions_pct_change": 12.9,
+        "quarter_buzz_current": 29.2,
+        "quarter_buzz_previous": 29.5,
+        "quarter_buzz_change": -1.0
     }
     """
     p = parse_filter_params(request)
@@ -571,6 +580,15 @@ def engagement(request: Request) -> Response:
     first_of_this_month = date(today.year, today.month, 1)
     last_of_prev_month = first_of_this_month - timedelta(days=1)
     first_of_prev_month = date(last_of_prev_month.year, last_of_prev_month.month, 1)
+
+    # Calendar-quarter bounds (Q1 Jan-Mar, Q2 Apr-Jun, Q3 Jul-Sep, Q4 Oct-Dec).
+    def _quarter_start(d: date) -> date:
+        quarter_start_month = ((d.month - 1) // 3) * 3 + 1
+        return date(d.year, quarter_start_month, 1)
+
+    first_of_this_quarter = _quarter_start(today)
+    last_of_prev_quarter = first_of_this_quarter - timedelta(days=1)
+    first_of_prev_quarter = _quarter_start(last_of_prev_quarter)
 
     # Get filtered querysets
     _, events, interactions, _ = _filtered(request)
@@ -593,11 +611,48 @@ def engagement(request: Request) -> Response:
         interaction_date__lte=last_of_prev_month,
     ).count()
 
+    # Current quarter (quarter-to-date onwards, mirroring the month calculation above)
+    curr_q_events_count = events.filter(
+        start_datetime__date__gte=first_of_this_quarter,
+    ).count()
+    curr_q_interactions_count = interactions.filter(
+        interaction_date__gte=first_of_this_quarter,
+    ).count()
+
+    # Previous quarter
+    prev_q_events_count = events.filter(
+        start_datetime__date__gte=first_of_prev_quarter,
+        start_datetime__date__lte=last_of_prev_quarter,
+    ).count()
+    prev_q_interactions_count = interactions.filter(
+        interaction_date__gte=first_of_prev_quarter,
+        interaction_date__lte=last_of_prev_quarter,
+    ).count()
+
     # Calculate buzz (interactions per event)
     buzz_current = curr_interactions_count / max(1, curr_events_count)
     buzz_previous = prev_interactions_count / max(1, prev_events_count)
     buzz_change = (
         round(((buzz_current - buzz_previous) / max(0.1, buzz_previous)) * 100, 1) if buzz_previous > 0 else 0.0
+    )
+
+    quarter_buzz_current = curr_q_interactions_count / max(1, curr_q_events_count)
+    quarter_buzz_previous = prev_q_interactions_count / max(1, prev_q_events_count)
+    quarter_buzz_change = (
+        round(((quarter_buzz_current - quarter_buzz_previous) / max(0.1, quarter_buzz_previous)) * 100, 1)
+        if quarter_buzz_previous > 0
+        else 0.0
+    )
+
+    quarter_events_pct_change = (
+        round(((curr_q_events_count - prev_q_events_count) / max(1, prev_q_events_count)) * 100, 1)
+        if prev_q_events_count > 0
+        else (100.0 if curr_q_events_count > 0 else 0.0)
+    )
+    quarter_interactions_pct_change = (
+        round(((curr_q_interactions_count - prev_q_interactions_count) / max(1, prev_q_interactions_count)) * 100, 1)
+        if prev_q_interactions_count > 0
+        else (100.0 if curr_q_interactions_count > 0 else 0.0)
     )
 
     return Response(
@@ -610,6 +665,15 @@ def engagement(request: Request) -> Response:
             "buzz_current": round(buzz_current, 1),
             "buzz_previous": round(buzz_previous, 1),
             "buzz_change": buzz_change,
+            "current_quarter_interactions": curr_q_interactions_count,
+            "current_quarter_events": curr_q_events_count,
+            "previous_quarter_interactions": prev_q_interactions_count,
+            "previous_quarter_events": prev_q_events_count,
+            "quarter_events_pct_change": quarter_events_pct_change,
+            "quarter_interactions_pct_change": quarter_interactions_pct_change,
+            "quarter_buzz_current": round(quarter_buzz_current, 1),
+            "quarter_buzz_previous": round(quarter_buzz_previous, 1),
+            "quarter_buzz_change": quarter_buzz_change,
         }
     )
 

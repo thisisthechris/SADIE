@@ -470,3 +470,86 @@ class PostcodeAndTicketStatsEndpointsTest(TestCase):
         self.assertEqual(series["2026-01-01"]["orders"], 2)
         self.assertEqual(series["2026-02-01"]["tickets"], 4)
         self.assertEqual(series["2026-02-01"]["orders"], 1)
+
+
+class EngagementEndpointTest(TestCase):
+    """Tests for the engagement endpoint's month AND quarter deltas."""
+
+    @staticmethod
+    def _quarter_start(d: date) -> date:
+        quarter_start_month = ((d.month - 1) // 3) * 3 + 1
+        return date(d.year, quarter_start_month, 1)
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user("u4", password="pw")
+        cls.org = Organisation.objects.create(name="Org D")
+        tz = timezone.get_current_timezone()
+
+        today = date.today()
+        cls.first_of_this_month = date(today.year, today.month, 1)
+        last_of_prev_month = cls.first_of_this_month - timedelta(days=1)
+        cls.first_of_prev_month = date(last_of_prev_month.year, last_of_prev_month.month, 1)
+
+        def mk_dt(d: date):
+            return timezone.make_aware(datetime(d.year, d.month, d.day, 10, 0), tz)
+
+        # 2 events + 2 interactions in the current month.
+        for i in range(2):
+            Event.objects.create(
+                organisation=cls.org, title=f"This month {i}", start_datetime=mk_dt(cls.first_of_this_month)
+            )
+            UserHashInteraction.objects.create(
+                user_hash=f"{i:064d}",
+                interaction_type="event",
+                organisation=cls.org,
+                interaction_date=cls.first_of_this_month,
+            )
+
+        # 1 event + 1 interaction in the previous calendar month.
+        Event.objects.create(organisation=cls.org, title="Prev month", start_datetime=mk_dt(cls.first_of_prev_month))
+        UserHashInteraction.objects.create(
+            user_hash="9" * 64,
+            interaction_type="event",
+            organisation=cls.org,
+            interaction_date=cls.first_of_prev_month,
+        )
+
+    def setUp(self):
+        self.client = APIClient()
+        self.client.force_authenticate(self.user)
+
+    def test_engagement_month_fields(self):
+        r = self.client.get("/api/analytics/stats/engagement/")
+        self.assertEqual(r.status_code, 200)
+        d = r.json()
+        self.assertEqual(d["current_month_events"], 2)
+        self.assertEqual(d["previous_month_events"], 1)
+        self.assertEqual(d["current_month_interactions"], 2)
+        self.assertEqual(d["previous_month_interactions"], 1)
+
+    def test_engagement_quarter_fields_present_and_consistent(self):
+        r = self.client.get("/api/analytics/stats/engagement/")
+        self.assertEqual(r.status_code, 200)
+        d = r.json()
+        for key in (
+            "current_quarter_events",
+            "previous_quarter_events",
+            "current_quarter_interactions",
+            "previous_quarter_interactions",
+            "quarter_events_pct_change",
+            "quarter_interactions_pct_change",
+            "quarter_buzz_current",
+            "quarter_buzz_previous",
+            "quarter_buzz_change",
+        ):
+            self.assertIn(key, d)
+
+        # Quarter-to-date always starts on/before the current month, and both
+        # queries are unbounded above, so quarter-to-date must be a superset
+        # of the current month's counts regardless of what day of the year
+        # the test runs on.
+        self.assertGreaterEqual(d["current_quarter_events"], d["current_month_events"])
+        self.assertGreaterEqual(d["current_quarter_interactions"], d["current_month_interactions"])
+        self.assertIsInstance(d["quarter_events_pct_change"], float)
+        self.assertIsInstance(d["quarter_interactions_pct_change"], float)

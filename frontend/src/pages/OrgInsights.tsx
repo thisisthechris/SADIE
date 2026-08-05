@@ -5,6 +5,7 @@ import { useConfig } from "../lib/auth";
 import { BigStat } from "../components/BigStat";
 import { HeadlineAreaChart } from "../components/AreaChart";
 import JourneyFlowsMap from "../components/JourneyFlowsMap";
+import EngagementAtAGlance from "../components/EngagementAtAGlance";
 import InfoTooltip from "../components/InfoTooltip";
 import OrgToggle from "../components/OrgToggle";
 import { LoadingState } from "../components/EmptyState";
@@ -89,6 +90,9 @@ export const OrgInsights: React.FC = () => {
 
           {/* Area Chart */}
           <HeadlineAreaChart orgId={org} />
+
+          {/* Month + Quarter attendance/events deltas */}
+          <EngagementAtAGlance />
 
           {/* Postcode Map */}
           <div className="card p-6">
