@@ -208,6 +208,8 @@ class DailyWeather(models.Model):
     temp_max_c = models.FloatField(null=True, blank=True)
     temp_min_c = models.FloatField(null=True, blank=True)
     precipitation_mm = models.FloatField(null=True, blank=True)
+    wind_speed_ms = models.FloatField(null=True, blank=True)
+    sunshine_hours = models.FloatField(null=True, blank=True)
     weather_code = models.PositiveSmallIntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

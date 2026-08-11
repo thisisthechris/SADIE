@@ -102,7 +102,7 @@ export const OrgInsights: React.FC = () => {
                 <InfoTooltip text="postcode_area" />
               </div>
               <p className="text-sm text-muted mb-4">
-                Common pathways between venues, coloured from blue (earlier) to pink (later) across the period. Thicker lines mean more visitors travelled between those venues.
+                Top 5 most common pathways between venues during this period, coloured from blue (earlier) to pink (later). Thicker lines mean more visitors travelled between those venues.
               </p>
             </div>
             <JourneyFlowsMap

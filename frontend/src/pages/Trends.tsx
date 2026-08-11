@@ -105,6 +105,8 @@ interface WeatherCorrelationPoint {
   tickets: number;
   temp_max_c: number | null;
   precipitation_mm: number | null;
+  wind_speed_ms: number | null;
+  sunshine_hours: number | null;
   weather_code: number | null;
 }
 
@@ -278,7 +280,7 @@ export default function Trends() {
   });
 
   // Time of Day x Ticket Volume
-  const peakTimesTickets = useQuery<{ series: PeakTimeTicketData[] }>({
+  const peakTimesTickets = useQuery<{ series: PeakTimeTicketData[]; midnight_excluded_count: number }>({
     queryKey: ["stats", "peak-times-tickets", org, category, date_from, date_to],
     queryFn: async () => {
       const res = await fetch(`/api/analytics/stats/peak-times-tickets/?${params.toString()}`);
@@ -360,7 +362,11 @@ export default function Trends() {
           peakTimesTickets.isLoading ? (
             <LoadingState />
           ) : peakTimesTickets.data?.series?.some((d) => d.tickets > 0) ? (
-            <PeakTimesTicketsBar data={peakTimesTickets.data.series} height={h} />
+            <PeakTimesTicketsBar
+              data={peakTimesTickets.data.series}
+              height={h}
+              midnightExcludedCount={peakTimesTickets.data.midnight_excluded_count}
+            />
           ) : (
             <EmptyState message="No ticket purchase time-of-day data available." />
           )
@@ -388,7 +394,7 @@ export default function Trends() {
           ) : categoryTrends.data?.series?.length ? (
             <StackedAreaChart data={categoryTrends.data.series} height={h} />
           ) : (
-            <EmptyState message="No category data available." />
+            <EmptyState message="No category data yet. Events need to be tagged with categories — this happens automatically during import when event type fields are populated in your CSV." />
           )
         }
       </TrendCard>
@@ -526,7 +532,7 @@ export default function Trends() {
               height={h}
             />
           ) : (
-            <EmptyState message="No postcode category data available." />
+            <EmptyState message="No postcode category data yet. Events need to be tagged with categories during import for this chart to populate." />
           )
         }
       </TrendCard>

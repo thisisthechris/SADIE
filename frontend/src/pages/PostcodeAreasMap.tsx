@@ -373,12 +373,15 @@ export default function PostcodeAreasMap() {
                   className="inline-flex items-center gap-1.5 text-xs text-muted"
                 >
                   <span
-                    className="w-3.5 h-1 rounded-full"
+                    className={`rounded-full shrink-0 ${mode === "park_ride" ? "w-2.5 h-2.5" : "w-3.5 h-1"}`}
                     style={{ background: MODE_COLORS[mode] }}
                   />
-                  {label}
+                  {label}{mode === "park_ride" ? " sites" : " routes"}
                 </span>
               ))}
+              <span className="text-xs text-muted/70 border-l border-border pl-3">
+                Amber dots on map = Park &amp; Ride stops
+              </span>
             </div>
           </div>
 

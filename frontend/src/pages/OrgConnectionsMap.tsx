@@ -48,22 +48,29 @@ export default function OrgConnectionsMap() {
   const key = cfg.data?.maptiler_api_key ?? "";
   const q = f.asQuery();
 
-  // When an org filter is active, show only that org + its connections by
-  // default. Users can toggle to see the full network.
-  const hasOrgFilter = Boolean(q.org);
-  const [showAll, setShowAll] = useState(!hasOrgFilter);
+  // Always load the full city-wide network regardless of org filter.
+  // When an org is selected via OrgToggle, highlight that org's nodes and
+  // connections visually rather than filtering the API response.
+  const highlightedOrgId = q.org ? parseInt(q.org) : null;
+  const [showAll, setShowAll] = useState(true);
 
-  // Focused org IDs: starts as the filtered org (if set), expands when the
-  // user clicks "Add" on a connected org in the table.
+  // Focused org IDs: expanded when the user clicks "Add" on an org in the
+  // connections table (only relevant in Simple view).
   const [focusedIds, setFocusedIds] = useState<Set<number>>(
     () => new Set(),
   );
 
+  // Strip the org filter from the API query so we always see the full network.
+  const cityWideQuery = useMemo(() => {
+    const { org: _ignored, ...rest } = q;
+    return rest;
+  }, [q]);
+
   const data = useQuery({
-    queryKey: ["org-connections", q],
+    queryKey: ["org-connections", cityWideQuery],
     queryFn: () =>
       api<OrgConnectionsResp>("/api/analytics/viz/org-connections/", {
-        query: q,
+        query: cityWideQuery,
       }),
     staleTime: 5 * 60_000,
   });
@@ -82,19 +89,13 @@ export default function OrgConnectionsMap() {
   const viewIds = useMemo((): Set<number> | null => {
     if (showAll) return null; // null = all visible
 
-    // Seed from the API org filter org IDs if available, then add any
-    // manually added focused IDs ("Add organisations" panel).
     const seed: Set<number> = new Set(focusedIds);
-    if (hasOrgFilter && nodes.length > 0) {
-      // The filtered org is already the only org returned by the API when
-      // org= is set, so just include all returned nodes in focused mode too.
-      nodes.forEach((n) => seed.add(n.id));
+    // Always include the highlighted org (from OrgToggle) in simple view.
+    if (highlightedOrgId && nodes.some((n) => n.id === highlightedOrgId)) {
+      seed.add(highlightedOrgId);
     }
     if (seed.size === 0 && nodes.length > 0) {
-      // No filter and nothing manually added yet: default to the top N orgs
-      // by visit count — a fixed, curated baseline rather than expanding to
-      // every neighbour, so Simple view stays meaningfully smaller than
-      // Show all regardless of how interconnected the dataset is.
+      // Default to top N orgs by visit count.
       nodes.slice(0, SIMPLE_VIEW_TOP_N).forEach((n) => seed.add(n.id));
     }
 
@@ -127,12 +128,12 @@ export default function OrgConnectionsMap() {
         lng: n.lng,
         lat: n.lat,
         weight: 1 + (n.visit_count / maxVisits) * 3,
-        color: "#3b82f6",
+        color: highlightedOrgId === n.id ? "#ec4899" : "#3b82f6",
         popupHtml: `<div class="text-xs"><div class="font-semibold">${escapeHtml(
           n.name,
         )}</div><div>${n.visit_count.toLocaleString()} visits</div></div>`,
       })),
-    [visibleNodes, maxVisits],
+    [visibleNodes, maxVisits, highlightedOrgId],
   );
 
   const mapPaths: MapPath[] = useMemo(
@@ -142,15 +143,22 @@ export default function OrgConnectionsMap() {
         const b = nodes.find((n) => n.id === fl.to_id);
         if (!a || !b) return null as unknown as MapPath;
         const frac = fl.shared_visitors / maxShared;
+        const involvesHighlighted =
+          highlightedOrgId !== null &&
+          (fl.from_id === highlightedOrgId || fl.to_id === highlightedOrgId);
         return {
           id: `${fl.from_id}-${fl.to_id}`,
           coordinates: [
             [a.lng, a.lat],
             [b.lng, b.lat],
           ] as [number, number][],
-          color: "#3b82f6",
+          color: involvesHighlighted ? "#ec4899" : "#3b82f6",
           width: 1 + frac * 8,
-          opacity: 0.2 + frac * 0.65,
+          opacity: involvesHighlighted
+            ? 0.4 + frac * 0.6
+            : highlightedOrgId !== null
+              ? 0.05 + frac * 0.15
+              : 0.2 + frac * 0.65,
           popupHtml: `<div class="text-xs"><div class="font-semibold">${escapeHtml(
             fl.from_name,
           )} → ${escapeHtml(fl.to_name)}</div><div>${fl.shared_visitors.toLocaleString()} shared visitor${
@@ -158,7 +166,7 @@ export default function OrgConnectionsMap() {
           }</div></div>`,
         };
       }).filter(Boolean),
-    [visibleFlows, nodes, maxShared],
+    [visibleFlows, nodes, maxShared, highlightedOrgId],
   );
 
   // Orgs not yet in the focused view — shown in the "add" panel.
@@ -181,10 +189,10 @@ export default function OrgConnectionsMap() {
             <InfoTooltip text="Shows which organisations share visitors — the thicker the line, the more people visited both. Positions reflect each organisation's venues." />
           </div>
           <p className="body-lg">
-            Organisations whose visitors overlap, placed at their venue
-            locations. Simple view starts with the top {SIMPLE_VIEW_TOP_N} busiest
-            organisations — add more from the panel below, or switch to "Show
-            all" for the full network.
+            City-wide network of organisations whose visitors overlap — the thicker the line, the more shared visitors.
+            {highlightedOrgId
+              ? " The selected organisation (highlighted in pink) and its connections are emphasised."
+              : ` Simple view shows the top ${SIMPLE_VIEW_TOP_N} organisations; switch to "Show all" for the full network.`}
           </p>
         </div>
 

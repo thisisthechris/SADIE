@@ -370,6 +370,12 @@ export default function JourneyMap() {
       </div>
 
       {mode === "visitors" && (
+        <div className="card p-3 text-sm text-muted bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
+          📍 <span className="font-medium text-foreground">Tip:</span> Select a visitor from the list below to trace their unique journey between venues. Each stop is numbered in visit order — this helps you understand the cultural routes individual people take across Plymouth.
+        </div>
+      )}
+
+      {mode === "visitors" && (
         <VisitorPicker
           journeys={journeys}
           selected={selectedVisitor}
@@ -440,9 +446,9 @@ export default function JourneyMap() {
           ) : (
             <div className="text-xs text-muted">
               {paths.isLoading
-                ? "Loading visitor journeys…"
+                ? "Building pathway data across 6 time windows — this may take a moment on first load…"
                 : journeys.length
-                  ? `Showing ${journeys.length} visitor journeys. Select one above to see its stops.`
+                  ? `Showing ${journeys.length} visitor journeys. Select one above to see their stops.`
                   : "No multi-stop visitor journeys for the current filters."}
             </div>
           )}

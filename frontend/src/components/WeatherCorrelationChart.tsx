@@ -16,6 +16,8 @@ interface WeatherCorrelationPoint {
   tickets: number;
   temp_max_c: number | null;
   precipitation_mm: number | null;
+  wind_speed_ms: number | null;
+  sunshine_hours: number | null;
   weather_code: number | null;
 }
 
@@ -44,15 +46,20 @@ function ChartTooltip({
       {row.precipitation_mm != null && (
         <div className="text-sky-600">Rain: {row.precipitation_mm}mm</div>
       )}
+      {row.wind_speed_ms != null && (
+        <div className="text-teal-600">Wind: {row.wind_speed_ms} m/s</div>
+      )}
+      {row.sunshine_hours != null && (
+        <div className="text-yellow-600">Sunshine: {row.sunshine_hours}h</div>
+      )}
     </div>
   );
 }
 
 /**
- * WeatherCorrelationChart: daily interactions (bars, left axis) vs max
- * temperature (line, right axis), with precipitation surfaced in the
- * tooltip. Days with no backfilled weather row simply have a gap in the
- * temperature line rather than being dropped from the chart.
+ * WeatherCorrelationChart: daily interactions (bars, left axis) vs weather
+ * factors (lines, right axes). Shows max temperature, wind speed, and
+ * sunshine hours alongside attendance to reveal correlation patterns.
  */
 export function WeatherCorrelationChart({ data, height = 300 }: WeatherCorrelationChartProps) {
   if (!data || data.length === 0) {
@@ -97,6 +104,28 @@ export function WeatherCorrelationChart({ data, height = 300 }: WeatherCorrelati
           dot={false}
           connectNulls={false}
           name="Max temp (°C)"
+        />
+        <Line
+          yAxisId="right"
+          type="monotone"
+          dataKey="wind_speed_ms"
+          stroke="#14b8a6"
+          strokeWidth={1.5}
+          dot={false}
+          connectNulls={false}
+          strokeDasharray="4 2"
+          name="Wind speed (m/s)"
+        />
+        <Line
+          yAxisId="right"
+          type="monotone"
+          dataKey="sunshine_hours"
+          stroke="#eab308"
+          strokeWidth={1.5}
+          dot={false}
+          connectNulls={false}
+          strokeDasharray="2 4"
+          name="Sunshine (hrs)"
         />
       </ComposedChart>
     </ResponsiveContainer>

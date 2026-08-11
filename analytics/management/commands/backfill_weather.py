@@ -98,6 +98,8 @@ class Command(BaseCommand):
                     "temp_min_c": row["temp_min_c"],
                     "precipitation_mm": row["precipitation_mm"],
                     "weather_code": row["weather_code"],
+                    "wind_speed_ms": row["wind_speed_ms"],
+                    "sunshine_hours": row["sunshine_hours"],
                 },
             )
             if was_created:
@@ -137,7 +139,7 @@ class Command(BaseCommand):
             "longitude": PLYMOUTH_LNG,
             "start_date": start.isoformat(),
             "end_date": end.isoformat(),
-            "daily": "temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode",
+            "daily": "temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode,wind_speed_10m_max,sunshine_duration",
             "timezone": "Europe/London",
         }
 
@@ -160,9 +162,17 @@ class Command(BaseCommand):
         temp_min = daily.get("temperature_2m_min", [])
         precip = daily.get("precipitation_sum", [])
         codes = daily.get("weathercode", [])
+        wind = daily.get("wind_speed_10m_max", [])
+        sunshine = daily.get("sunshine_duration", [])  # seconds
 
         rows = []
         for i, d in enumerate(dates):
+            # Open-Meteo gives wind in km/h; convert to m/s for consistency.
+            wind_kmh = wind[i] if i < len(wind) else None
+            wind_ms = round(wind_kmh / 3.6, 2) if wind_kmh is not None else None
+            # sunshine_duration is in seconds; convert to hours.
+            sun_secs = sunshine[i] if i < len(sunshine) else None
+            sun_hours = round(sun_secs / 3600, 2) if sun_secs is not None else None
             rows.append(
                 {
                     "date": self._parse_date(d),
@@ -170,6 +180,8 @@ class Command(BaseCommand):
                     "temp_min_c": temp_min[i] if i < len(temp_min) else None,
                     "precipitation_mm": precip[i] if i < len(precip) else None,
                     "weather_code": codes[i] if i < len(codes) else None,
+                    "wind_speed_ms": wind_ms,
+                    "sunshine_hours": sun_hours,
                 }
             )
         return rows

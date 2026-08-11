@@ -9,20 +9,26 @@ interface PeakTimesTicketsData {
 interface PeakTimesTicketsBarProps {
   data: PeakTimesTicketsData[];
   height?: number;
+  midnightExcludedCount?: number;
 }
 
 /**
  * PeakTimesTicketsBar: ticket volume by hour-of-day (via the linked event's
- * start time). Same shape as PeakTimesBar (event count by hour) but a
- * different metric, so the two charts side-by-side answer "when do events
- * happen" vs "when do people actually buy tickets for them".
+ * start time). Events without a recorded start time (stored as 00:00) are
+ * excluded to avoid a misleading spike at midnight.
  */
-export function PeakTimesTicketsBar({ data, height = 300 }: PeakTimesTicketsBarProps) {
+export function PeakTimesTicketsBar({ data, height = 300, midnightExcludedCount = 0 }: PeakTimesTicketsBarProps) {
   if (!data || data.length === 0) {
     return null;
   }
 
   return (
+    <div>
+      {midnightExcludedCount > 0 && (
+        <p className="text-xs text-muted mb-3">
+          {midnightExcludedCount.toLocaleString()} ticket{midnightExcludedCount === 1 ? "" : "s"} linked to events with no recorded start time (stored as midnight) have been excluded from this chart.
+        </p>
+      )}
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={data}>
         <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -47,5 +53,6 @@ export function PeakTimesTicketsBar({ data, height = 300 }: PeakTimesTicketsBarP
         <Bar dataKey="tickets" fill="#ec4899" name="Tickets purchased" isAnimationActive animationDuration={400} radius={[4, 4, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
+    </div>
   );
 }

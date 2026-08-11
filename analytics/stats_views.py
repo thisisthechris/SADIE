@@ -37,7 +37,7 @@ Endpoints (mounted at /api/analytics/stats/):
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, time, timedelta
 
 from django.db.models import Avg, Count, DurationField, ExpressionWrapper, F, Sum
 from django.db.models.functions import ExtractHour, ExtractIsoWeekDay, TruncMonth
@@ -1095,13 +1095,27 @@ def peak_times_tickets(request: Request) -> Response:
     start", so it's a genuinely different cut even though both are keyed by
     hour-of-day.
 
+    Events whose ``start_datetime`` has no recorded time (stored as midnight
+    00:00:00) are excluded to avoid a misleading spike at hour 0 — they are
+    counted separately in ``midnight_excluded_count`` so the frontend can
+    surface an explanatory note.
+
     Returns: {
         "filters": {...},
+        "midnight_excluded_count": 12,
         "series": [{"hour": 0, "label": "00:00", "tickets": 12}, ..., {"hour": 23, ...}]
     }
     """
     p = parse_filter_params(request)
-    qs = postcode_ticket_qs(p).filter(event__isnull=False)
+    qs = postcode_ticket_qs(p).filter(event__isnull=False, event__start_datetime__isnull=False)
+
+    # Count events that default to midnight (likely no recorded start time).
+    midnight_count = qs.filter(event__start_datetime__time=time(0, 0, 0)).aggregate(
+        n=Sum("ticket_quantity")
+    )["n"] or 0
+
+    # Exclude midnight-defaulted events from the hourly breakdown.
+    qs = qs.exclude(event__start_datetime__time=time(0, 0, 0))
 
     # Explicit .order_by("hour") — see the GROUP BY gotcha noted for
     # peak_times() above: without it, PostcodeTicketPurchase's default
@@ -1115,7 +1129,7 @@ def peak_times_tickets(request: Request) -> Response:
     hour_dict = {row["hour"]: int(row["tickets"] or 0) for row in by_hour}
 
     series = [{"hour": h, "label": f"{h:02d}:00", "tickets": hour_dict.get(h, 0)} for h in range(24)]
-    return Response({"filters": p, "series": series})
+    return Response({"filters": p, "midnight_excluded_count": int(midnight_count), "series": series})
 
 
 @api_view(["GET"])
@@ -1167,6 +1181,8 @@ def weather_correlation(request: Request) -> Response:
                 "tickets": int(tickets_by_day.get(d, 0) or 0),
                 "temp_max_c": w.temp_max_c if w else None,
                 "precipitation_mm": w.precipitation_mm if w else None,
+                "wind_speed_ms": w.wind_speed_ms if w else None,
+                "sunshine_hours": w.sunshine_hours if w else None,
                 "weather_code": w.weather_code if w else None,
             }
         )

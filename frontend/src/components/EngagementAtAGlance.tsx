@@ -85,8 +85,11 @@ export default function EngagementAtAGlance() {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="text-center p-4 border border-border rounded">
-          <div className="text-xs text-muted font-semibold uppercase mb-2">
-            Buzz ({isMonth ? "current month" : "current quarter"})
+          <div className="text-xs text-muted font-semibold uppercase mb-1">
+            Interactions per Event
+          </div>
+          <div className="text-[10px] text-muted/70 mb-2">
+            Average engagement generated per event
           </div>
           <div className="text-2xl font-bold text-accent">
             <AnimatedNumber value={buzzCurrent} format={(n) => n.toFixed(1)} />

@@ -5,7 +5,6 @@ import { api } from "../lib/api";
 import { useFilters } from "../lib/filters";
 import { useConfig } from "../lib/auth";
 import ExportMenu from "../components/ExportMenu";
-import OrgToggle from "../components/OrgToggle";
 import Map2D, { type MapPoint } from "../viz/Map2D";
 import { downloadCsv } from "../lib/export";
 import { TimelineSlider } from "../components/TimelineSlider";
@@ -106,14 +105,16 @@ export default function MapPage() {
       .map(makeEventPoint);
   }, [mode, events.data, eventTimes, offsetDays, windowDays]);
 
-  // Venues: uniform pins — no size scaling by event count
+  // Venues: scale pin size by event count so busier venues stand out visually.
   const venuePoints: MapPoint[] = useMemo(() => {
     if (mode !== "venues" || !venues.data) return [];
-    return venues.data.results.map((v) => ({
+    const rows = venues.data.results;
+    const maxCount = Math.max(1, ...rows.map((v) => v.event_count));
+    return rows.map((v) => ({
       id: v.location_id,
       lng: v.lng,
       lat: v.lat,
-      weight: 1,
+      weight: 1 + (v.event_count / maxCount) * 3,
       color: "#34d399",
       popupHtml: `<div class="text-xs"><div class="font-semibold">${escapeHtml(
         v.name,
@@ -138,7 +139,6 @@ export default function MapPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <OrgToggle />
           <ExportMenu
             items={
               mode === "venues"

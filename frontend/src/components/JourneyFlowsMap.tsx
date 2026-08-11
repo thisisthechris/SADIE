@@ -139,6 +139,25 @@ export const JourneyFlowsMap: React.FC<JourneyFlowsMapProps> = ({
 
   const flowPaths: MapPath[] = useMemo(() => {
     if (!buckets.length) return [];
+
+    // Aggregate total count per (from_id, to_id) pair across all time buckets,
+    // then keep only the top 5 connections to avoid visual clutter.
+    const pairTotals = new Map<string, number>();
+    buckets.forEach((_bucket, idx) => {
+      const data = bucketResults[idx]?.data;
+      if (!data?.flows.length) return;
+      for (const r of data.flows) {
+        const key = `${r.from_id}-${r.to_id}`;
+        pairTotals.set(key, (pairTotals.get(key) ?? 0) + r.count);
+      }
+    });
+    const top5 = new Set(
+      [...pairTotals.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([key]) => key),
+    );
+
     const paths: MapPath[] = [];
     buckets.forEach((bucket, idx) => {
       const data = bucketResults[idx]?.data;
@@ -146,6 +165,7 @@ export const JourneyFlowsMap: React.FC<JourneyFlowsMapProps> = ({
       const nodeById = new Map(data.nodes.map((n) => [n.location_id, n]));
       const max = Math.max(...data.flows.map((r) => r.count), 1);
       for (const r of data.flows) {
+        if (!top5.has(`${r.from_id}-${r.to_id}`)) continue;
         const a = nodeById.get(r.from_id);
         const b = nodeById.get(r.to_id);
         if (!a || !b) continue;
