@@ -100,7 +100,7 @@ export default function OrgConnectionsMap() {
     }
 
     return seed;
-  }, [showAll, focusedIds, nodes, hasOrgFilter]);
+  }, [showAll, focusedIds, nodes, highlightedOrgId]);
 
   const visibleNodes = useMemo(
     () => (viewIds ? nodes.filter((n) => viewIds.has(n.id)) : nodes),
