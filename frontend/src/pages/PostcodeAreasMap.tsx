@@ -126,7 +126,7 @@ export default function PostcodeAreasMap() {
     );
     const totalByCode = new Map(
       metric === "tickets"
-        ? districts.map((d) => [d.code, ticketByCode.get(d.code)?.total_tickets ?? 0])
+        ? (ticketDistrictsQuery.data?.districts ?? []).map((d) => [d.code, d.total_tickets])
         : districts.map((d) => [d.code, d.total]),
     );
     const maxTotal = Math.max(...Array.from(totalByCode.values()), 1);
