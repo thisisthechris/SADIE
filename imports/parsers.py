@@ -41,6 +41,32 @@ class UnknownOrganisationCode(ValueError):
     """Raised when a file/folder can't be resolved to a known org code."""
 
 
+# Booking-reference prefixes that override the filename-based org code.
+# e.g. Museum001_attendance.csv carries AUP-AUP-* refs → AUP, not Museum.
+_BOOKING_REF_PREFIX_TO_ORG: dict[str, str] = {
+    "AUP": "AUP",
+    "MUS": "Museum",
+}
+
+
+def _sniff_org_from_booking_ref(file_path: Path, fallback: str) -> str:
+    """Peek at the first data row's Booking_Reference to confirm the org code."""
+    import csv as _csv
+
+    try:
+        with file_path.open(newline="", encoding="utf-8-sig") as fh:
+            reader = _csv.DictReader(fh)
+            for row in reader:
+                ref = (row.get("Booking_Reference") or "").strip()
+                prefix = ref.split("-")[0]
+                if prefix in _BOOKING_REF_PREFIX_TO_ORG:
+                    return _BOOKING_REF_PREFIX_TO_ORG[prefix]
+                break  # only need the first row
+    except Exception:  # noqa: BLE001
+        pass
+    return fallback
+
+
 def resolve_org_code(file_path: Path) -> str:
     """
     Resolve the partner org code for a CSV file.
@@ -48,11 +74,16 @@ def resolve_org_code(file_path: Path) -> str:
     1. Try a filename prefix like 'Museum003_attendance.csv' -> 'Museum'.
     2. Otherwise fall back to the immediate parent folder name, e.g.
        'OCT/digitickets_export.csv' -> 'OCT'.
+    3. For Museum attendance files, sniff the first Booking_Reference to
+       distinguish AUP data (AUP-AUP-* refs) from The Box data (MUS-Museum-*).
     """
     match = _PREFIX_RE.match(file_path.name)
     code = match.group(1) if match else file_path.parent.name
     if code not in ORG_CODE_MAP:
         raise UnknownOrganisationCode(f"Cannot resolve organisation code for {file_path.name!r} (got {code!r})")
+    # Museum*_attendance.csv files may carry AUP-AUP-* refs — confirm via sniff.
+    if code == "Museum" and "_attendance" in file_path.stem:
+        code = _sniff_org_from_booking_ref(file_path, fallback=code)
     return code
 
 

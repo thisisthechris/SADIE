@@ -33,6 +33,8 @@ class Command(BaseCommand):
         self._wait_for_broker()
         self.stdout.write("Importing partner CSV test data...")
         call_command("import_partner_csv", clear=True)
+        self.stdout.write("Enriching events with descriptions and categories...")
+        call_command("enrich_events")
         self.stdout.write("Geocoding venues...")
         call_command("geocode_venues")
         self.stdout.write(self.style.SUCCESS("Render seed complete."))
