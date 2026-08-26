@@ -213,6 +213,18 @@ export default function CalendarPage() {
         </div>
       </div>
 
+      {f.org && (
+        <div className="rounded-lg border border-accent/30 bg-accent/5 px-4 py-2.5 text-sm flex items-center justify-between gap-4">
+          <span>Showing events for one organisation only.</span>
+          <button
+            onClick={() => f.set({ org: "" })}
+            className="btn-ghost text-xs border border-border"
+          >
+            Switch to City Wide
+          </button>
+        </div>
+      )}
+
       {/* ── Month grid ── */}
       <div className="card p-4 space-y-3">
         {/* Navigation row */}

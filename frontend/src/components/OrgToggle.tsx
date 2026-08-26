@@ -28,7 +28,7 @@ export default function OrgToggle() {
         }`}
         title={`Filter to ${myOrg.name}`}
       >
-        {myOrg.name}
+        {myOrg.name.length > 20 ? `${myOrg.name.slice(0, 18)}\u2026` : myOrg.name}
       </button>
       <button
         onClick={() => f.set({ org: "" })}

@@ -198,7 +198,8 @@ def parse_digitickets_row(row: dict, org_code: str) -> NormalizedBooking | None:
         org_code=org_code,
         channel="Digitickets",
         event_title=(row.get("Visit") or "").strip(),
-        event_datetime=booking_dt,
+        # truncate to midnight so same-title same-day bookings share one Event
+        event_datetime=booking_dt.replace(hour=0, minute=0, second=0, microsecond=0),
         postcode=postcode,
         user_hash=hash_email(email),
         ticket_quantity=quantity,

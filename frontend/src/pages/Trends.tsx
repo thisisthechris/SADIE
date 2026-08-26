@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useFilters } from "../lib/filters";
 import OrgToggle from "../components/OrgToggle";
@@ -305,10 +306,19 @@ export default function Trends() {
         <div>
           <h1 className="heading-main mb-2">Trends</h1>
           <p className="body-lg">
-            Key patterns across your event and visitor activity.
+            {org
+              ? "Key patterns for your organisation. Switch to City Wide to see Plymouth overall."
+              : "Key patterns across all organisations in Plymouth."}
           </p>
         </div>
-        <OrgToggle />
+        <div className="flex items-center gap-2 flex-wrap">
+          <OrgToggle />
+          {org && (
+            <Link to="/insights/compare" className="btn-ghost text-xs border border-border">
+              Compare with City →
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* New vs Returning */}

@@ -249,25 +249,28 @@ export default function Map2D({
           },
         });
 
-        // Create a right-pointing arrow as raw pixel data for direction indicators.
-        // Using explicit {width,height,data} format (MapLibre's documented API).
-        const ARROW_SIZE = 16;
-        const arrowData = new Uint8Array(ARROW_SIZE * ARROW_SIZE * 4);
-        for (let y = 0; y < ARROW_SIZE; y++) {
-          for (let x = 0; x < ARROW_SIZE; x++) {
-            // Triangle: right-pointing. Inside when x/size > |y/size - 0.5| * 2 - margin
-            const ynorm = Math.abs(y / ARROW_SIZE - 0.5) * 2;
-            const xnorm = (x - 1) / ARROW_SIZE;
-            if (xnorm > ynorm - 0.05) {
-              const i = (y * ARROW_SIZE + x) * 4;
-              arrowData[i] = 255;     // R (SDF: white = inside shape)
-              arrowData[i + 1] = 255; // G
-              arrowData[i + 2] = 255; // B
-              arrowData[i + 3] = 255; // A
-            }
-          }
-        }
-        map.addImage("flow-arrow", { width: ARROW_SIZE, height: ARROW_SIZE, data: arrowData }, { sdf: true });
+        // Canvas-drawn chevron arrow for clear directional indication on flow lines.
+        const ARROW_SIZE = 24;
+        const arrowCanvas = document.createElement("canvas");
+        arrowCanvas.width = ARROW_SIZE;
+        arrowCanvas.height = ARROW_SIZE;
+        const arrowCtx = arrowCanvas.getContext("2d")!;
+        arrowCtx.clearRect(0, 0, ARROW_SIZE, ARROW_SIZE);
+        arrowCtx.strokeStyle = "white";
+        arrowCtx.lineWidth = 4;
+        arrowCtx.lineCap = "round";
+        arrowCtx.lineJoin = "round";
+        arrowCtx.beginPath();
+        arrowCtx.moveTo(5, 4);
+        arrowCtx.lineTo(ARROW_SIZE - 5, ARROW_SIZE / 2);
+        arrowCtx.lineTo(5, ARROW_SIZE - 4);
+        arrowCtx.stroke();
+        const arrowPixels = arrowCtx.getImageData(0, 0, ARROW_SIZE, ARROW_SIZE);
+        map.addImage(
+          "flow-arrow",
+          { width: ARROW_SIZE, height: ARROW_SIZE, data: new Uint8Array(arrowPixels.data.buffer) },
+          { sdf: true },
+        );
 
         // Arrow symbols along each path line to show direction.
         map.addLayer({
@@ -276,9 +279,9 @@ export default function Map2D({
           source: PATH_SOURCE_ID,
           layout: {
             "symbol-placement": "line",
-            "symbol-spacing": 80,
+            "symbol-spacing": 120,
             "icon-image": "flow-arrow",
-            "icon-size": ["interpolate", ["linear"], ["coalesce", ["get", "width"], 3], 1, 0.6, 10, 1.4],
+            "icon-size": 1,
             "icon-rotation-alignment": "map",
             "icon-pitch-alignment": "viewport",
             "icon-allow-overlap": true,
@@ -286,6 +289,8 @@ export default function Map2D({
           paint: {
             "icon-color": ["coalesce", ["get", "color"], defaultColor],
             "icon-opacity": ["coalesce", ["get", "opacity"], 0.8],
+            "icon-halo-color": "rgba(255,255,255,0.5)",
+            "icon-halo-width": 1.5,
           },
         });
         console.warn("[Map2D] Added path layer");
@@ -602,11 +607,6 @@ export default function Map2D({
             },
           })),
         });
-        
-        // Ensure layer exists and set visibility
-        if (mapRef.current.getLayer(LAYER_ID)) {
-          mapRef.current.setLayoutProperty(LAYER_ID, "visibility", showPoints ? "visible" : "none");
-        }
       } catch (err) {
         console.error("[Map2D] Error applying points:", err);
       }
@@ -619,7 +619,7 @@ export default function Map2D({
       active = false;
       if (retryTimeout) clearTimeout(retryTimeout);
     };
-  }, [points, mapLoaded, showPoints]);
+  }, [points, mapLoaded]);
 
   // Push paths -> path source whenever they change.
   useEffect(() => {
@@ -787,18 +787,6 @@ export default function Map2D({
             },
           })),
         });
-
-        // Ensure visibility is correct after data is loaded
-        const hasClusters = Boolean(heatmapPoints && heatmapPoints.length > 0);
-        if (mapRef.current.getLayer(HEATMAP_LAYER_ID)) {
-          mapRef.current.setLayoutProperty(HEATMAP_LAYER_ID, "visibility", showHeatmap && hasClusters ? "visible" : "none");
-        }
-        if (mapRef.current.getLayer(CLUSTER_CIRCLE_LAYER_ID)) {
-          mapRef.current.setLayoutProperty(CLUSTER_CIRCLE_LAYER_ID, "visibility", showClusters && hasClusters ? "visible" : "none");
-        }
-        if (mapRef.current.getLayer(CLUSTER_LABEL_LAYER_ID)) {
-          mapRef.current.setLayoutProperty(CLUSTER_LABEL_LAYER_ID, "visibility", showClusters && hasClusters ? "visible" : "none");
-        }
       } catch (err) {
         console.error("[Map2D] Error applying heatmap:", err);
       }
@@ -811,7 +799,31 @@ export default function Map2D({
       active = false;
       if (retryTimeout) clearTimeout(retryTimeout);
     };
-  }, [heatmapPoints, mapLoaded, showHeatmap, showClusters]);
+  }, [heatmapPoints, mapLoaded]);
+
+  // Dedicated visibility effects — respond immediately to toggle changes.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded) return;
+    if (map.getLayer(LAYER_ID))
+      map.setLayoutProperty(LAYER_ID, "visibility", showPoints ? "visible" : "none");
+  }, [showPoints, mapLoaded]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded) return;
+    if (map.getLayer(HEATMAP_LAYER_ID))
+      map.setLayoutProperty(HEATMAP_LAYER_ID, "visibility", showHeatmap ? "visible" : "none");
+  }, [showHeatmap, mapLoaded]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded) return;
+    for (const id of [CLUSTER_CIRCLE_LAYER_ID, CLUSTER_LABEL_LAYER_ID]) {
+      if (map.getLayer(id))
+        map.setLayoutProperty(id, "visibility", showClusters ? "visible" : "none");
+    }
+  }, [showClusters, mapLoaded]);
 
   return <div ref={containerRef} style={{ width: "100%", height }} />;
 }

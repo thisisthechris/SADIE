@@ -135,7 +135,9 @@ class ParserTest(TestCase):
         self.assertEqual(booking.event_title, "Artist Talk")
         self.assertEqual(booking.ticket_quantity, 2)
         self.assertTrue(booking.attended)
-        self.assertEqual(booking.event_datetime, booking.purchase_datetime)
+        self.assertEqual(booking.event_datetime.hour, 0)
+        self.assertEqual(booking.event_datetime.minute, 0)
+        self.assertEqual(booking.event_datetime.date(), booking.purchase_datetime.date())
 
     def test_monday(self):
         row = {

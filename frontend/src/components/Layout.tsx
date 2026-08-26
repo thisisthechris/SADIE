@@ -20,6 +20,7 @@ type NavEntry = NavLeaf | NavGroup;
 
 const NAV: NavEntry[] = [
   { to: "/insights", label: "Insights", end: true },
+  { to: "/insights/calendar", label: "Calendar" },
   {
     label: "Maps",
     items: [
@@ -28,21 +29,21 @@ const NAV: NavEntry[] = [
     ],
   },
   {
+    label: "Analysis",
+    items: [
+      { to: "/insights/trends", label: "Trends" },
+      { to: "/insights/compare", label: "Compare" },
+    ],
+  },
+  {
     label: "Exploration",
     items: [
       { to: "/insights/journey-map", label: "Journey Map" },
       { to: "/insights/postcode-areas/map", label: "Postcode Pathways" },
       { to: "/insights/org-connections", label: "Org Connections" },
-      { to: "/insights/trends", label: "Trends" },
     ],
   },
-  {
-    label: "Directory",
-    items: [
-      { to: "/insights/calendar", label: "Calendar" },
-      { to: "/insights/help", label: "Help" },
-    ],
-  },
+  { to: "/insights/help", label: "Help" },
   {
     label: "Internal",
     items: [
@@ -85,10 +86,7 @@ const BREADCRUMBS: Record<string, string[]> = (() => {
   out["/insights/postcode-areas/map"] = ["Exploration", "Postcode Pathways"];
   out["/insights/postcode-volume"] = ["Internal", "Ticket Volume"];
   out["/insights/org-connections"] = ["Exploration", "Org Connections"];
-  out["/insights/trends"] = ["Exploration", "Trends"];
   out["/insights/organisations"] = ["Internal", "Organisations"];
-  out["/insights/calendar"] = ["Directory", "Calendar"];
-  out["/insights/help"] = ["Directory", "Help"];
   out["/insights/overview"] = ["Internal", "System Overview"];
   out["/insights/imports"] = ["Internal", "Imports"];
   return out;

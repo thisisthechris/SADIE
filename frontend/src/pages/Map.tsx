@@ -5,6 +5,7 @@ import { api } from "../lib/api";
 import { useFilters } from "../lib/filters";
 import { useConfig } from "../lib/auth";
 import ExportMenu from "../components/ExportMenu";
+import OrgToggle from "../components/OrgToggle";
 import Map2D, { type MapPoint } from "../viz/Map2D";
 import { downloadCsv } from "../lib/export";
 import { TimelineSlider } from "../components/TimelineSlider";
@@ -139,6 +140,7 @@ export default function MapPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <OrgToggle />
           <ExportMenu
             items={
               mode === "venues"
