@@ -10,6 +10,13 @@ RUN apt-get update && apt-get install -y \
     libproj-dev \
     python3-gdal \
     binutils \
+    libpango-1.0-0 \
+    libpangoft2-1.0-0 \
+    libharfbuzz-subset0 \
+    libjpeg62-turbo \
+    libopenjp2-7 \
+    shared-mime-info \
+    fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

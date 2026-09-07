@@ -260,3 +260,60 @@ class DailyStatsSnapshot(models.Model):
     def __str__(self):
         scope = self.organisation.name if self.organisation_id else "City-wide"
         return f"{self.date} — {scope} ({self.interaction_count} interactions)"
+
+
+class OrgReportSubscription(models.Model):
+    """Per-organisation configuration for the automated PDF/email digest.
+
+    One row per organisation; ``frequency="off"`` (the default) means no
+    digest is sent. ``last_sent_at`` guards against double-sends if the
+    scheduled task runs more than once in the same period.
+    """
+
+    FREQUENCY_CHOICES = [
+        ("off", "Off"),
+        ("weekly", "Weekly"),
+        ("monthly", "Monthly"),
+    ]
+    # Monday=0 .. Sunday=6, matching Python's date.weekday().
+    WEEKDAY_CHOICES = [(i, name) for i, name in enumerate(
+        ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    )]
+
+    organisation = models.OneToOneField(Organisation, on_delete=models.CASCADE, related_name="report_subscription")
+    frequency = models.CharField(max_length=10, choices=FREQUENCY_CHOICES, default="off")
+    weekday = models.PositiveSmallIntegerField(choices=WEEKDAY_CHOICES, default=0)
+    day_of_month = models.PositiveSmallIntegerField(default=1)
+    last_sent_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.organisation.name}: {self.get_frequency_display()} digest"
+
+
+class AnomalyAlert(models.Model):
+    """Log of statistically significant week-over-week changes already
+    alerted on, so ``analytics.tasks.detect_anomalies`` doesn't resend for
+    the same organisation + week.
+    """
+
+    organisation = models.ForeignKey(
+        Organisation, null=True, blank=True, on_delete=models.CASCADE, related_name="anomaly_alerts"
+    )
+    metric = models.CharField(max_length=20)
+    week_start = models.DateField()
+    actual_value = models.FloatField()
+    baseline_mean = models.FloatField()
+    baseline_stddev = models.FloatField()
+    z_score = models.FloatField()
+    sent_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-week_start"]
+        constraints = [
+            models.UniqueConstraint(fields=["organisation", "metric", "week_start"], name="unique_anomaly_alert"),
+        ]
+
+    def __str__(self):
+        scope = self.organisation.name if self.organisation_id else "City-wide"
+        return f"{scope} {self.metric} anomaly week of {self.week_start} (z={self.z_score:.2f})"

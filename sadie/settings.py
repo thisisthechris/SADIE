@@ -173,6 +173,18 @@ CELERY_BEAT_SCHEDULE = {
         "task": "analytics.tasks.refresh_daily_stats_snapshot",
         "schedule": crontab(minute=0),
     },
+    # Send any organisation's due weekly/monthly PDF report digest.
+    # _digest_is_due() decides per-org whether today is actually the send
+    # day, so a daily run is sufficient regardless of each org's cadence.
+    "send-scheduled-digests-daily": {
+        "task": "analytics.tasks.send_scheduled_digests",
+        "schedule": crontab(hour=7, minute=0),
+    },
+    # Flag statistically significant week-over-week interaction changes.
+    "detect-anomalies-weekly": {
+        "task": "analytics.tasks.detect_anomalies",
+        "schedule": crontab(hour=6, minute=30, day_of_week=1),
+    },
 }
 
 # Upload API token (simple shared-secret for upload endpoints)

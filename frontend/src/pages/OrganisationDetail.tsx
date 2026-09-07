@@ -138,6 +138,8 @@ export default function OrganisationDetailPage() {
 
       <GoalsCard org={org} />
 
+      <ReportsCard org={org} />
+
       {org.can_edit && (
         <EditPanel
           org={org}
@@ -884,6 +886,105 @@ function GoalProgressRow({
         </button>
       )}
     </li>
+  );
+}
+
+const WEEKDAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+interface ReportSubscription {
+  organisation: number;
+  frequency: "off" | "weekly" | "monthly";
+  weekday: number;
+  day_of_month: number;
+  last_sent_at: string | null;
+}
+
+function ReportsCard({ org }: { org: OrganisationDetail }) {
+  const qc = useQueryClient();
+
+  const sub = useQuery({
+    queryKey: ["report-subscription", org.id],
+    queryFn: () => api<ReportSubscription>(`/api/analytics/reports/organisations/${org.id}/subscription/`),
+  });
+
+  const update = useMutation({
+    mutationFn: (patch: Partial<ReportSubscription>) =>
+      api<ReportSubscription>(`/api/analytics/reports/organisations/${org.id}/subscription/`, {
+        method: "PATCH",
+        body: patch,
+      }),
+    onSuccess: (data) => qc.setQueryData(["report-subscription", org.id], data),
+  });
+
+  const downloadUrl = `/api/analytics/reports/organisations/${org.id}/pdf/`;
+
+  return (
+    <div className="card p-4">
+      <h2 className="heading-sub mb-2">Reports</h2>
+      <p className="text-sm text-muted mb-3">
+        A comprehensive PDF of this organisation&rsquo;s activity — download on demand, or subscribe members to an
+        automatic digest.
+      </p>
+      <a
+        href={downloadUrl}
+        className="btn-ghost text-xs border border-border inline-block mb-4"
+        target="_blank"
+        rel="noreferrer"
+      >
+        Download PDF (last 30 days)
+      </a>
+
+      {org.can_edit && sub.data && (
+        <div className="grid gap-2 sm:grid-cols-2 border-t border-border pt-3">
+          <label className="text-sm">
+            <span className="mb-1 block text-muted">Email digest</span>
+            <select
+              value={sub.data.frequency}
+              onChange={(e) => update.mutate({ frequency: e.target.value as ReportSubscription["frequency"] })}
+              className="w-full rounded border border-border bg-transparent px-2 py-1"
+            >
+              <option value="off">Off</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </label>
+          {sub.data.frequency === "weekly" && (
+            <label className="text-sm">
+              <span className="mb-1 block text-muted">Send on</span>
+              <select
+                value={sub.data.weekday}
+                onChange={(e) => update.mutate({ weekday: Number(e.target.value) })}
+                className="w-full rounded border border-border bg-transparent px-2 py-1"
+              >
+                {WEEKDAY_NAMES.map((name, i) => (
+                  <option key={i} value={i}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {sub.data.frequency === "monthly" && (
+            <label className="text-sm">
+              <span className="mb-1 block text-muted">Day of month</span>
+              <input
+                type="number"
+                min={1}
+                max={28}
+                value={sub.data.day_of_month}
+                onChange={(e) => update.mutate({ day_of_month: Number(e.target.value) })}
+                className="w-full rounded border border-border bg-transparent px-2 py-1"
+              />
+            </label>
+          )}
+          {sub.data.last_sent_at && (
+            <p className="text-xs text-muted sm:col-span-2">
+              Last sent: {new Date(sub.data.last_sent_at).toLocaleString()}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

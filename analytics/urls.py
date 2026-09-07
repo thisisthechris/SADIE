@@ -1,7 +1,7 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from . import journeys_views, recommendations_views, stats_views, viz_views
+from . import journeys_views, recommendations_views, report_views, stats_views, viz_views
 from .views import PostcodeAreaInteractionViewSet, UserHashInteractionViewSet
 
 router = DefaultRouter()
@@ -10,6 +10,16 @@ router.register(r"postcodes", PostcodeAreaInteractionViewSet, basename="postcode
 
 urlpatterns = [
     path("", include(router.urls)),
+    path(
+        "reports/organisations/<int:org_id>/subscription/",
+        report_views.report_subscription,
+        name="report-subscription",
+    ),
+    path(
+        "reports/organisations/<int:org_id>/pdf/",
+        report_views.download_org_report,
+        name="report-download",
+    ),
     path("stats/event/<int:event_id>/", stats_views.event_stats, name="stats-event"),
     path("stats/summary/", stats_views.summary, name="stats-summary"),
     path("stats/top-orgs/", stats_views.top_orgs, name="stats-top-orgs"),

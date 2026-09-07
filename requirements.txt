@@ -22,3 +22,4 @@ django-celery-beat==2.6.0
 pgvector==0.3.6
 fastembed==0.3.6
 django-anymail==11.1
+weasyprint==69.0
