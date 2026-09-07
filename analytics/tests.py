@@ -2,10 +2,11 @@ from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from events.models import Event
+from events.models import Category, Event
 from organisations.models import Organisation
 
 from .models import DailyStatsSnapshot, PostcodeAreaInteraction, UserHashInteraction
+from .queries import interactions_qs, parse_filter_params
 from .tasks import refresh_daily_stats_snapshot
 
 
@@ -61,6 +62,47 @@ class PostcodeAreaInteractionModelTest(TestCase):
         s = str(self.record)
         self.assertIn("EC1A", s)
         self.assertIn("Test Org", s)
+
+
+class InteractionsQsCategoryFilterTest(TestCase):
+    """interactions_qs must scope by category, same as events_qs — was previously missing."""
+
+    def setUp(self):
+        self.org = make_org()
+        self.music = Category.objects.create(name="Music")
+        self.theatre = Category.objects.create(name="Theatre")
+        self.music_event = Event.objects.create(
+            organisation=self.org, title="Gig", start_datetime=timezone.now()
+        )
+        self.music_event.categories.add(self.music)
+        self.theatre_event = Event.objects.create(
+            organisation=self.org, title="Play", start_datetime=timezone.now()
+        )
+        self.theatre_event.categories.add(self.theatre)
+        UserHashInteraction.objects.create(
+            user_hash="a" * 64,
+            interaction_type="event",
+            event=self.music_event,
+            organisation=self.org,
+            interaction_date=timezone.now().date(),
+        )
+        UserHashInteraction.objects.create(
+            user_hash="b" * 64,
+            interaction_type="event",
+            event=self.theatre_event,
+            organisation=self.org,
+            interaction_date=timezone.now().date(),
+        )
+
+    def test_category_filter_excludes_other_categories(self):
+        p = parse_filter_params({"category": str(self.music.pk)})
+        qs = interactions_qs(p)
+        self.assertEqual(qs.count(), 1)
+        self.assertEqual(qs.first().event_id, self.music_event.pk)
+
+    def test_no_category_filter_returns_all(self):
+        p = parse_filter_params({})
+        self.assertEqual(interactions_qs(p).count(), 2)
 
 
 class RefreshDailyStatsSnapshotTaskTest(TestCase):

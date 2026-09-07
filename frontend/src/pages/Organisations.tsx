@@ -15,6 +15,38 @@ export default function OrganisationsPage() {
       api<Paginated<OrganisationSummary>>("/api/organisations/", { query: q }),
   });
 
+  // Group into parent-then-children order so the hierarchy reads as a tree
+  // rather than a flat list with a "sub-org of X" caption easy to miss.
+  const rows = orgs.data?.results ?? [];
+  const byParent = new Map<number, OrganisationSummary[]>();
+  const topLevel: OrganisationSummary[] = [];
+  for (const o of rows) {
+    if (o.parent_id) {
+      const arr = byParent.get(o.parent_id) ?? [];
+      arr.push(o);
+      byParent.set(o.parent_id, arr);
+    } else {
+      topLevel.push(o);
+    }
+  }
+  const ordered: Array<{ org: OrganisationSummary; indent: boolean }> = [];
+  for (const parent of topLevel) {
+    ordered.push({ org: parent, indent: false });
+    for (const child of byParent.get(parent.id) ?? []) {
+      ordered.push({ org: child, indent: true });
+    }
+  }
+  // Orphaned children (parent not present in the current filtered page) still show, unindented.
+  const seen = new Set(ordered.map((r) => r.org.id));
+  for (const arr of byParent.values()) {
+    for (const child of arr) {
+      if (!seen.has(child.id)) {
+        ordered.push({ org: child, indent: false });
+        seen.add(child.id);
+      }
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -38,19 +70,17 @@ export default function OrganisationsPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {orgs.data?.results.map((o) => (
+            {ordered.map(({ org: o, indent }) => (
               <tr key={o.id} className="hover:bg-border/10">
                 <td className="px-4 py-2">
                   <Link
                     to={`/insights/organisations/${o.slug}`}
-                    className="inline-flex items-center gap-2 font-medium hover:underline"
+                    className={`inline-flex items-center gap-2 font-medium hover:underline ${indent ? "pl-5" : ""}`}
                   >
+                    {indent && <span className="text-muted">↳</span>}
                     {o.name}
                     {o.is_partner && <PartnerBadge />}
                   </Link>
-                  {o.parent_name && (
-                    <div className="text-xs text-muted">sub-org of {o.parent_name}</div>
-                  )}
                 </td>
                 <td className="px-4 py-2 tabular-nums text-muted">
                   {o.location_count ?? 0}

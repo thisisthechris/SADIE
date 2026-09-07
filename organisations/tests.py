@@ -184,6 +184,33 @@ class OrganisationPartnerHierarchyTest(TestCase):
         r = self.client.post("/api/organisations/", {"name": "NewOne"}, format="json")
         self.assertEqual(r.status_code, 403)
 
+    def test_staff_can_add_member(self):
+        self.client.force_authenticate(self.staff)
+        r = self.client.post(f"/api/organisations/{self.parent.slug}/add_member/", {"user_id": self.outsider.pk}, format="json")
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertTrue(self.parent.members.filter(pk=self.outsider.pk).exists())
+
+    def test_staff_can_remove_member(self):
+        self.client.force_authenticate(self.staff)
+        r = self.client.post(f"/api/organisations/{self.parent.slug}/remove_member/", {"user_id": self.member.pk}, format="json")
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertFalse(self.parent.members.filter(pk=self.member.pk).exists())
+
+    def test_non_staff_member_cannot_add_member(self):
+        self.client.force_authenticate(self.member)
+        r = self.client.post(f"/api/organisations/{self.parent.slug}/add_member/", {"user_id": self.outsider.pk}, format="json")
+        self.assertEqual(r.status_code, 403)
+
+    def test_add_member_missing_user_id(self):
+        self.client.force_authenticate(self.staff)
+        r = self.client.post(f"/api/organisations/{self.parent.slug}/add_member/", {}, format="json")
+        self.assertEqual(r.status_code, 400)
+
+    def test_add_member_unknown_user(self):
+        self.client.force_authenticate(self.staff)
+        r = self.client.post(f"/api/organisations/{self.parent.slug}/add_member/", {"user_id": 999999}, format="json")
+        self.assertEqual(r.status_code, 404)
+
 
 class AnalyticsRollupTest(TestCase):
     def setUp(self):
@@ -211,3 +238,66 @@ class AnalyticsRollupTest(TestCase):
 
         qs = events_qs({"org": str(self.child.pk)})
         self.assertEqual(list(qs.values_list("title", flat=True)), ["C1"])
+
+
+class OrgGoalTest(TestCase):
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        self.staff = User.objects.create_user("admin2", password="x", is_staff=True)
+        self.member = User.objects.create_user("alice2", password="x")
+        self.outsider = User.objects.create_user("bob2", password="x")
+        self.org = Organisation.objects.create(name="Goal Org")
+        self.other_org = Organisation.objects.create(name="Other Goal Org")
+        self.org.members.add(self.member)
+        self.client = APIClient()
+
+    def _goal_payload(self, org_id=None):
+        return {
+            "organisation": org_id or self.org.pk,
+            "metric": "events",
+            "target_value": 10,
+            "period_start": "2026-01-01",
+            "period_end": "2026-01-31",
+        }
+
+    def test_member_can_create_goal_for_own_org(self):
+        self.client.force_authenticate(self.member)
+        r = self.client.post("/api/organisations/goals/", self._goal_payload(), format="json")
+        self.assertEqual(r.status_code, 201, r.content)
+        self.assertEqual(r.data["created_by_username"], "alice2")
+
+    def test_staff_can_create_goal_for_any_org(self):
+        self.client.force_authenticate(self.staff)
+        r = self.client.post("/api/organisations/goals/", self._goal_payload(self.other_org.pk), format="json")
+        self.assertEqual(r.status_code, 201, r.content)
+
+    def test_outsider_cannot_create_goal(self):
+        self.client.force_authenticate(self.outsider)
+        r = self.client.post("/api/organisations/goals/", self._goal_payload(), format="json")
+        self.assertEqual(r.status_code, 403)
+
+    def test_unauthenticated_cannot_create_goal(self):
+        r = self.client.post("/api/organisations/goals/", self._goal_payload(), format="json")
+        self.assertIn(r.status_code, (401, 403))
+
+    def test_member_cannot_create_goal_for_other_org(self):
+        self.client.force_authenticate(self.member)
+        r = self.client.post("/api/organisations/goals/", self._goal_payload(self.other_org.pk), format="json")
+        self.assertEqual(r.status_code, 403)
+
+    def test_period_end_before_start_rejected(self):
+        self.client.force_authenticate(self.staff)
+        payload = self._goal_payload()
+        payload["period_end"] = "2025-12-01"
+        r = self.client.post("/api/organisations/goals/", payload, format="json")
+        self.assertEqual(r.status_code, 400)
+
+    def test_anyone_can_list_goals(self):
+        self.client.force_authenticate(self.staff)
+        self.client.post("/api/organisations/goals/", self._goal_payload(), format="json")
+        self.client.force_authenticate(self.outsider)
+        r = self.client.get("/api/organisations/goals/", {"organisation": self.org.pk})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.data["count"], 1)

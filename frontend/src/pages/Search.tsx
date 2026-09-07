@@ -125,12 +125,8 @@ export default function Search() {
 }
 
 function SearchRow({ hit }: { hit: SearchHit }) {
-  const to =
-    hit.type === "event"
-      ? `/events/${hit.id}`
-      : `/organisations?org=${hit.id}`;
   return (
-    <Link to={to} className="block p-4 hover:bg-border/30 transition">
+    <Link to={hit.url} className="block p-4 hover:bg-border/30 transition">
       <div className="flex items-start gap-4">
         <div className="flex flex-col items-center w-14 flex-shrink-0">
           <span

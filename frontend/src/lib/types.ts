@@ -88,6 +88,20 @@ export interface OrganisationDetail {
   updated_at: string;
 }
 
+export interface OrgGoal {
+  id: number;
+  organisation: number;
+  organisation_name: string;
+  metric: "events" | "interactions" | "unique_visitors";
+  target_value: number;
+  period_start: string;
+  period_end: string;
+  created_by: number | null;
+  created_by_username: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface EventSummary {
   id: number;
   organisation: number;

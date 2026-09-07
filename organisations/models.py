@@ -166,3 +166,45 @@ class Location(_db_models.Model):
                 raise ValidationError(
                     {"parent": "This location already has sub-locations and cannot be made a sub-location."}
                 )
+
+
+class OrgGoal(_db_models.Model):
+    """A target for an organisation to track against actual analytics for a period.
+
+    Progress is computed on read (frontend calls the existing
+    ``/api/analytics/stats/summary/`` endpoint scoped to this goal's org +
+    period) — this model only stores the target itself.
+    """
+
+    METRIC_CHOICES = [
+        ("events", "Events"),
+        ("interactions", "Interactions"),
+        ("unique_visitors", "Unique visitors"),
+    ]
+
+    organisation = models.ForeignKey(Organisation, on_delete=models.CASCADE, related_name="goals")
+    metric = _db_models.CharField(max_length=20, choices=METRIC_CHOICES)
+    target_value = models.PositiveIntegerField()
+    period_start = models.DateField()
+    period_end = models.DateField()
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=_db_models.SET_NULL,
+        related_name="created_goals",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-period_end"]
+        indexes = [models.Index(fields=["organisation", "period_start", "period_end"])]
+
+    def __str__(self):
+        return f"{self.organisation.name}: {self.get_metric_display()} \u2265 {self.target_value} ({self.period_start}\u2013{self.period_end})"
+
+    def clean(self):
+        super().clean()
+        if self.period_start and self.period_end and self.period_end < self.period_start:
+            raise ValidationError({"period_end": "period_end must be on or after period_start."})

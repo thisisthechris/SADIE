@@ -28,6 +28,9 @@ const PostcodeVolume = lazy(() => import("./pages/PostcodeVolume"));
 const OrgConnectionsMap = lazy(() => import("./pages/OrgConnectionsMap"));
 const Trends = lazy(() => import("./pages/Trends"));
 const Compare = lazy(() => import("./pages/Compare"));
+const Categories = lazy(() => import("./pages/Categories"));
+const CategoryDetail = lazy(() => import("./pages/CategoryDetail"));
+const Search = lazy(() => import("./pages/Search"));
 
 const VizFallback = (
   <div className="card p-6 text-sm text-muted">Loading 3D viewer…</div>
@@ -63,6 +66,18 @@ export default function App() {
         <Route
           path="compare"
           element={<Suspense fallback={VizFallback}><Compare /></Suspense>}
+        />
+        <Route
+          path="categories"
+          element={<Suspense fallback={VizFallback}><Categories /></Suspense>}
+        />
+        <Route
+          path="categories/:id"
+          element={<Suspense fallback={VizFallback}><CategoryDetail /></Suspense>}
+        />
+        <Route
+          path="search"
+          element={<Suspense fallback={VizFallback}><Search /></Suspense>}
         />
         <Route
           path="events/:id"

@@ -1,12 +1,12 @@
 import { useMemo, useState, useEffect } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "../lib/api";
+import { api, ApiError } from "../lib/api";
 import { useFilters } from "../lib/filters";
 import { useMe } from "../lib/auth";
 import PartnerBadge from "../components/PartnerBadge";
 import AnimatedNumber from "../components/AnimatedNumber";
-import type { OrganisationDetail, Paginated } from "../lib/types";
+import type { OrganisationDetail, OrgGoal, Paginated } from "../lib/types";
 
 interface PostcodeBarsResp {
   results: Array<{ postcode: string; area: string; total: number }>;
@@ -127,6 +127,16 @@ export default function OrganisationDetailPage() {
           rows={postcodes.data?.results ?? []}
         />
       </div>
+
+      {org.can_edit && (
+        <MembersCard
+          org={org}
+          isStaff={!!me?.is_staff}
+          onChanged={() => qc.invalidateQueries({ queryKey: ["org-detail", slug] })}
+        />
+      )}
+
+      <GoalsCard org={org} />
 
       {org.can_edit && (
         <EditPanel
@@ -538,6 +548,345 @@ function TopPostcodesCard({
   );
 }
 
+interface UserSearchResult {
+  id: number;
+  username: string;
+  email?: string;
+  first_name?: string;
+  last_name?: string;
+}
+
+function MembersCard({
+  org,
+  isStaff,
+  onChanged,
+}: {
+  org: OrganisationDetail;
+  isStaff: boolean;
+  onChanged: () => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const results = useQuery({
+    enabled: isStaff && search.trim().length > 1,
+    queryKey: ["user-search", search],
+    queryFn: () =>
+      api<{ results: UserSearchResult[] }>("/api/auth/users/", {
+        query: { search },
+      }),
+  });
+
+  const addMember = useMutation({
+    mutationFn: (userId: number) =>
+      api(`/api/organisations/${org.slug}/add_member/`, {
+        method: "POST",
+        body: { user_id: userId },
+      }),
+    onSuccess: () => {
+      setSearch("");
+      setError(null);
+      onChanged();
+    },
+    onError: () => setError("Couldn't add that member."),
+  });
+
+  const removeMember = useMutation({
+    mutationFn: (userId: number) =>
+      api(`/api/organisations/${org.slug}/remove_member/`, {
+        method: "POST",
+        body: { user_id: userId },
+      }),
+    onSuccess: () => {
+      setError(null);
+      onChanged();
+    },
+    onError: () => setError("Couldn't remove that member."),
+  });
+
+  const existingIds = new Set(org.members.map((m) => m.id));
+
+  return (
+    <div className="card p-4">
+      <h2 className="heading-sub mb-2">Members</h2>
+      {org.members.length === 0 ? (
+        <p className="text-sm text-muted">No members yet.</p>
+      ) : (
+        <ul className="divide-y divide-border">
+          {org.members.map((m) => (
+            <li key={m.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+              <div>
+                <div className="font-medium">
+                  {m.first_name || m.last_name ? `${m.first_name ?? ""} ${m.last_name ?? ""}`.trim() : m.username}
+                </div>
+                <div className="text-xs text-muted">{m.email || m.username}</div>
+              </div>
+              {isStaff && (
+                <button
+                  type="button"
+                  onClick={() => removeMember.mutate(m.id)}
+                  disabled={removeMember.isPending}
+                  className="btn-ghost text-xs text-red-600 disabled:opacity-50"
+                >
+                  Remove
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {isStaff && (
+        <div className="mt-4 border-t border-border pt-3">
+          <label className="text-sm">
+            <span className="mb-1 block text-muted">Add member (search by name/email/username)</span>
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search users…"
+              className="w-full rounded border border-border bg-transparent px-2 py-1"
+            />
+          </label>
+          {results.data && results.data.results.length > 0 && (
+            <ul className="mt-2 divide-y divide-border rounded border border-border">
+              {results.data.results.map((u) => (
+                <li key={u.id} className="flex items-center justify-between gap-3 px-2 py-1.5 text-sm">
+                  <div>
+                    <div className="font-medium">
+                      {u.first_name || u.last_name ? `${u.first_name ?? ""} ${u.last_name ?? ""}`.trim() : u.username}
+                    </div>
+                    <div className="text-xs text-muted">{u.email || u.username}</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => addMember.mutate(u.id)}
+                    disabled={addMember.isPending || existingIds.has(u.id)}
+                    className="btn-ghost text-xs disabled:opacity-50"
+                  >
+                    {existingIds.has(u.id) ? "Already a member" : "Add"}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const GOAL_METRIC_LABELS: Record<OrgGoal["metric"], string> = {
+  events: "Events",
+  interactions: "Interactions",
+  unique_visitors: "Unique visitors",
+};
+
+function GoalsCard({ org }: { org: OrganisationDetail }) {
+  const qc = useQueryClient();
+  const [showForm, setShowForm] = useState(false);
+  const [metric, setMetric] = useState<OrgGoal["metric"]>("events");
+  const [targetValue, setTargetValue] = useState("");
+  const [periodStart, setPeriodStart] = useState("");
+  const [periodEnd, setPeriodEnd] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const goals = useQuery({
+    queryKey: ["org-goals", org.id],
+    queryFn: () =>
+      api<Paginated<OrgGoal>>("/api/organisations/goals/", {
+        query: { organisation: org.id, ordering: "-period_end" },
+      }),
+  });
+
+  const createGoal = useMutation({
+    mutationFn: () =>
+      api<OrgGoal>("/api/organisations/goals/", {
+        method: "POST",
+        body: {
+          organisation: org.id,
+          metric,
+          target_value: Number(targetValue),
+          period_start: periodStart,
+          period_end: periodEnd,
+        },
+      }),
+    onSuccess: () => {
+      setShowForm(false);
+      setTargetValue("");
+      setPeriodStart("");
+      setPeriodEnd("");
+      setError(null);
+      qc.invalidateQueries({ queryKey: ["org-goals", org.id] });
+    },
+    onError: (e) => {
+      setError(
+        e instanceof ApiError && typeof (e.body as any)?.detail === "string"
+          ? (e.body as any).detail
+          : "Couldn't create that goal."
+      );
+    },
+  });
+
+  const deleteGoal = useMutation({
+    mutationFn: (goalId: number) => api(`/api/organisations/goals/${goalId}/`, { method: "DELETE" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["org-goals", org.id] }),
+  });
+
+  const rows = goals.data?.results ?? [];
+
+  return (
+    <div className="card p-4">
+      <div className="flex items-center justify-between">
+        <h2 className="heading-sub mb-2">Goals</h2>
+        {org.can_edit && (
+          <button type="button" onClick={() => setShowForm((v) => !v)} className="btn-ghost text-xs">
+            {showForm ? "Cancel" : "+ New goal"}
+          </button>
+        )}
+      </div>
+
+      {showForm && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            createGoal.mutate();
+          }}
+          className="mb-4 grid gap-2 rounded border border-border p-3 sm:grid-cols-2"
+        >
+          <label className="text-sm">
+            <span className="mb-1 block text-muted">Metric</span>
+            <select
+              value={metric}
+              onChange={(e) => setMetric(e.target.value as OrgGoal["metric"])}
+              className="w-full rounded border border-border bg-transparent px-2 py-1"
+            >
+              {Object.entries(GOAL_METRIC_LABELS).map(([k, label]) => (
+                <option key={k} value={k}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block text-muted">Target value</span>
+            <input
+              type="number"
+              min={1}
+              required
+              value={targetValue}
+              onChange={(e) => setTargetValue(e.target.value)}
+              className="w-full rounded border border-border bg-transparent px-2 py-1"
+            />
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block text-muted">Period start</span>
+            <input
+              type="date"
+              required
+              value={periodStart}
+              onChange={(e) => setPeriodStart(e.target.value)}
+              className="w-full rounded border border-border bg-transparent px-2 py-1"
+            />
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block text-muted">Period end</span>
+            <input
+              type="date"
+              required
+              value={periodEnd}
+              onChange={(e) => setPeriodEnd(e.target.value)}
+              className="w-full rounded border border-border bg-transparent px-2 py-1"
+            />
+          </label>
+          {error && <p className="text-sm text-red-600 sm:col-span-2">{error}</p>}
+          <div className="sm:col-span-2">
+            <button
+              type="submit"
+              disabled={createGoal.isPending}
+              className="rounded bg-accent px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+            >
+              {createGoal.isPending ? "Saving…" : "Create goal"}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {goals.isLoading ? (
+        <p className="text-sm text-muted">Loading…</p>
+      ) : rows.length === 0 ? (
+        <p className="text-sm text-muted">No goals set for this organisation yet.</p>
+      ) : (
+        <ul className="space-y-3">
+          {rows.map((g) => (
+            <GoalProgressRow
+              key={g.id}
+              goal={g}
+              orgId={org.id}
+              canEdit={org.can_edit}
+              onDelete={() => deleteGoal.mutate(g.id)}
+            />
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function GoalProgressRow({
+  goal,
+  orgId,
+  canEdit,
+  onDelete,
+}: {
+  goal: OrgGoal;
+  orgId: number;
+  canEdit: boolean;
+  onDelete: () => void;
+}) {
+  const progress = useQuery({
+    queryKey: ["goal-progress", goal.id],
+    queryFn: () =>
+      api<{ event_count: number; interaction_count: number; unique_visitors: number }>(
+        "/api/analytics/stats/summary/",
+        { query: { org: orgId, date_from: goal.period_start, date_to: goal.period_end } }
+      ),
+  });
+
+  const actualByMetric: Record<OrgGoal["metric"], number | undefined> = {
+    events: progress.data?.event_count,
+    interactions: progress.data?.interaction_count,
+    unique_visitors: progress.data?.unique_visitors,
+  };
+  const actual = actualByMetric[goal.metric];
+  const pct = actual !== undefined ? Math.min(100, Math.round((actual / goal.target_value) * 100)) : 0;
+  const met = actual !== undefined && actual >= goal.target_value;
+
+  return (
+    <li>
+      <div className="flex items-center justify-between text-sm mb-1">
+        <span className="font-medium">
+          {GOAL_METRIC_LABELS[goal.metric]} — {goal.period_start} to {goal.period_end}
+        </span>
+        <span className="tabular-nums text-muted">
+          {actual === undefined ? "…" : actual.toLocaleString()} / {goal.target_value.toLocaleString()}
+        </span>
+      </div>
+      <div className="h-2 rounded bg-border/40">
+        <div
+          className={`h-2 rounded ${met ? "bg-green-500" : "bg-accent"}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      {canEdit && (
+        <button type="button" onClick={onDelete} className="mt-1 text-xs text-red-600 hover:underline">
+          Delete
+        </button>
+      )}
+    </li>
+  );
+}
+
 function EditPanel({
   org,
   isStaff,
@@ -654,7 +1003,7 @@ function EditPanel({
           </button>
         )}
         <span className="text-xs text-muted">
-          Parent / sub-org links and members are managed in the Django admin.
+          Parent / sub-org links are managed in the Django admin.
         </span>
       </div>
 

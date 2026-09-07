@@ -30,13 +30,13 @@ interface SearchResponse {
 }
 
 const STATIC_PAGES = [
-  { label: "Overview", to: "/" },
-  { label: "Map", to: "/map" },
-  { label: "Calendar", to: "/calendar" },
-  { label: "Organisations", to: "/organisations" },
-  { label: "Postcodes", to: "/postcodes" },
-  { label: "Network", to: "/network" },
-  { label: "Journeys", to: "/journeys" },
+  { label: "Overview", to: "/insights" },
+  { label: "Map", to: "/insights/map/venues" },
+  { label: "Calendar", to: "/insights/calendar" },
+  { label: "Organisations", to: "/insights/organisations" },
+  { label: "Postcodes", to: "/insights/postcodes" },
+  { label: "Network", to: "/insights/network" },
+  { label: "Journeys", to: "/insights/journeys" },
 ];
 
 export default function SearchModal({ open, onClose }: Props) {
@@ -275,6 +275,5 @@ export default function SearchModal({ open, onClose }: Props) {
 }
 
 function hitTo(hit: SearchHit): string {
-  if (hit.type === "event") return `/events/${hit.id}`;
-  return `/organisations?org=${hit.id}`;
+  return hit.url;
 }

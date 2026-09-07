@@ -106,6 +106,8 @@ def interactions_qs(p: Mapping[str, str], base=None):
     ids = _org_ids_for(p)
     if ids:
         qs = qs.filter(organisation_id__in=ids)
+    if p.get("cat"):
+        qs = qs.filter(event__categories__id=p["cat"]).distinct()
     if p.get("dfrom"):
         qs = qs.filter(interaction_date__gte=p["dfrom"])
     if p.get("dto"):

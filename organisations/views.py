@@ -1,16 +1,19 @@
+from django.contrib.auth import get_user_model
 from django.db.models import Count
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
-from .models import Location, Organisation
-from .permissions import IsOrgEditor
+from .models import Location, Organisation, OrgGoal
+from .permissions import IsOrgEditor, IsOrgGoalEditor, is_org_editor
 from .serializers import (
     LocationSerializer,
     LocationWriteSerializer,
     OrganisationListSerializer,
     OrganisationSerializer,
     OrganisationWriteSerializer,
+    OrgGoalSerializer,
 )
 
 
@@ -113,6 +116,49 @@ class OrganisationViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK,
         )
 
+    @action(detail=True, methods=["post"])
+    def add_member(self, request, slug=None):
+        """Add a user to this organisation's members. Body: {"user_id": <int>}
+
+        Staff-only, matching OrganisationWriteSerializer's restriction on the
+        ``members`` field (org members editing their own membership via this
+        action would otherwise bypass that restriction).
+        """
+        if not (request.user.is_authenticated and request.user.is_staff):
+            return Response(
+                {"detail": "Only staff can manage organisation members."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        org = self.get_object()
+        user_id = request.data.get("user_id")
+        if not user_id:
+            return Response({"detail": "Missing required field: 'user_id'"}, status=status.HTTP_400_BAD_REQUEST)
+        User = get_user_model()
+        try:
+            user = User.objects.get(pk=user_id)
+        except (User.DoesNotExist, ValueError, TypeError):
+            return Response({"detail": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        org.members.add(user)
+        return Response(OrganisationSerializer(org, context=self.get_serializer_context()).data)
+
+    @action(detail=True, methods=["post"])
+    def remove_member(self, request, slug=None):
+        """Remove a user from this organisation's members. Body: {"user_id": <int>}
+
+        Staff-only — see ``add_member`` docstring.
+        """
+        if not (request.user.is_authenticated and request.user.is_staff):
+            return Response(
+                {"detail": "Only staff can manage organisation members."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        org = self.get_object()
+        user_id = request.data.get("user_id")
+        if not user_id:
+            return Response({"detail": "Missing required field: 'user_id'"}, status=status.HTTP_400_BAD_REQUEST)
+        org.members.remove(user_id)
+        return Response(OrganisationSerializer(org, context=self.get_serializer_context()).data)
+
 
 class LocationViewSet(viewsets.ModelViewSet):
     queryset = Location.objects.select_related("organisation", "parent").prefetch_related("sub_venues").all()
@@ -205,3 +251,29 @@ class LocationViewSet(viewsets.ModelViewSet):
             {"slug": target.slug if hasattr(target, "slug") else None, "id": target.id},
             status=status.HTTP_200_OK,
         )
+
+
+class OrgGoalViewSet(viewsets.ModelViewSet):
+    """Attendance/interaction targets an organisation is tracked against.
+
+    Staff can create/edit goals for any organisation; org members (or a
+    member of the org's parent) can create/edit goals for their own org.
+    """
+
+    queryset = OrgGoal.objects.select_related("organisation", "created_by")
+    serializer_class = OrgGoalSerializer
+    permission_classes = [IsOrgGoalEditor]
+    filterset_fields = ["organisation", "metric"]
+    ordering_fields = ["period_start", "period_end", "created_at"]
+
+    def perform_create(self, serializer):
+        org = serializer.validated_data.get("organisation")
+        if org is None or not is_org_editor(self.request.user, org):
+            raise PermissionDenied("You can only create goals for your own organisation.")
+        serializer.save(created_by=self.request.user)
+
+    def perform_update(self, serializer):
+        org = serializer.validated_data.get("organisation", serializer.instance.organisation)
+        if not is_org_editor(self.request.user, org):
+            raise PermissionDenied("You can only edit goals for your own organisation.")
+        serializer.save()

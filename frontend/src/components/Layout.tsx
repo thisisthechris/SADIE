@@ -21,6 +21,7 @@ type NavEntry = NavLeaf | NavGroup;
 const NAV: NavEntry[] = [
   { to: "/insights", label: "Insights", end: true },
   { to: "/insights/calendar", label: "Calendar" },
+  { to: "/insights/search", label: "Search" },
   {
     label: "Maps",
     items: [
@@ -33,6 +34,7 @@ const NAV: NavEntry[] = [
     items: [
       { to: "/insights/trends", label: "Trends" },
       { to: "/insights/compare", label: "Compare" },
+      { to: "/insights/categories", label: "Categories" },
     ],
   },
   {

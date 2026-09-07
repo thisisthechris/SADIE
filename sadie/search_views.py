@@ -79,7 +79,7 @@ def _search_events(q: str, vec: list[float] | None, limit: int) -> Iterable[dict
             "start_datetime": e.start_datetime.isoformat() if e.start_datetime else None,
             "organisation": {"id": e.organisation_id, "name": e.organisation.name},
             "location": ({"id": e.location_id, "name": e.location.name} if e.location_id else None),
-            "url": f"/app/events?focus={e.id}",
+            "url": f"/insights/events/{e.id}",
         }
 
 
@@ -115,10 +115,11 @@ def _search_organisations(q: str, vec: list[float] | None, limit: int) -> Iterab
         yield {
             "type": "organisation",
             "id": o.id,
+            "slug": o.slug,
             "title": o.name,
             "snippet": (o.description or "")[:200],
             "score": float(o.score or 0),
-            "url": f"/app/organisations?focus={o.id}",
+            "url": f"/insights/organisations/{o.slug}",
         }
 
 

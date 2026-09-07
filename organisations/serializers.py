@@ -9,7 +9,7 @@ except Exception:
     _GeoBase = serializers.ModelSerializer
     _HAS_GIS = False
 
-from .models import Location, Organisation
+from .models import Location, Organisation, OrgGoal
 
 
 class LocationSerializer(_GeoBase):
@@ -212,4 +212,33 @@ class OrganisationWriteSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"parent": "This organisation has sub-organisations and cannot itself be a sub-org."}
             )
+        return attrs
+
+
+class OrgGoalSerializer(serializers.ModelSerializer):
+    organisation_name = serializers.CharField(source="organisation.name", read_only=True)
+    created_by_username = serializers.CharField(source="created_by.username", read_only=True, allow_null=True)
+
+    class Meta:
+        model = OrgGoal
+        fields = [
+            "id",
+            "organisation",
+            "organisation_name",
+            "metric",
+            "target_value",
+            "period_start",
+            "period_end",
+            "created_by",
+            "created_by_username",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["created_by"]
+
+    def validate(self, attrs):
+        period_start = attrs.get("period_start", getattr(self.instance, "period_start", None))
+        period_end = attrs.get("period_end", getattr(self.instance, "period_end", None))
+        if period_start and period_end and period_end < period_start:
+            raise serializers.ValidationError({"period_end": "period_end must be on or after period_start."})
         return attrs
