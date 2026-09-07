@@ -11,8 +11,6 @@ import OrganisationsPage from "./pages/Organisations";
 import OrganisationDetailPage from "./pages/OrganisationDetail";
 import Postcodes from "./pages/Postcodes";
 import Help from "./pages/Help";
-import Trends from "./pages/Trends";
-import Compare from "./pages/Compare";
 import { useMe } from "./lib/auth";
 
 const EventDetail = lazy(() => import("./pages/EventDetail"));
@@ -28,6 +26,8 @@ const PostcodeAreasOverview = lazy(() => import("./pages/PostcodeAreasOverview")
 const PostcodeAreasMap = lazy(() => import("./pages/PostcodeAreasMap"));
 const PostcodeVolume = lazy(() => import("./pages/PostcodeVolume"));
 const OrgConnectionsMap = lazy(() => import("./pages/OrgConnectionsMap"));
+const Trends = lazy(() => import("./pages/Trends"));
+const Compare = lazy(() => import("./pages/Compare"));
 
 const VizFallback = (
   <div className="card p-6 text-sm text-muted">Loading 3D viewer…</div>
@@ -56,8 +56,14 @@ export default function App() {
         <Route index element={<OrgInsights />} />
         <Route path="overview" element={<Home />} />
         <Route path="help" element={<Help />} />
-        <Route path="trends" element={<Trends />} />
-        <Route path="compare" element={<Compare />} />
+        <Route
+          path="trends"
+          element={<Suspense fallback={VizFallback}><Trends /></Suspense>}
+        />
+        <Route
+          path="compare"
+          element={<Suspense fallback={VizFallback}><Compare /></Suspense>}
+        />
         <Route
           path="events/:id"
           element={<Suspense fallback={VizFallback}><EventDetail /></Suspense>}

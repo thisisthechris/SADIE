@@ -21,7 +21,7 @@ from __future__ import annotations
 import hashlib
 from datetime import date, timedelta
 
-from django.db.models import Count, Sum
+from django.db.models import Count, Q, Sum
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.request import Request
@@ -30,6 +30,7 @@ from rest_framework.response import Response
 from events.models import Category
 from organisations.models import Location, Organisation
 
+from .caching import cached_response
 from .geocoding import cluster_points
 from .models import PostcodeGeo
 from .queries import (
@@ -99,12 +100,17 @@ def event_points(request: Request) -> Response:
     so deck.gl can aggregate client-side.
     """
     p = parse_filter_params(request)
-    events = events_qs(p).select_related("location", "organisation").filter(location__isnull=False)
-    counts: dict[int, int] = {}
-    for row in events.order_by().values("location_id").annotate(n=Count("id", distinct=True)):
-        counts[row["location_id"]] = row["n"]
+    events = events_qs(p).filter(location__isnull=False)
+    event_ids = events.values_list("id", flat=True)
 
-    locs = Location.objects.select_related("organisation").filter(id__in=counts.keys())
+    # Single query: annotate each Location with its filtered event count via
+    # a subquery, instead of a separate count-query + separate Location fetch.
+    locs = (
+        Location.objects.select_related("organisation")
+        .filter(events__id__in=event_ids)
+        .annotate(event_count=Count("events", filter=Q(events__id__in=event_ids), distinct=True))
+        .distinct()
+    )
     rows = []
     for loc in locs:
         coords = location_coords(loc)
@@ -118,9 +124,15 @@ def event_points(request: Request) -> Response:
                 "organisation": loc.organisation.name,
                 "lng": coords[0],
                 "lat": coords[1],
-                "event_count": counts.get(loc.id, 0),
+                "event_count": loc.event_count,
             }
         )
+    try:
+        limit = max(1, min(int(request.GET.get("limit", "500")), 2000))
+    except (TypeError, ValueError):
+        limit = 500
+    rows.sort(key=lambda r: r["event_count"], reverse=True)
+    rows = rows[:limit]
     return Response({"filters": p, "results": rows})
 
 
@@ -157,6 +169,7 @@ def postcode_bars(request: Request) -> Response:
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticatedOrReadOnly])
+@cached_response(timeout=900)
 def network(request: Request) -> Response:
     """Tripartite org ↔ category ↔ user-cluster graph for 3d-force-graph.
 
@@ -176,8 +189,11 @@ def network(request: Request) -> Response:
         .values("organisation_id", "categories__id")
         .annotate(n=Count("id", distinct=True))
     )
-    # Org → user-cluster edges.
-    user_rows = list(interactions.order_by().values("organisation_id", "user_hash").annotate(n=Count("id")))
+    # Org → user-cluster edges. Capped as a safety net against unbounded
+    # (org, user_hash) combinations on very large datasets.
+    user_rows = list(
+        interactions.order_by().values("organisation_id", "user_hash").annotate(n=Count("id"))[:20000]
+    )
 
     org_ids = {row["organisation_id"] for row in cat_edges} | {row["organisation_id"] for row in user_rows}
     cat_ids = {row["categories__id"] for row in cat_edges if row["categories__id"]}
@@ -239,6 +255,7 @@ def network(request: Request) -> Response:
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticatedOrReadOnly])
+@cached_response(timeout=900)
 def spatiotemporal(request: Request) -> Response:
     """Flat ``[lng, lat, t_days, cat_id, event_id]`` array for the time cube.
 
@@ -420,6 +437,15 @@ def postcode_points(request: Request) -> Response:
             }
         )
 
+    # Cap payload size — sort by total desc so the busiest postcodes win if
+    # there are more distinct geocoded postcodes than the limit.
+    try:
+        limit = max(1, min(int(request.GET.get("limit", "1000")), 5000))
+    except (TypeError, ValueError):
+        limit = 1000
+    rows.sort(key=lambda r: r["total"], reverse=True)
+    rows = rows[:limit]
+
     return Response(
         {
             "filters": p,
@@ -431,6 +457,7 @@ def postcode_points(request: Request) -> Response:
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticatedOrReadOnly])
+@cached_response(timeout=900)
 def postcode_heat(request: Request) -> Response:
     """Privacy-grouped clustered postcode data for heatmap visualization.
 

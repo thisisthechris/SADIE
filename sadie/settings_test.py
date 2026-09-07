@@ -14,6 +14,16 @@ DATABASES = {
     }
 }
 
+# DummyCache — a no-op backend (every get is a miss) — so cached responses
+# from one test never leak into another. Tests that specifically exercise
+# the cache (analytics/tests_caching.py) opt back into a real backend via
+# @override_settings.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.dummy.DummyCache",
+    }
+}
+
 # Remove apps that require GDAL/PostGIS or Leaflet
 INSTALLED_APPS = [
     app

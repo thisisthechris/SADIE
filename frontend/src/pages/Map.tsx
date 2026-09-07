@@ -51,15 +51,17 @@ export default function MapPage() {
 
   const venues = useQuery({
     queryKey: ["map-venues", q],
+    staleTime: 5 * 60_000,
     queryFn: () =>
       api<{ results: VenueRow[] }>("/api/analytics/viz/event-points/", {
-        query: q,
+        query: { ...q, limit: "500" },
       }),
     enabled: mode === "venues",
   });
 
   const events = useQuery({
     queryKey: ["map-events", q],
+    staleTime: 5 * 60_000,
     queryFn: () =>
       api<{ results: EventRow[]; count: number }>(
         "/api/analytics/viz/event-list/",

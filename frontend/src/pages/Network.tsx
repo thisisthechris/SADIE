@@ -54,6 +54,7 @@ export default function Network() {
 
   const q = useQuery({
     queryKey: ["viz-network", f.asQuery()],
+    staleTime: 5 * 60_000,
     queryFn: () =>
       api<Resp>("/api/analytics/viz/network/", { query: { ...f.asQuery(), buckets: "16" } }),
   });

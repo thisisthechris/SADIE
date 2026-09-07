@@ -130,6 +130,7 @@ export default function Trends() {
   // New vs Returning
   const newReturning = useQuery<{ series: NewReturningData[] }>({
     queryKey: ["stats", "visitors-new-returning", org, category, date_from, date_to],
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const res = await fetch(
         `/api/analytics/stats/visitors-new-returning/?${params.toString()}`
@@ -142,6 +143,7 @@ export default function Trends() {
   // Weekday Activity
   const weekdayActivity = useQuery<{ series: WeekdayData[] }>({
     queryKey: ["stats", "activity-by-weekday", org, category, date_from, date_to],
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const res = await fetch(
         `/api/analytics/stats/activity-by-weekday/?${params.toString()}`
@@ -154,6 +156,7 @@ export default function Trends() {
   // Category Trends
   const categoryTrends = useQuery<{ series: CategoryTrendData[] }>({
     queryKey: ["stats", "category-trends", org, category, date_from, date_to],
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const res = await fetch(
         `/api/analytics/stats/category-trends/?${params.toString()}`
@@ -166,6 +169,7 @@ export default function Trends() {
   // Top Venues
   const topVenues = useQuery<{ results: TopVenueData[] }>({
     queryKey: ["stats", "top-venues", org, category, date_from, date_to],
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const res = await fetch(
         `/api/analytics/stats/top-venues/?${params.toString()}&limit=15`
@@ -178,6 +182,7 @@ export default function Trends() {
   // Peak Times of Day
   const peakTimes = useQuery<{ series: PeakTimeData[] }>({
     queryKey: ["stats", "peak-times", org, category, date_from, date_to],
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const res = await fetch(`/api/analytics/stats/peak-times/?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch peak times");
@@ -191,6 +196,7 @@ export default function Trends() {
     summary: AttendanceSummary;
   }>({
     queryKey: ["stats", "attendance-frequency", org, category, date_from, date_to],
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const res = await fetch(`/api/analytics/stats/attendance-frequency/?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch attendance frequency");
@@ -205,6 +211,7 @@ export default function Trends() {
     by_org: LeadTimeByOrg[];
   }>({
     queryKey: ["stats", "event-lead-time", org, category, date_from, date_to],
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const res = await fetch(`/api/analytics/stats/event-lead-time/?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch event lead time");
@@ -215,6 +222,7 @@ export default function Trends() {
   // Lead Time Trend (monthly)
   const leadTimeTrend = useQuery<{ series: LeadTimeTrendPoint[] }>({
     queryKey: ["stats", "lead-time-trend", org, category, date_from, date_to],
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const res = await fetch(`/api/analytics/stats/lead-time-trend/?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch lead time trend");
@@ -229,6 +237,7 @@ export default function Trends() {
     series: PostcodeSegmentDatum[];
   }>({
     queryKey: ["stats", "peak-times-by-postcode", org, category, date_from, date_to],
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const res = await fetch(`/api/analytics/stats/peak-times-by-postcode/?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch peak times by postcode");
@@ -243,6 +252,7 @@ export default function Trends() {
     series: PostcodeSegmentDatum[];
   }>({
     queryKey: ["stats", "event-types-by-postcode", org, category, date_from, date_to],
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const res = await fetch(`/api/analytics/stats/event-types-by-postcode/?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch event types by postcode");
@@ -253,6 +263,7 @@ export default function Trends() {
   // Postcode Engagement Trend (top 5 districts, monthly)
   const postcodeEngagementTrend = useQuery<{ series: PostcodeEngagementPoint[] }>({
     queryKey: ["stats", "postcode-engagement-trend", org, category, date_from, date_to],
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const res = await fetch(`/api/analytics/stats/postcode-engagement-trend/?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch postcode engagement trend");
@@ -263,6 +274,7 @@ export default function Trends() {
   // Ticket Volume Trend (monthly tickets + orders)
   const ticketVolumeTrend = useQuery<{ series: TicketVolumeTrendPoint[] }>({
     queryKey: ["stats", "ticket-volume-trend", org, category, date_from, date_to],
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const res = await fetch(`/api/analytics/stats/ticket-volume-trend/?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch ticket volume trend");
@@ -273,6 +285,7 @@ export default function Trends() {
   // Ticket Summary (party-size distribution + top postcodes by ticket volume)
   const ticketSummary = useQuery<TicketSummaryResp>({
     queryKey: ["viz", "postcode-ticket-summary", org, category, date_from, date_to],
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const res = await fetch(`/api/analytics/viz/postcode-ticket-summary/?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch postcode ticket summary");
@@ -283,6 +296,7 @@ export default function Trends() {
   // Time of Day x Ticket Volume
   const peakTimesTickets = useQuery<{ series: PeakTimeTicketData[]; midnight_excluded_count: number }>({
     queryKey: ["stats", "peak-times-tickets", org, category, date_from, date_to],
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const res = await fetch(`/api/analytics/stats/peak-times-tickets/?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch peak times tickets");
@@ -293,6 +307,7 @@ export default function Trends() {
   // Weather vs Attendance
   const weatherCorrelation = useQuery<{ series: WeatherCorrelationPoint[] }>({
     queryKey: ["stats", "weather-correlation", org, category, date_from, date_to],
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const res = await fetch(`/api/analytics/stats/weather-correlation/?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch weather correlation");

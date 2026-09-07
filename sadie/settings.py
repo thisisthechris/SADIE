@@ -87,6 +87,16 @@ DATABASES = {
 # rather than relying on callers to rewrite the URL scheme.
 DATABASES["default"]["ENGINE"] = "django.contrib.gis.db.backends.postgis"
 
+# Response cache — separate Redis DB index (1) from Celery's broker/backend
+# (DB 0) so `cache.clear()` never touches in-flight task state.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": os.environ.get("REDIS_CACHE_URL", "redis://redis:6379/1"),
+        "KEY_PREFIX": "sadie",
+    }
+}
+
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
@@ -156,6 +166,12 @@ CELERY_BEAT_SCHEDULE = {
     "generate-synthetic-analytics-daily": {
         "task": "organisations.tasks.generate_daily_synthetic_analytics",
         "schedule": crontab(hour=3, minute=0),
+    },
+    # Refresh the pre-aggregated daily stats snapshot every hour so today's
+    # row stays current without per-request aggregation.
+    "refresh-daily-stats-snapshot-hourly": {
+        "task": "analytics.tasks.refresh_daily_stats_snapshot",
+        "schedule": crontab(minute=0),
     },
 }
 

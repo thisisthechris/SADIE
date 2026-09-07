@@ -81,24 +81,28 @@ export default function Postcodes() {
 
   const bars = useQuery({
     queryKey: ["viz-postcode-bars", q],
+    staleTime: 5 * 60_000,
     queryFn: () =>
       api<BarsResp>("/api/analytics/viz/postcode-bars/", { query: q }),
   });
 
   const points = useQuery({
     queryKey: ["viz-postcode-points", q],
+    staleTime: 5 * 60_000,
     queryFn: () =>
       api<PointsResp>("/api/analytics/viz/postcode-points/", { query: q }),
   });
 
   const heatmap = useQuery({
     queryKey: ["viz-postcode-heat", q],
+    staleTime: 5 * 60_000,
     queryFn: () =>
       api<HeatResp>("/api/analytics/viz/postcode-heat/", { query: q }),
   });
 
   const records = useQuery({
     queryKey: ["viz-postcode-records", q],
+    staleTime: 5 * 60_000,
     queryFn: () =>
       api<RecordsResp>("/api/analytics/viz/postcode-records/", {
         query: { ...q, limit: "200" },

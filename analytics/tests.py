@@ -5,7 +5,8 @@ from rest_framework.test import APIClient
 from events.models import Event
 from organisations.models import Organisation
 
-from .models import PostcodeAreaInteraction, UserHashInteraction
+from .models import DailyStatsSnapshot, PostcodeAreaInteraction, UserHashInteraction
+from .tasks import refresh_daily_stats_snapshot
 
 
 def make_org(name="Test Org"):
@@ -60,6 +61,47 @@ class PostcodeAreaInteractionModelTest(TestCase):
         s = str(self.record)
         self.assertIn("EC1A", s)
         self.assertIn("Test Org", s)
+
+
+class RefreshDailyStatsSnapshotTaskTest(TestCase):
+    def setUp(self):
+        self.org = make_org()
+        self.today = timezone.now().date()
+        self.event = Event.objects.create(
+            organisation=self.org,
+            title="Test Event",
+            start_datetime=timezone.now(),
+        )
+        UserHashInteraction.objects.create(
+            user_hash="a" * 64,
+            interaction_type="event",
+            event=self.event,
+            organisation=self.org,
+            interaction_date=self.today,
+        )
+        UserHashInteraction.objects.create(
+            user_hash="b" * 64,
+            interaction_type="event",
+            event=self.event,
+            organisation=self.org,
+            interaction_date=self.today,
+        )
+
+    def test_creates_city_wide_and_per_org_rows(self):
+        refresh_daily_stats_snapshot()
+        city_row = DailyStatsSnapshot.objects.get(date=self.today, organisation=None)
+        org_row = DailyStatsSnapshot.objects.get(date=self.today, organisation=self.org)
+        self.assertEqual(city_row.interaction_count, 2)
+        self.assertEqual(city_row.unique_visitors, 2)
+        self.assertEqual(org_row.event_count, 1)
+        self.assertEqual(org_row.interaction_count, 2)
+
+    def test_idempotent_on_rerun(self):
+        refresh_daily_stats_snapshot()
+        refresh_daily_stats_snapshot()
+        self.assertEqual(
+            DailyStatsSnapshot.objects.filter(date=self.today, organisation=self.org).count(), 1
+        )
 
 
 class AnalyticsAPITest(TestCase):

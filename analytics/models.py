@@ -38,6 +38,7 @@ class UserHashInteraction(models.Model):
         ordering = ["-interaction_date"]
         indexes = [
             models.Index(fields=["user_hash", "interaction_date"]),
+            models.Index(fields=["organisation", "interaction_date"]),
         ]
 
     def __str__(self):
@@ -219,3 +220,43 @@ class DailyWeather(models.Model):
 
     def __str__(self):
         return f"{self.date} (max {self.temp_max_c}°C, {self.precipitation_mm}mm)"
+
+
+class DailyStatsSnapshot(models.Model):
+    """Pre-aggregated daily counts, refreshed hourly by a Celery task (see
+    ``analytics/tasks.py::refresh_daily_stats_snapshot``).
+
+    One row per (date, organisation) plus a city-wide row per date where
+    ``organisation`` is null. Exists as a fast-path for future
+    historical-range queries — current endpoints still compute live and rely
+    on the response cache (``analytics/caching.py``) for speed.
+    """
+
+    date = models.DateField(db_index=True)
+    organisation = models.ForeignKey(
+        Organisation,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="daily_stats_snapshots",
+    )
+    event_count = models.PositiveIntegerField(default=0)
+    interaction_count = models.PositiveIntegerField(default=0)
+    unique_visitors = models.PositiveIntegerField(default=0)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-date"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["date", "organisation"],
+                name="unique_daily_stats_snapshot_per_org",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["organisation", "date"]),
+        ]
+
+    def __str__(self):
+        scope = self.organisation.name if self.organisation_id else "City-wide"
+        return f"{self.date} — {scope} ({self.interaction_count} interactions)"

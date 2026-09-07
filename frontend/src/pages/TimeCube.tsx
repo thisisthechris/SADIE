@@ -44,6 +44,7 @@ export default function TimeCube() {
 
   const q = useQuery({
     queryKey: ["viz-spatiotemporal", f.asQuery()],
+    staleTime: 5 * 60_000,
     queryFn: () =>
       api<Resp>("/api/analytics/viz/spatiotemporal/", { query: f.asQuery() }),
   });

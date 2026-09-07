@@ -49,6 +49,7 @@ from rest_framework.response import Response
 from events.models import Category
 from organisations.models import Location, Organisation
 
+from .caching import cached_response
 from .models import DailyWeather, UserHashInteraction
 from .queries import (
     district_of,
@@ -68,6 +69,7 @@ def _filtered(request: Request):
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticatedOrReadOnly])
+@cached_response(timeout=900)
 def summary(request: Request) -> Response:
     """Top-line counts for the SPA home page."""
     p, events, interactions, postcodes = _filtered(request)
@@ -217,6 +219,7 @@ def postcode_aggregates(request: Request) -> Response:
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticatedOrReadOnly])
+@cached_response(timeout=900)
 def headline(request: Request) -> Response:
     """Headline stats for org insights: events & attendees last month vs month before.
 
@@ -553,6 +556,7 @@ def top_venues(request: Request) -> Response:
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticatedOrReadOnly])
+@cached_response(timeout=900)
 def engagement(request: Request) -> Response:
     """Engagement metrics: current month/quarter vs previous, plus buzz (interactions per event).
 
