@@ -276,9 +276,10 @@ class OrgReportSubscription(models.Model):
         ("monthly", "Monthly"),
     ]
     # Monday=0 .. Sunday=6, matching Python's date.weekday().
-    WEEKDAY_CHOICES = [(i, name) for i, name in enumerate(
-        ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-    )]
+    WEEKDAY_CHOICES = [
+        (i, name)
+        for i, name in enumerate(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
+    ]
 
     organisation = models.OneToOneField(Organisation, on_delete=models.CASCADE, related_name="report_subscription")
     frequency = models.CharField(max_length=10, choices=FREQUENCY_CHOICES, default="off")

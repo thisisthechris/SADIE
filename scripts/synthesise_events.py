@@ -60,35 +60,34 @@ def resolve_org_code(file_path: Path) -> str | None:
 
 TITLE_META: dict[str, tuple[str, int, float]] = {
     # title (lowercase)                       category            hour  dur
-    "artist talk":                           ("Heritage",          18,  1.5),
-    "creative drop-in":                      ("Workshop",          11,  2.0),
-    "open studio day":                       ("Visual Arts",       10,  6.0),
-    "community exhibition":                  ("Exhibition",        10,  5.0),
-    "neighbourhood arts session":            ("Community",         17,  2.0),
-    "museum discovery session":              ("Heritage",          10,  2.0),
-    "family gallery trail":                  ("Family",            10,  2.0),
-    "object handling session":               ("Heritage",          13,  1.5),
-    "archive visit":                         ("Heritage",          10,  2.0),
-    "local history talk":                    ("Literature",        18,  1.5),
-    "behind the scenes tour":                ("Heritage",          11,  1.5),
-    "community collection day":              ("Community",         10,  5.0),
-    "school holiday activity":               ("Family",            10,  3.0),
-    "history workshop":                      ("Workshop",          10,  2.0),
-    "exhibition tour":                       ("Exhibition",        13,  1.5),
-    "live performance":                      ("Music",             19,  2.0),
-    "annual celebration":                    ("Festival",          18,  3.0),
-    "artist residency event":                ("Visual Arts",       18,  2.0),
-    "music showcase":                        ("Music",             19,  2.5),
-    "season launch":                         ("Festival",          18,  2.0),
-    "theatre night":                         ("Theatre",           19,  2.5),
-    "comedy performance":                    ("Comedy",            20,  2.0),
-    "guest speaker":                         ("Literature",        18,  1.5),
-    "cultural evening":                      ("Community",         18,  2.0),
-    "creative workshop":                     ("Workshop",          10,  2.0),
-    "public forum":                          ("Community",         18,  2.0),
-    "classic revisited":                     ("Theatre",           19,  2.5),
-    "local artists showcase":                ("Exhibition",        11,  5.0),
-    "local history talk":                    ("Heritage",          18,  1.5),
+    "artist talk": ("Heritage", 18, 1.5),
+    "creative drop-in": ("Workshop", 11, 2.0),
+    "open studio day": ("Visual Arts", 10, 6.0),
+    "community exhibition": ("Exhibition", 10, 5.0),
+    "neighbourhood arts session": ("Community", 17, 2.0),
+    "museum discovery session": ("Heritage", 10, 2.0),
+    "family gallery trail": ("Family", 10, 2.0),
+    "object handling session": ("Heritage", 13, 1.5),
+    "archive visit": ("Heritage", 10, 2.0),
+    "behind the scenes tour": ("Heritage", 11, 1.5),
+    "community collection day": ("Community", 10, 5.0),
+    "school holiday activity": ("Family", 10, 3.0),
+    "history workshop": ("Workshop", 10, 2.0),
+    "exhibition tour": ("Exhibition", 13, 1.5),
+    "live performance": ("Music", 19, 2.0),
+    "annual celebration": ("Festival", 18, 3.0),
+    "artist residency event": ("Visual Arts", 18, 2.0),
+    "music showcase": ("Music", 19, 2.5),
+    "season launch": ("Festival", 18, 2.0),
+    "theatre night": ("Theatre", 19, 2.5),
+    "comedy performance": ("Comedy", 20, 2.0),
+    "guest speaker": ("Literature", 18, 1.5),
+    "cultural evening": ("Community", 18, 2.0),
+    "creative workshop": ("Workshop", 10, 2.0),
+    "public forum": ("Community", 18, 2.0),
+    "classic revisited": ("Theatre", 19, 2.5),
+    "local artists showcase": ("Exhibition", 11, 5.0),
+    "local history talk": ("Heritage", 18, 1.5),
 }
 
 # Fallback for unrecognised titles
@@ -139,8 +138,7 @@ DESCRIPTIONS: dict[str, list[str]] = {
     "Community": [
         "A welcoming community event bringing Plymouth residents together to share, connect, and celebrate "
         "the city's creative culture.",
-        "Open to everyone — come along and be part of Plymouth's vibrant community arts scene. "
-        "Refreshments provided.",
+        "Open to everyone — come along and be part of Plymouth's vibrant community arts scene. Refreshments provided.",
         "Join us for this relaxed community gathering, celebrating arts, culture, and the people "
         "who make Plymouth such a special place.",
     ],
@@ -155,8 +153,7 @@ DESCRIPTIONS: dict[str, list[str]] = {
     "Music": [
         "An unmissable evening of live music in one of Plymouth's most atmospheric venues. "
         "From intimate performances to full ensemble showcases.",
-        "Join us for a night of outstanding musical talent. "
-        "Showcasing performers from across the region and beyond.",
+        "Join us for a night of outstanding musical talent. Showcasing performers from across the region and beyond.",
         "A wonderful opportunity to experience live music at its best. "
         "Tickets selling fast — book early to avoid disappointment.",
     ],
@@ -211,6 +208,7 @@ def _description_for(title: str, org_name: str, category: str, event_date: date)
 # ---------------------------------------------------------------------------
 #  CSV row extraction helpers (mirrors parsers.py logic without Django deps)
 # ---------------------------------------------------------------------------
+
 
 def _extract_bookings(csv_path: Path, org_code: str) -> list[tuple[str, str, str]]:
     """
@@ -337,10 +335,19 @@ def synthesise(csv_dir: Path, out_path: Path) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with out_path.open("w", newline="", encoding="utf-8") as fh:
         writer = csv.writer(fh)
-        writer.writerow([
-            "org_code", "org_name", "event_title", "event_date",
-            "event_time", "end_time", "category", "description", "url",
-        ])
+        writer.writerow(
+            [
+                "org_code",
+                "org_name",
+                "event_title",
+                "event_date",
+                "event_time",
+                "end_time",
+                "category",
+                "description",
+                "url",
+            ]
+        )
 
         for org_code, title, date_str in rows:
             org_name = ORG_CODE_MAP.get(org_code, org_code)
@@ -357,17 +364,19 @@ def synthesise(csv_dir: Path, out_path: Path) -> None:
             event_date = datetime.strptime(date_str, "%Y-%m-%d").date()
             description = _description_for(title, org_name, category, event_date)
 
-            writer.writerow([
-                org_code,
-                org_name,
-                title,
-                date_str,
-                start_t.strftime("%H:%M"),
-                end_t.strftime("%H:%M"),
-                category,
-                description,
-                "",  # placeholder URL — the import command leaves it blank if empty
-            ])
+            writer.writerow(
+                [
+                    org_code,
+                    org_name,
+                    title,
+                    date_str,
+                    start_t.strftime("%H:%M"),
+                    end_t.strftime("%H:%M"),
+                    category,
+                    description,
+                    "",  # placeholder URL — the import command leaves it blank if empty
+                ]
+            )
 
     print(f"Written {len(rows)} event rows → {out_path}")
     # Summary

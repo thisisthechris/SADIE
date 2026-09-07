@@ -72,13 +72,9 @@ class InteractionsQsCategoryFilterTest(TestCase):
         self.org = make_org()
         self.music = Category.objects.create(name="Music")
         self.theatre = Category.objects.create(name="Theatre")
-        self.music_event = Event.objects.create(
-            organisation=self.org, title="Gig", start_datetime=timezone.now()
-        )
+        self.music_event = Event.objects.create(organisation=self.org, title="Gig", start_datetime=timezone.now())
         self.music_event.categories.add(self.music)
-        self.theatre_event = Event.objects.create(
-            organisation=self.org, title="Play", start_datetime=timezone.now()
-        )
+        self.theatre_event = Event.objects.create(organisation=self.org, title="Play", start_datetime=timezone.now())
         self.theatre_event.categories.add(self.theatre)
         UserHashInteraction.objects.create(
             user_hash="a" * 64,
@@ -345,9 +341,7 @@ class RefreshDailyStatsSnapshotTaskTest(TestCase):
     def test_idempotent_on_rerun(self):
         refresh_daily_stats_snapshot()
         refresh_daily_stats_snapshot()
-        self.assertEqual(
-            DailyStatsSnapshot.objects.filter(date=self.today, organisation=self.org).count(), 1
-        )
+        self.assertEqual(DailyStatsSnapshot.objects.filter(date=self.today, organisation=self.org).count(), 1)
 
 
 class AnalyticsAPITest(TestCase):

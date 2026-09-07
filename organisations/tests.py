@@ -186,19 +186,25 @@ class OrganisationPartnerHierarchyTest(TestCase):
 
     def test_staff_can_add_member(self):
         self.client.force_authenticate(self.staff)
-        r = self.client.post(f"/api/organisations/{self.parent.slug}/add_member/", {"user_id": self.outsider.pk}, format="json")
+        r = self.client.post(
+            f"/api/organisations/{self.parent.slug}/add_member/", {"user_id": self.outsider.pk}, format="json"
+        )
         self.assertEqual(r.status_code, 200, r.content)
         self.assertTrue(self.parent.members.filter(pk=self.outsider.pk).exists())
 
     def test_staff_can_remove_member(self):
         self.client.force_authenticate(self.staff)
-        r = self.client.post(f"/api/organisations/{self.parent.slug}/remove_member/", {"user_id": self.member.pk}, format="json")
+        r = self.client.post(
+            f"/api/organisations/{self.parent.slug}/remove_member/", {"user_id": self.member.pk}, format="json"
+        )
         self.assertEqual(r.status_code, 200, r.content)
         self.assertFalse(self.parent.members.filter(pk=self.member.pk).exists())
 
     def test_non_staff_member_cannot_add_member(self):
         self.client.force_authenticate(self.member)
-        r = self.client.post(f"/api/organisations/{self.parent.slug}/add_member/", {"user_id": self.outsider.pk}, format="json")
+        r = self.client.post(
+            f"/api/organisations/{self.parent.slug}/add_member/", {"user_id": self.outsider.pk}, format="json"
+        )
         self.assertEqual(r.status_code, 403)
 
     def test_add_member_missing_user_id(self):

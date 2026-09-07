@@ -139,7 +139,10 @@ class Command(BaseCommand):
             "longitude": PLYMOUTH_LNG,
             "start_date": start.isoformat(),
             "end_date": end.isoformat(),
-            "daily": "temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode,wind_speed_10m_max,sunshine_duration",
+            "daily": (
+                "temperature_2m_max,temperature_2m_min,precipitation_sum,"
+                "weathercode,wind_speed_10m_max,sunshine_duration"
+            ),
             "timezone": "Europe/London",
         }
 

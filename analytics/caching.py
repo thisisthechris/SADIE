@@ -9,8 +9,8 @@ here never touches in-flight task state.
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Callable
 from functools import wraps
-from typing import Callable
 
 from django.core.cache import cache
 from rest_framework.response import Response

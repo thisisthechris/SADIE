@@ -178,7 +178,9 @@ def detect_anomalies():
                 continue
 
             actual = UserHashInteraction.objects.filter(
-                organisation=org, interaction_date__gte=prev_week_start, interaction_date__lte=this_week_start - timedelta(days=1)
+                organisation=org,
+                interaction_date__gte=prev_week_start,
+                interaction_date__lte=this_week_start - timedelta(days=1),
             ).count()
 
             mean = statistics.mean(baseline)

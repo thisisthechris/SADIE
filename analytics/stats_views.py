@@ -1114,9 +1114,7 @@ def peak_times_tickets(request: Request) -> Response:
     qs = postcode_ticket_qs(p).filter(event__isnull=False, event__start_datetime__isnull=False)
 
     # Count events that default to midnight (likely no recorded start time).
-    midnight_count = qs.filter(event__start_datetime__time=time(0, 0, 0)).aggregate(
-        n=Sum("ticket_quantity")
-    )["n"] or 0
+    midnight_count = qs.filter(event__start_datetime__time=time(0, 0, 0)).aggregate(n=Sum("ticket_quantity"))["n"] or 0
 
     # Exclude midnight-defaulted events from the hourly breakdown.
     qs = qs.exclude(event__start_datetime__time=time(0, 0, 0))
@@ -1162,10 +1160,7 @@ def weather_correlation(request: Request) -> Response:
     interactions_by_day = {r["interaction_date"]: r["n"] for r in interactions_rows}
 
     tickets_rows = (
-        postcode_ticket_qs(p)
-        .values("purchase_date")
-        .annotate(n=Sum("ticket_quantity"))
-        .order_by("purchase_date")
+        postcode_ticket_qs(p).values("purchase_date").annotate(n=Sum("ticket_quantity")).order_by("purchase_date")
     )
     tickets_by_day = {r["purchase_date"]: r["n"] for r in tickets_rows}
 

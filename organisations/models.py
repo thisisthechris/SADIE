@@ -202,7 +202,10 @@ class OrgGoal(_db_models.Model):
         indexes = [models.Index(fields=["organisation", "period_start", "period_end"])]
 
     def __str__(self):
-        return f"{self.organisation.name}: {self.get_metric_display()} \u2265 {self.target_value} ({self.period_start}\u2013{self.period_end})"
+        return (
+            f"{self.organisation.name}: {self.get_metric_display()} \u2265 {self.target_value} "
+            f"({self.period_start}\u2013{self.period_end})"
+        )
 
     def clean(self):
         super().clean()

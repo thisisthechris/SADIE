@@ -45,14 +45,16 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        csv_path = Path(options["path"]) if options["path"] else settings.BASE_DIR / "csv_exports" / "synthesised_events.csv"
+        default_path = settings.BASE_DIR / "csv_exports" / "synthesised_events.csv"
+        csv_path = Path(options["path"]) if options["path"] else default_path
         dry_run = options["dry_run"]
 
         if not csv_path.exists():
-            self.stderr.write(self.style.ERROR(
-                f"Synthesised events catalogue not found: {csv_path}\n"
-                "Run: python scripts/synthesise_events.py"
-            ))
+            self.stderr.write(
+                self.style.ERROR(
+                    f"Synthesised events catalogue not found: {csv_path}\nRun: python scripts/synthesise_events.py"
+                )
+            )
             return
 
         # Pre-load org and category caches
@@ -100,6 +102,7 @@ class Command(BaseCommand):
                         # Handle events that cross midnight
                         if end_dt <= start_dt:
                             from datetime import timedelta
+
                             end_dt += timedelta(days=1)
                     except ValueError:
                         end_dt = None
@@ -185,10 +188,7 @@ class Command(BaseCommand):
                         event.categories.add(category)
                     created += 1
 
-        summary = (
-            f"enrich_events complete — "
-            f"created: {created}, updated: {updated}, skipped: {skipped}"
-        )
+        summary = f"enrich_events complete — created: {created}, updated: {updated}, skipped: {skipped}"
         if dry_run:
             summary = "[DRY RUN] " + summary
         self.stdout.write(self.style.SUCCESS(summary))

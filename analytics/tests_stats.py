@@ -17,11 +17,11 @@ from events.models import Category, Event
 from organisations.models import Organisation
 
 from .models import (
+    DailyWeather,
     PostcodeAreaInteraction,
     PostcodeEventInteraction,
     PostcodeTicketPurchase,
     UserHashInteraction,
-    DailyWeather,
 )
 
 

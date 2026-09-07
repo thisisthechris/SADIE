@@ -191,9 +191,7 @@ def network(request: Request) -> Response:
     )
     # Org → user-cluster edges. Capped as a safety net against unbounded
     # (org, user_hash) combinations on very large datasets.
-    user_rows = list(
-        interactions.order_by().values("organisation_id", "user_hash").annotate(n=Count("id"))[:20000]
-    )
+    user_rows = list(interactions.order_by().values("organisation_id", "user_hash").annotate(n=Count("id"))[:20000])
 
     org_ids = {row["organisation_id"] for row in cat_edges} | {row["organisation_id"] for row in user_rows}
     cat_ids = {row["categories__id"] for row in cat_edges if row["categories__id"]}

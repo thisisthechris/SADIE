@@ -55,10 +55,7 @@ def compute_org_report_data(org: Organisation, period_start: date, period_end: d
         peak_hours[row["hour"]] = row["n"]
 
     top_venues = list(
-        events.exclude(location__isnull=True)
-        .values("location__name")
-        .annotate(n=Count("id"))
-        .order_by("-n")[:10]
+        events.exclude(location__isnull=True).values("location__name").annotate(n=Count("id")).order_by("-n")[:10]
     )
 
     top_categories = list(

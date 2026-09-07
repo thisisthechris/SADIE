@@ -65,9 +65,7 @@ def download_org_report(request, org_id: int) -> HttpResponse | Response:
     """On-demand PDF download — defaults to the trailing 30 days."""
     org = get_object_or_404(Organisation, pk=org_id)
     try:
-        period_end = (
-            date.fromisoformat(request.GET["date_to"]) if request.GET.get("date_to") else date.today()
-        )
+        period_end = date.fromisoformat(request.GET["date_to"]) if request.GET.get("date_to") else date.today()
         period_start = (
             date.fromisoformat(request.GET["date_from"])
             if request.GET.get("date_from")
