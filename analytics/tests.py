@@ -304,6 +304,26 @@ class ReportSubscriptionAndDownloadTest(TestCase):
         r = self.client.get(f"/api/analytics/reports/organisations/{self.org.pk}/pdf/")
         self.assertIn(r.status_code, (401, 403))
 
+    def test_anomaly_alerts_lists_recent_alerts(self):
+        from datetime import date, timedelta
+
+        from .models import AnomalyAlert
+
+        AnomalyAlert.objects.create(
+            organisation=self.org,
+            metric="interactions",
+            week_start=date.today() - timedelta(days=7),
+            actual_value=5,
+            baseline_mean=50,
+            baseline_stddev=10,
+            z_score=-4.5,
+        )
+        self.client.force_authenticate(self.member)
+        r = self.client.get(f"/api/analytics/reports/organisations/{self.org.pk}/anomalies/")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(len(r.data["results"]), 1)
+        self.assertEqual(r.data["results"][0]["direction"], "drop")
+
 
 class RefreshDailyStatsSnapshotTaskTest(TestCase):
     def setUp(self):

@@ -13,7 +13,7 @@ from rest_framework.response import Response
 from organisations.models import Organisation
 from organisations.permissions import is_org_editor
 
-from .models import OrgReportSubscription
+from .models import AnomalyAlert, OrgReportSubscription
 from .reports import render_org_report_pdf
 
 
@@ -24,6 +24,20 @@ def _serialize_subscription(sub: OrgReportSubscription) -> dict:
         "weekday": sub.weekday,
         "day_of_month": sub.day_of_month,
         "last_sent_at": sub.last_sent_at.isoformat() if sub.last_sent_at else None,
+    }
+
+
+def _serialize_anomaly(alert: AnomalyAlert) -> dict:
+    return {
+        "id": alert.pk,
+        "metric": alert.metric,
+        "week_start": alert.week_start.isoformat(),
+        "actual_value": alert.actual_value,
+        "baseline_mean": alert.baseline_mean,
+        "baseline_stddev": alert.baseline_stddev,
+        "z_score": alert.z_score,
+        "direction": "drop" if alert.z_score < 0 else "spike",
+        "sent_at": alert.sent_at.isoformat(),
     }
 
 
@@ -78,3 +92,15 @@ def download_org_report(request, org_id: int) -> HttpResponse | Response:
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = f'attachment; filename="{org.slug}-report.pdf"'
     return response
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticatedOrReadOnly])
+def org_anomaly_alerts(request, org_id: int) -> Response:
+    """Recent week-over-week anomaly alerts already sent for this organisation.
+
+    Read-only — alerts are only ever created by ``analytics.tasks.detect_anomalies``.
+    """
+    org = get_object_or_404(Organisation, pk=org_id)
+    alerts = AnomalyAlert.objects.filter(organisation=org).order_by("-week_start")[:10]
+    return Response({"results": [_serialize_anomaly(a) for a in alerts]})

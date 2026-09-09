@@ -140,6 +140,8 @@ export default function OrganisationDetailPage() {
 
       <ReportsCard org={org} />
 
+      <AlertsCard org={org} />
+
       {org.can_edit && (
         <EditPanel
           org={org}
@@ -983,6 +985,59 @@ function ReportsCard({ org }: { org: OrganisationDetail }) {
             </p>
           )}
         </div>
+      )}
+    </div>
+  );
+}
+
+interface AnomalyAlert {
+  id: number;
+  metric: string;
+  week_start: string;
+  actual_value: number;
+  baseline_mean: number;
+  baseline_stddev: number;
+  z_score: number;
+  direction: "spike" | "drop";
+  sent_at: string;
+}
+
+const METRIC_LABELS: Record<string, string> = {
+  interactions: "Interactions",
+};
+
+function AlertsCard({ org }: { org: OrganisationDetail }) {
+  const alerts = useQuery({
+    queryKey: ["anomaly-alerts", org.id],
+    queryFn: () => api<{ results: AnomalyAlert[] }>(`/api/analytics/reports/organisations/${org.id}/anomalies/`),
+  });
+
+  const rows = alerts.data?.results ?? [];
+
+  return (
+    <div className="card p-4">
+      <h2 className="heading-sub mb-2">Alerts</h2>
+      <p className="text-sm text-muted mb-3">
+        Week-over-week spikes or drops significant enough to have emailed this organisation&rsquo;s members.
+      </p>
+      {alerts.isLoading ? (
+        <p className="text-sm text-muted">Loading…</p>
+      ) : rows.length === 0 ? (
+        <p className="text-sm text-muted">No anomalies detected yet.</p>
+      ) : (
+        <ul className="space-y-2">
+          {rows.map((a) => (
+            <li key={a.id} className="flex items-center justify-between gap-3 text-sm border-t border-border pt-2 first:border-0 first:pt-0">
+              <span>
+                {METRIC_LABELS[a.metric] ?? a.metric} {a.direction === "spike" ? "spiked" : "dropped"} the week of{" "}
+                {a.week_start}
+              </span>
+              <span className={`shrink-0 tabular-nums ${a.direction === "spike" ? "text-emerald-600" : "text-red-600"}`}>
+                {a.actual_value.toFixed(0)} vs {a.baseline_mean.toFixed(0)} typical (z={a.z_score.toFixed(1)})
+              </span>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
