@@ -6,15 +6,17 @@ from datetime import date, timedelta
 
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+from django.utils.text import slugify
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
+from rest_framework.permissions import IsAdminUser, IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 
 from organisations.models import Organisation
 from organisations.permissions import is_org_editor
 
 from .models import AnomalyAlert, OrgReportSubscription
-from .reports import render_org_report_pdf
+from .queries import parse_filter_params
+from .reports import render_org_report_pdf, render_report_pdf
 
 
 def _serialize_subscription(sub: OrgReportSubscription) -> dict:
@@ -91,6 +93,29 @@ def download_org_report(request, org_id: int) -> HttpResponse | Response:
     pdf_bytes = render_org_report_pdf(org, period_start, period_end)
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = f'attachment; filename="{org.slug}-report.pdf"'
+    return response
+
+
+@api_view(["GET"])
+@permission_classes([IsAdminUser])
+def filtered_report_pdf(request) -> HttpResponse | Response:
+    """On-demand PDF export scoped to whatever filters (org/category/date range/
+    etc.) are currently active on the dashboard — not tied to a single org.
+
+    Defaults to the trailing 30 days, same as ``download_org_report``. Staff
+    only, since it's surfaced dashboard-wide rather than gated per-org.
+    """
+    p = parse_filter_params(request)
+    try:
+        period_end = date.fromisoformat(p["dto"]) if p.get("dto") else date.today()
+        period_start = date.fromisoformat(p["dfrom"]) if p.get("dfrom") else period_end - timedelta(days=29)
+    except ValueError:
+        return Response({"detail": "Invalid date_from/date_to — expected YYYY-MM-DD."}, status=400)
+
+    pdf_bytes = render_report_pdf(p, period_start, period_end)
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    filename = f"sadie-report-{slugify(period_start)}-{slugify(period_end)}.pdf"
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
 
 

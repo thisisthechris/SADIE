@@ -4,7 +4,7 @@ import { api } from "../lib/api";
 import { useFilters } from "../lib/filters";
 import ExportMenu from "../components/ExportMenu";
 import OrgToggle from "../components/OrgToggle";
-import { downloadCsv } from "../lib/export";
+import { downloadCsv, openPdfReport } from "../lib/export";
 import {
   type District,
   type DistrictsResp,
@@ -123,6 +123,10 @@ export default function PostcodeAreasOverview() {
                         { key: "count", label: "Interactions" },
                       ],
                     ),
+                },
+                {
+                  label: "PDF report (current filters)",
+                  onClick: () => openPdfReport(q),
                 },
               ]}
             />

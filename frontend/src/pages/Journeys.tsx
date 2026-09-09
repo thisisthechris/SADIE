@@ -5,7 +5,7 @@ import { useFilters } from "../lib/filters";
 import ExportMenu from "../components/ExportMenu";
 import InfoTooltip from "../components/InfoTooltip";
 import OrgToggle from "../components/OrgToggle";
-import { downloadCsv } from "../lib/export";
+import { downloadCsv, openPdfReport } from "../lib/export";
 
 interface JourneysSummary {
   totals: { interactions: number; unique_users: number };
@@ -106,6 +106,10 @@ function SummaryView() {
                         { key: "unique_users", label: "Unique users" },
                       ],
                     ),
+                },
+                {
+                  label: "PDF report (current filters)",
+                  onClick: () => openPdfReport(q),
                 },
               ]}
             />

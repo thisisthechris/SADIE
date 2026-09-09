@@ -7,7 +7,7 @@ import ExportMenu from "../components/ExportMenu";
 import OrgToggle from "../components/OrgToggle";
 import Map2D, { type MapPoint, type HeatmapPoint } from "../viz/Map2D";
 import InfoTooltip from "../components/InfoTooltip";
-import { downloadCsv } from "../lib/export";
+import { downloadCsv, openPdfReport } from "../lib/export";
 
 interface Bar {
   postcode: string;
@@ -197,6 +197,10 @@ export default function Postcodes() {
                       { key: "period_end", label: "Period end" },
                     ],
                   ),
+              },
+              {
+                label: "PDF report (current filters)",
+                onClick: () => openPdfReport(q),
               },
             ]}
           />

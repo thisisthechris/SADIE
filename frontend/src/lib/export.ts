@@ -40,3 +40,9 @@ export function downloadCanvasPng(canvas: HTMLCanvasElement, filename: string) {
     if (blob) triggerBlobDownload(blob, filename);
   }, "image/png");
 }
+
+/** Opens the staff-only, filter-scoped PDF report (server-rendered) in a new tab. */
+export function openPdfReport(query: Record<string, string>) {
+  const params = new URLSearchParams(query);
+  window.open(`/api/analytics/reports/pdf/?${params.toString()}`, "_blank");
+}

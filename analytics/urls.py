@@ -25,6 +25,7 @@ urlpatterns = [
         report_views.org_anomaly_alerts,
         name="report-anomalies",
     ),
+    path("reports/pdf/", report_views.filtered_report_pdf, name="report-pdf"),
     path("stats/event/<int:event_id>/", stats_views.event_stats, name="stats-event"),
     path("stats/summary/", stats_views.summary, name="stats-summary"),
     path("stats/top-orgs/", stats_views.top_orgs, name="stats-top-orgs"),

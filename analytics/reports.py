@@ -1,6 +1,7 @@
 """
-Report generation: computes per-org analytics for a period and renders a
-comprehensive PDF (org digest email attachment + on-demand download).
+Report generation: computes filtered analytics for a period and renders a
+comprehensive PDF (org digest email attachment, on-demand org download, and
+the generic filter-driven export available across the dashboard).
 
 Reuses the same ``events_qs``/``interactions_qs`` filter helpers the DRF
 stats endpoints use — this module just aggregates directly against
@@ -19,22 +20,35 @@ from django.template.loader import render_to_string
 from events.models import Category
 from organisations.models import Organisation
 
-from .queries import events_qs, interactions_qs, parse_filter_params
+from .queries import events_qs, interactions_qs
 
 WEEKDAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
 
-def compute_org_report_data(org: Organisation, period_start: date, period_end: date) -> dict:
-    """Aggregate this org's activity for [period_start, period_end] into a
-    plain dict ready for the PDF template (and reusable for other report
-    formats later)."""
-    p = parse_filter_params(
-        {
-            "org": str(org.pk),
-            "date_from": period_start.isoformat(),
-            "date_to": period_end.isoformat(),
-        }
-    )
+def _scope_label(p: dict) -> str:
+    """Human-readable description of the filters a report was scoped to."""
+    parts = []
+    if p.get("org"):
+        org = Organisation.objects.filter(pk=p["org"]).first()
+        parts.append(org.name if org else "Unknown organisation")
+    else:
+        parts.append("All organisations")
+    if p.get("cat"):
+        cat = Category.objects.filter(pk=p["cat"]).first()
+        parts.append(cat.name if cat else "Unknown category")
+    else:
+        parts.append("All categories")
+    return " · ".join(parts)
+
+
+def compute_filtered_report_data(p: dict, period_start: date, period_end: date) -> dict:
+    """Aggregate activity matching filter dict ``p`` for [period_start, period_end]
+    into a plain dict ready for the PDF template.
+
+    ``p`` is a ``parse_filter_params``-shaped dict (org/cat optional — an
+    absent org means city-wide, matching every other viz endpoint's semantics).
+    """
+    p = {**p, "dfrom": period_start.isoformat(), "dto": period_end.isoformat()}
     events = events_qs(p)
     interactions = interactions_qs(p)
 
@@ -63,7 +77,7 @@ def compute_org_report_data(org: Organisation, period_start: date, period_end: d
     )
 
     return {
-        "org": org,
+        "scope_label": _scope_label(p),
         "period_start": period_start,
         "period_end": period_end,
         "event_count": event_count,
@@ -80,10 +94,20 @@ def compute_org_report_data(org: Organisation, period_start: date, period_end: d
     }
 
 
-def render_org_report_pdf(org: Organisation, period_start: date, period_end: date) -> bytes:
-    """Render the comprehensive per-org PDF report as bytes."""
+def render_report_pdf(p: dict, period_start: date, period_end: date) -> bytes:
+    """Render the generic filter-driven PDF report as bytes."""
     from weasyprint import HTML  # imported lazily — heavy, native-lib-backed dependency
 
-    data = compute_org_report_data(org, period_start, period_end)
+    data = compute_filtered_report_data(p, period_start, period_end)
     html = render_to_string("analytics/reports/org_report.html", data)
     return HTML(string=html).write_pdf()
+
+
+def render_org_report_pdf(org: Organisation, period_start: date, period_end: date) -> bytes:
+    """Render the comprehensive per-org PDF report as bytes.
+
+    Thin wrapper around ``render_report_pdf`` kept for the scheduled-digest
+    task and the org-specific download endpoint, which both deal in a
+    concrete ``Organisation`` rather than a raw filter dict.
+    """
+    return render_report_pdf({"org": str(org.pk)}, period_start, period_end)

@@ -7,7 +7,7 @@ import { useFilters } from "../lib/filters";
 import { useConfig } from "../lib/auth";
 import ExportMenu from "../components/ExportMenu";
 import Deck3DMap from "../viz/Deck3DMap";
-import { downloadCanvasPng, downloadCsv } from "../lib/export";
+import { downloadCanvasPng, downloadCsv, openPdfReport } from "../lib/export";
 
 interface Point {
   location_id: number;
@@ -93,6 +93,10 @@ export default function Map3D() {
                     { key: "event_count", label: "Events" },
                   ],
                 ),
+            },
+            {
+              label: "PDF report (current filters)",
+              onClick: () => openPdfReport(f.asQuery()),
             },
           ]}
         />

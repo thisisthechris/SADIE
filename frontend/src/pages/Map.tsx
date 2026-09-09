@@ -7,7 +7,7 @@ import { useConfig } from "../lib/auth";
 import ExportMenu from "../components/ExportMenu";
 import OrgToggle from "../components/OrgToggle";
 import Map2D, { type MapPoint } from "../viz/Map2D";
-import { downloadCsv } from "../lib/export";
+import { downloadCsv, openPdfReport } from "../lib/export";
 import { TimelineSlider } from "../components/TimelineSlider";
 
 interface VenueRow {
@@ -163,6 +163,10 @@ export default function MapPage() {
                           ],
                         ),
                     },
+                    {
+                      label: "PDF report (current filters)",
+                      onClick: () => openPdfReport(q),
+                    },
                   ]
                 : [
                     {
@@ -183,6 +187,10 @@ export default function MapPage() {
                           { key: "url", label: "URL" },
                         ]);
                       },
+                    },
+                    {
+                      label: "PDF report (current filters)",
+                      onClick: () => openPdfReport(q),
                     },
                   ]
             }

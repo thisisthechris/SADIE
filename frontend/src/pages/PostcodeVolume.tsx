@@ -7,7 +7,7 @@ import OrgToggle from "../components/OrgToggle";
 import { RankedBar } from "../components/RankedBar";
 import { PartySizeBar } from "../components/PartySizeBar";
 import AnimatedNumber from "../components/AnimatedNumber";
-import { downloadCsv } from "../lib/export";
+import { downloadCsv, openPdfReport } from "../lib/export";
 import type {
   TicketDistrictsResp,
   TicketSummaryResp,
@@ -223,6 +223,10 @@ export default function PostcodeVolume() {
                       { key: "purchase_date", label: "Purchase date" },
                     ],
                   ),
+              },
+              {
+                label: "PDF report (current filters)",
+                onClick: () => openPdfReport(q),
               },
             ]}
           />

@@ -7,7 +7,7 @@ import Map2D, { type MapPoint, type MapPath } from "../viz/Map2D";
 import ExportMenu from "../components/ExportMenu";
 import OrgToggle from "../components/OrgToggle";
 import InfoTooltip from "../components/InfoTooltip";
-import { downloadCsv } from "../lib/export";
+import { downloadCsv, openPdfReport } from "../lib/export";
 import { TimelineSlider, msToDateStr } from "../components/TimelineSlider";
 
 // ── Types matching the analytics endpoints ────────────────────────────────
@@ -338,6 +338,10 @@ export default function JourneyMap() {
                       { key: "to_name", label: "To" },
                       { key: "count", label: "Visitors" },
                     ]),
+                },
+                {
+                  label: "PDF report (current filters)",
+                  onClick: () => openPdfReport(q),
                 },
               ]}
             />
