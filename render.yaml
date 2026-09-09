@@ -110,6 +110,15 @@ services:
           type: keyvalue
           name: sadie-redis
           property: connectionString
+      # Django's response/throttle cache. Without this it falls back to
+      # settings.py's docker-compose-only default ("redis://redis:6379/1"),
+      # which doesn't resolve on Render and breaks any view that touches the
+      # cache (e.g. DRF's AnonRateThrottle on /api/auth/login/).
+      - key: REDIS_CACHE_URL
+        fromService:
+          type: keyvalue
+          name: sadie-redis
+          property: connectionString
       # Secrets (only sadie-web needs these: Mailgun is only used by the
       # create_account email view, MapTiler by /api/config/, and the
       # superuser vars only by this service's initialDeployHook).
