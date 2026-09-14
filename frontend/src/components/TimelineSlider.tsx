@@ -98,7 +98,7 @@ export function TimelineSlider({
 
   const onTrackPointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
-      if ((e.target as HTMLElement).dataset.handle) {
+      if ((e.target as HTMLElement).closest("[data-handle]")) {
         dragStartX.current = e.clientX;
         dragStartOffset.current = offsetDays;
         e.currentTarget.setPointerCapture(e.pointerId);

@@ -141,6 +141,17 @@ class StatsEndpointsTest(TestCase):
         total = sum(p["count"] for p in d["series"])
         self.assertEqual(total, 7)
 
+    def test_interactions_timeseries_excludes_future_dates(self):
+        UserHashInteraction.objects.create(
+            user_hash="f" * 64,
+            interaction_type="event",
+            organisation=self.org_a,
+            interaction_date=date.today() + timedelta(days=30),
+        )
+        r = self.client.get("/api/analytics/stats/interactions-timeseries/")
+        total = sum(p["count"] for p in r.json()["series"])
+        self.assertEqual(total, 7)
+
     def test_interactions_by_type(self):
         r = self.client.get("/api/analytics/stats/interactions-by-type/")
         rows = {r["interaction_type"]: r["n"] for r in r.json()["results"]}

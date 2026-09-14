@@ -65,7 +65,7 @@ export default function MapPage() {
     queryFn: () =>
       api<{ results: EventRow[]; count: number }>(
         "/api/analytics/viz/event-list/",
-        { query: { ...q, limit: "1000" } },
+        { query: { ...q, limit: "2000" } },
       ),
     enabled: mode === "events",
   });

@@ -200,6 +200,27 @@ class VizEndpointsTest(TestCase):
         self.assertEqual(data["limit"], 10)
         self.assertEqual(data["results"][0]["organisation_id"], self.org_b.id)
 
+    def test_event_list_defaults_to_window_around_today(self):
+        # Outside the default ±180-day window, so excluded unless a wider
+        # explicit date range is requested.
+        far_past = Event.objects.create(
+            organisation=self.org_a,
+            title="Long ago",
+            start_datetime=timezone.now() - timedelta(days=365),
+            location=self.loc_a,
+        )
+
+        r = self.c.get("/api/analytics/viz/event-list/")
+        ids = {row["id"] for row in r.json()["results"]}
+        self.assertNotIn(far_past.id, ids)
+
+        r = self.c.get(
+            "/api/analytics/viz/event-list/",
+            {"date_from": (date.today() - timedelta(days=400)).isoformat()},
+        )
+        ids = {row["id"] for row in r.json()["results"]}
+        self.assertIn(far_past.id, ids)
+
     def test_postcode_records(self):
         r = self.c.get("/api/analytics/viz/postcode-records/")
         self.assertEqual(r.status_code, 200)

@@ -34,7 +34,6 @@ const NAV: NavEntry[] = [
     label: "Analysis",
     items: [
       { to: "/insights/trends", label: "Trends" },
-      { to: "/insights/compare", label: "Compare" },
       { to: "/insights/categories", label: "Categories" },
     ],
   },
@@ -50,6 +49,7 @@ const NAV: NavEntry[] = [
   {
     label: "Internal",
     items: [
+      { to: "/insights/compare", label: "Compare", staff: true },
       { to: "/insights/journeys", label: "Visitor Activity", staff: true },
       { to: "/insights/organisations", label: "Organisations", staff: true },
       { to: "/insights/postcodes", label: "Postcodes (legacy)", staff: true },

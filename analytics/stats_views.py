@@ -137,8 +137,11 @@ def top_categories(request: Request) -> Response:
 def interactions_timeseries(request: Request) -> Response:
     """Monthly interaction totals for the journeys page line chart."""
     p, _, interactions, _ = _filtered(request)
+    # Exclude future-dated rows (synthesized/imported demo data can include them)
+    # so trend charts never show incomplete/future months.
     rows = (
-        interactions.annotate(month=TruncMonth("interaction_date"))
+        interactions.filter(interaction_date__lte=date.today())
+        .annotate(month=TruncMonth("interaction_date"))
         .values("month")
         .annotate(count=Count("id"))
         .order_by("month")
