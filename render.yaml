@@ -119,9 +119,12 @@ services:
           type: keyvalue
           name: sadie-redis
           property: connectionString
-      # Secrets (only sadie-web needs these: Mailgun is only used by the
-      # create_account email view, MapTiler by /api/config/, and the
-      # superuser vars only by this service's initialDeployHook).
+      # Secrets (MapTiler is only used by /api/config/, and the superuser
+      # vars only by this service's initialDeployHook. Mailgun is used both
+      # by the create_account email view here AND by the digest/anomaly-alert
+      # Celery tasks in analytics/tasks.py — those run on sadie-celery, which
+      # needs the same three Mailgun vars below, or they silently fall back
+      # to the console email backend and never actually send).
       - key: MAILGUN_API_KEY
         sync: false
       - key: MAILGUN_SENDER_DOMAIN
@@ -160,6 +163,15 @@ services:
           type: keyvalue
           name: sadie-redis
           property: connectionString
+      # This worker executes send_scheduled_digests/detect_anomalies
+      # (analytics/tasks.py), which send real email — needs the same
+      # Mailgun secrets as sadie-web (sync: false, set manually below).
+      - key: MAILGUN_API_KEY
+        sync: false
+      - key: MAILGUN_SENDER_DOMAIN
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
 
   - type: worker
     name: sadie-celery-beat
