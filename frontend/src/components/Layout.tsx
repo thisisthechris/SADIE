@@ -9,7 +9,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMe } from "../lib/auth";
 import { useFilters } from "../lib/filters";
 import { api } from "../lib/api";
-import { openPdfReport } from "../lib/export";
 import type { OrganisationSummary, Paginated } from "../lib/types";
 import SearchModal from "./SearchModal";
 import Logo from "./Logo";
@@ -34,6 +33,7 @@ const NAV: NavEntry[] = [
     label: "Analysis",
     items: [
       { to: "/insights/trends", label: "Trends" },
+      { to: "/insights/compare", label: "Compare" },
       { to: "/insights/categories", label: "Categories" },
     ],
   },
@@ -49,7 +49,6 @@ const NAV: NavEntry[] = [
   {
     label: "Internal",
     items: [
-      { to: "/insights/compare", label: "Compare", staff: true },
       { to: "/insights/journeys", label: "Visitor Activity", staff: true },
       { to: "/insights/organisations", label: "Organisations", staff: true },
       { to: "/insights/postcodes", label: "Postcodes (legacy)", staff: true },
@@ -159,7 +158,6 @@ export default function Layout() {
             </h1>
           )}
           <div className="ml-auto flex items-center gap-2">
-            {isStaff && <ExportPdfButton />}
             <button
               onClick={() => setCmdOpen(true)}
               className="btn-ghost text-muted text-xs"
@@ -195,36 +193,6 @@ export default function Layout() {
       </footer>
       <SearchModal open={cmdOpen} onClose={() => setCmdOpen(false)} />
     </div>
-  );
-}
-
-/**
- * ExportPdfButton: staff-only PDF export of whatever the global filter store
- * (useFilters) currently holds — available in the header on every page so
- * it's not buried behind a single organisation's detail view.
- */
-function ExportPdfButton() {
-  const f = useFilters();
-
-  const orgs = useQuery({
-    queryKey: ["filter-orgs-banner"],
-    queryFn: () =>
-      api<Paginated<OrganisationSummary>>("/api/organisations/", {
-        query: { page_size: 200, ordering: "name" },
-      }),
-    staleTime: 5 * 60_000,
-    enabled: Boolean(f.org),
-  });
-  const orgName = f.org ? orgs.data?.results.find((o) => String(o.id) === f.org)?.name ?? `#${f.org}` : null;
-
-  return (
-    <button
-      onClick={() => openPdfReport(f.asQuery())}
-      className="btn-ghost text-muted text-xs"
-      title={orgName ? `Export PDF (${orgName})` : "Export PDF (all organisations)"}
-    >
-      Export PDF
-    </button>
   );
 }
 

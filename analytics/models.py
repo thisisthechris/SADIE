@@ -39,6 +39,7 @@ class UserHashInteraction(models.Model):
         indexes = [
             models.Index(fields=["user_hash", "interaction_date"]),
             models.Index(fields=["organisation", "interaction_date"]),
+            models.Index(fields=["interaction_date"]),
         ]
 
     def __str__(self):
@@ -62,6 +63,8 @@ class PostcodeAreaInteraction(models.Model):
         ordering = ["-period_end", "-interaction_count"]
         indexes = [
             models.Index(fields=["postcode", "period_start", "period_end"]),
+            models.Index(fields=["period_start"]),
+            models.Index(fields=["period_start", "postcode"]),
         ]
 
     def __str__(self):
@@ -109,6 +112,9 @@ class PostcodeEventInteraction(models.Model):
         ordering = ["-interaction_date", "-interaction_count"]
         indexes = [
             models.Index(fields=["postcode", "interaction_date"]),
+            models.Index(fields=["area"]),
+            models.Index(fields=["area", "interaction_date"]),
+            models.Index(fields=["interaction_date"]),
         ]
 
     def __str__(self):
@@ -155,6 +161,9 @@ class PostcodeTicketPurchase(models.Model):
         ordering = ["-purchase_date"]
         indexes = [
             models.Index(fields=["postcode", "purchase_date"]),
+            models.Index(fields=["purchase_date", "event"]),
+            models.Index(fields=["event"]),
+            models.Index(fields=["purchase_date"]),
         ]
 
     def __str__(self):

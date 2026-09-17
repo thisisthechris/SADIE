@@ -69,7 +69,13 @@ class Event(models.Model):
 
     class Meta:
         ordering = ["start_datetime"]
-        indexes = [GinIndex(fields=["search_vector"], name="event_search_vector_gin")] if _HAS_PG_SEARCH else []
+        indexes = (
+            [GinIndex(fields=["search_vector"], name="event_search_vector_gin")] if _HAS_PG_SEARCH else []
+        ) + [
+            models.Index(fields=["start_datetime"]),
+            models.Index(fields=["organisation", "start_datetime"]),
+            models.Index(fields=["created_at"]),
+        ]
 
     def __str__(self):
         return f"{self.title} - {self.organisation.name}"

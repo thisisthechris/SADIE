@@ -86,6 +86,8 @@ def parse_filter_params(source: Any) -> dict:
 def events_qs(p: Mapping[str, str], base=None):
     """Apply filter params to an ``Event`` queryset."""
     qs = base if base is not None else Event.objects.all()
+    # Optimize JOINs for common filters
+    qs = qs.select_related("organisation", "location").prefetch_related("categories")
     ids = _org_ids_for(p)
     if ids:
         qs = qs.filter(organisation_id__in=ids)
@@ -103,6 +105,8 @@ def events_qs(p: Mapping[str, str], base=None):
 def interactions_qs(p: Mapping[str, str], base=None):
     """Apply filter params to a ``UserHashInteraction`` queryset."""
     qs = base if base is not None else UserHashInteraction.objects.all()
+    # Optimize JOINs: fetch related Event (for category filtering) and Organisation
+    qs = qs.select_related("event", "organisation", "location")
     ids = _org_ids_for(p)
     if ids:
         qs = qs.filter(organisation_id__in=ids)
@@ -120,6 +124,8 @@ def interactions_qs(p: Mapping[str, str], base=None):
 def postcode_qs(p: Mapping[str, str], base=None):
     """Apply filter params to a ``PostcodeAreaInteraction`` queryset."""
     qs = base if base is not None else PostcodeAreaInteraction.objects.all()
+    # Optimize JOIN for Organisation filtering
+    qs = qs.select_related("organisation")
     ids = _org_ids_for(p)
     if ids:
         qs = qs.filter(organisation_id__in=ids)
@@ -138,6 +144,8 @@ def postcode_event_qs(p: Mapping[str, str], base=None):
     period-based ``postcode_qs``.
     """
     qs = base if base is not None else PostcodeEventInteraction.objects.all()
+    # Optimize JOINs: fetch related Event (for category filtering), Organisation, and Location
+    qs = qs.select_related("event", "organisation", "location").prefetch_related("event__categories")
     ids = _org_ids_for(p)
     if ids:
         qs = qs.filter(organisation_id__in=ids)
@@ -158,6 +166,8 @@ def postcode_ticket_qs(p: Mapping[str, str], base=None):
     rather than the event date.
     """
     qs = base if base is not None else PostcodeTicketPurchase.objects.all()
+    # Optimize JOINs: fetch related Event (for category filtering), Organisation, and Location
+    qs = qs.select_related("event", "organisation", "location").prefetch_related("event__categories")
     ids = _org_ids_for(p)
     if ids:
         qs = qs.filter(organisation_id__in=ids)

@@ -105,6 +105,7 @@ def summary(request: Request) -> Response:
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticatedOrReadOnly])
+@cached_response(timeout=900)
 def top_orgs(request: Request) -> Response:
     """Top organisations by filtered-event count."""
     p, events, _, _ = _filtered(request)
@@ -119,6 +120,7 @@ def top_orgs(request: Request) -> Response:
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticatedOrReadOnly])
+@cached_response(timeout=900)
 def top_categories(request: Request) -> Response:
     """Top categories by filtered-event count."""
     p, events, _, _ = _filtered(request)
@@ -134,14 +136,12 @@ def top_categories(request: Request) -> Response:
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticatedOrReadOnly])
+@cached_response(timeout=900)
 def interactions_timeseries(request: Request) -> Response:
     """Monthly interaction totals for the journeys page line chart."""
     p, _, interactions, _ = _filtered(request)
-    # Exclude future-dated rows (synthesized/imported demo data can include them)
-    # so trend charts never show incomplete/future months.
     rows = (
-        interactions.filter(interaction_date__lte=date.today())
-        .annotate(month=TruncMonth("interaction_date"))
+        interactions.annotate(month=TruncMonth("interaction_date"))
         .values("month")
         .annotate(count=Count("id"))
         .order_by("month")
@@ -162,6 +162,7 @@ def interactions_timeseries(request: Request) -> Response:
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticatedOrReadOnly])
+@cached_response(timeout=900)
 def interactions_by_type(request: Request) -> Response:
     """Breakdown of interactions by ``interaction_type``."""
     p, _, interactions, _ = _filtered(request)
@@ -199,6 +200,7 @@ def event_stats(request: Request, event_id: int) -> Response:
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticatedOrReadOnly])
+@cached_response(timeout=900)
 def postcode_aggregates(request: Request) -> Response:
     """Per-postcode-area sums of interaction count.
 
@@ -339,6 +341,7 @@ def headline(request: Request) -> Response:
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticatedOrReadOnly])
+@cached_response(timeout=900)
 def visitors_new_returning(request: Request) -> Response:
     """Monthly new vs returning visitor counts.
 
@@ -398,6 +401,7 @@ def visitors_new_returning(request: Request) -> Response:
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticatedOrReadOnly])
+@cached_response(timeout=900)
 def activity_by_weekday(request: Request) -> Response:
     """Event count and interaction count by weekday (0=Monday, 6=Sunday).
 
@@ -453,6 +457,7 @@ def activity_by_weekday(request: Request) -> Response:
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticatedOrReadOnly])
+@cached_response(timeout=900)
 def category_trends(request: Request) -> Response:
     """Monthly interaction counts grouped by category.
 
@@ -499,6 +504,7 @@ def category_trends(request: Request) -> Response:
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticatedOrReadOnly])
+@cached_response(timeout=900)
 def top_venues(request: Request) -> Response:
     """Top locations (venues) by event count and interaction count.
 
@@ -689,6 +695,7 @@ def engagement(request: Request) -> Response:
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticatedOrReadOnly])
+@cached_response(timeout=900)
 def peak_times(request: Request) -> Response:
     """Event count by hour-of-day (0-23), based on ``start_datetime``.
 
@@ -725,6 +732,7 @@ def peak_times(request: Request) -> Response:
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticatedOrReadOnly])
+@cached_response(timeout=900)
 def attendance_frequency(request: Request) -> Response:
     """Distribution of how many distinct events each visitor has attended.
 
@@ -792,6 +800,7 @@ def attendance_frequency(request: Request) -> Response:
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticatedOrReadOnly])
+@cached_response(timeout=900)
 def event_lead_time(request: Request) -> Response:
     """Average lead time (days) between an event being scraped in and taking place.
 
@@ -847,6 +856,7 @@ def event_lead_time(request: Request) -> Response:
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticatedOrReadOnly])
+@cached_response(timeout=900)
 def lead_time_trend(request: Request) -> Response:
     """Monthly average lead time (days) between scrape and event date.
 
@@ -909,6 +919,7 @@ def _top_districts_limit(request: Request, default: int = 8, maximum: int = 20) 
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticatedOrReadOnly])
+@cached_response(timeout=900)
 def peak_times_by_postcode(request: Request) -> Response:
     """Interaction volume by daypart (Morning/Afternoon/Evening/Night), per postcode district.
 
@@ -956,6 +967,7 @@ def peak_times_by_postcode(request: Request) -> Response:
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticatedOrReadOnly])
+@cached_response(timeout=900)
 def event_types_by_postcode(request: Request) -> Response:
     """Interaction volume by event category, per postcode district.
 
@@ -1009,6 +1021,7 @@ def event_types_by_postcode(request: Request) -> Response:
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticatedOrReadOnly])
+@cached_response(timeout=900)
 def postcode_engagement_trend(request: Request) -> Response:
     """Monthly interaction totals for the top 5 postcode districts.
 
@@ -1060,6 +1073,7 @@ def postcode_engagement_trend(request: Request) -> Response:
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticatedOrReadOnly])
+@cached_response(timeout=900)
 def ticket_volume_trend(request: Request) -> Response:
     """Monthly ticket-purchase volume (tickets + orders), from ``PostcodeTicketPurchase``.
 
@@ -1093,6 +1107,7 @@ def ticket_volume_trend(request: Request) -> Response:
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticatedOrReadOnly])
+@cached_response(timeout=900)
 def peak_times_tickets(request: Request) -> Response:
     """Ticket volume by hour-of-day, based on the linked event's start time.
 
@@ -1139,6 +1154,7 @@ def peak_times_tickets(request: Request) -> Response:
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticatedOrReadOnly])
+@cached_response(timeout=900)
 def weather_correlation(request: Request) -> Response:
     """Daily interactions + ticket volume joined with Plymouth weather.
 

@@ -7,7 +7,7 @@ from organisations.models import Organisation
 
 from .models import DailyStatsSnapshot, PostcodeAreaInteraction, UserHashInteraction
 from .queries import interactions_qs, parse_filter_params
-from .reports import compute_filtered_report_data, render_org_report_pdf
+from .reports import compute_org_report_data, render_org_report_pdf
 from .tasks import _digest_is_due, detect_anomalies, refresh_daily_stats_snapshot, send_scheduled_digests
 
 
@@ -129,18 +129,13 @@ class OrgReportTest(TestCase):
         self.period_start = date(2026, 1, 1)
         self.period_end = date(2026, 1, 31)
 
-    def test_compute_filtered_report_data(self):
-        data = compute_filtered_report_data({"org": str(self.org.pk)}, self.period_start, self.period_end)
+    def test_compute_org_report_data(self):
+        data = compute_org_report_data(self.org, self.period_start, self.period_end)
         self.assertEqual(data["event_count"], 1)
         self.assertEqual(data["interaction_count"], 1)
         self.assertEqual(data["unique_visitors"], 1)
         self.assertEqual(data["top_venues"][0]["location__name"], "Main Hall")
         self.assertEqual(data["top_categories"][0]["name"], "Music")
-        self.assertEqual(data["scope_label"], f"{self.org.name} · All categories")
-
-    def test_compute_filtered_report_data_city_wide(self):
-        data = compute_filtered_report_data({}, self.period_start, self.period_end)
-        self.assertEqual(data["scope_label"], "All organisations · All categories")
 
     def test_render_org_report_pdf(self):
         pdf_bytes = render_org_report_pdf(self.org, self.period_start, self.period_end)
@@ -308,44 +303,6 @@ class ReportSubscriptionAndDownloadTest(TestCase):
     def test_download_requires_auth(self):
         r = self.client.get(f"/api/analytics/reports/organisations/{self.org.pk}/pdf/")
         self.assertIn(r.status_code, (401, 403))
-
-    def test_filtered_report_pdf_staff_only(self):
-        self.client.force_authenticate(self.member)
-        r = self.client.get("/api/analytics/reports/pdf/")
-        self.assertEqual(r.status_code, 403)
-
-    def test_filtered_report_pdf_staff_city_wide(self):
-        self.client.force_authenticate(self.staff)
-        r = self.client.get("/api/analytics/reports/pdf/")
-        self.assertEqual(r.status_code, 200)
-        self.assertEqual(r["Content-Type"], "application/pdf")
-        self.assertTrue(r.content.startswith(b"%PDF"))
-
-    def test_filtered_report_pdf_org_scoped(self):
-        self.client.force_authenticate(self.staff)
-        r = self.client.get(f"/api/analytics/reports/pdf/?org={self.org.pk}")
-        self.assertEqual(r.status_code, 200)
-        self.assertTrue(r.content.startswith(b"%PDF"))
-
-    def test_anomaly_alerts_lists_recent_alerts(self):
-        from datetime import date, timedelta
-
-        from .models import AnomalyAlert
-
-        AnomalyAlert.objects.create(
-            organisation=self.org,
-            metric="interactions",
-            week_start=date.today() - timedelta(days=7),
-            actual_value=5,
-            baseline_mean=50,
-            baseline_stddev=10,
-            z_score=-4.5,
-        )
-        self.client.force_authenticate(self.member)
-        r = self.client.get(f"/api/analytics/reports/organisations/{self.org.pk}/anomalies/")
-        self.assertEqual(r.status_code, 200)
-        self.assertEqual(len(r.data["results"]), 1)
-        self.assertEqual(r.data["results"][0]["direction"], "drop")
 
 
 class RefreshDailyStatsSnapshotTaskTest(TestCase):
