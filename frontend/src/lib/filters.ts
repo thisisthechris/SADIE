@@ -18,7 +18,11 @@ const empty: FilterState = {
   org: "",
   category: "",
   date_from: "",
-  date_to: "",
+  // TEMPORARY (demo prep): synthesized data extends well past today, which
+  // looks messy in charts/sliders. Default to end of September 2026 so
+  // nothing after that date is shown unless a user explicitly widens the
+  // range. Revert to "" once the demo period has passed.
+  date_to: "2026-09-30",
   search: "",
   period: "",
   itype: "",
