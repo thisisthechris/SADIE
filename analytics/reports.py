@@ -94,6 +94,16 @@ def compute_filtered_report_data(p: dict, period_start: date, period_end: date) 
     }
 
 
+def compute_org_report_data(org: Organisation, period_start: date, period_end: date) -> dict:
+    """Aggregate activity for a single org over [period_start, period_end].
+
+    Thin wrapper around ``compute_filtered_report_data`` kept for the
+    scheduled-digest task and the org-specific download endpoint, which both
+    deal in a concrete ``Organisation`` rather than a raw filter dict.
+    """
+    return compute_filtered_report_data({"org": str(org.pk)}, period_start, period_end)
+
+
 def render_report_pdf(p: dict, period_start: date, period_end: date) -> bytes:
     """Render the generic filter-driven PDF report as bytes."""
     from weasyprint import HTML  # imported lazily — heavy, native-lib-backed dependency

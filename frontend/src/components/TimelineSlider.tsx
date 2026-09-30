@@ -147,16 +147,24 @@ export function TimelineSlider({
         cursor.setDate(cursor.getDate() + 7);
       }
     } else {
+      // Decimate to a fixed max tick count so month labels never crowd/overlap,
+      // regardless of how many months the full min→max range spans.
+      const MAX_MONTH_TICKS = 12;
+      const totalMonths = Math.max(
+        1,
+        Math.round((maxMs - minMs) / (30.44 * 86_400_000)),
+      );
+      const monthStep = Math.max(1, Math.ceil(totalMonths / MAX_MONTH_TICKS));
       const cursor = new Date(minMs);
       cursor.setDate(1);
-      cursor.setMonth(cursor.getMonth() + 1);
+      cursor.setMonth(cursor.getMonth() + monthStep);
       while (cursor.getTime() < maxMs) {
         const frac = (cursor.getTime() - minMs) / (maxMs - minMs);
         out.push({
           label: cursor.toLocaleDateString(undefined, { month: "short", year: "2-digit" }),
           frac,
         });
-        cursor.setMonth(cursor.getMonth() + 1);
+        cursor.setMonth(cursor.getMonth() + monthStep);
       }
     }
     return out;
@@ -294,8 +302,8 @@ export function TimelineSlider({
                 width: `${Math.max(windowWidthFrac * 100, 1)}%`,
                 background: gradientColors?.length
                   ? `linear-gradient(to right, ${gradientColors.join(", ")})`
-                  : "rgba(var(--color-accent), 0.25)",
-                opacity: 0.8,
+                  : "rgba(var(--color-accent), 0.35)",
+                opacity: 0.75,
               }}
             >
               <div className="absolute inset-0 flex items-center justify-center gap-0.5 pointer-events-none">

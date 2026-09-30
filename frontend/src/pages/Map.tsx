@@ -36,6 +36,34 @@ interface EventRow {
 
 type Mode = "venues" | "events";
 
+// Plymouth Culture brand gradient endpoints (earliest → latest), matching
+// the Journey Map's scrubber handle.
+const BRAND_EARLY = "#001FCC"; // primary blue
+const BRAND_LATE = "#f73d85"; // pink
+const GRADIENT_STEPS = 6;
+
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace("#", "");
+  return [
+    parseInt(h.slice(0, 2), 16),
+    parseInt(h.slice(2, 4), 16),
+    parseInt(h.slice(4, 6), 16),
+  ];
+}
+
+function lerpColor(a: string, b: string, t: number): string {
+  const [ar, ag, ab] = hexToRgb(a);
+  const [br, bg, bb] = hexToRgb(b);
+  const r = Math.round(ar + (br - ar) * t);
+  const g = Math.round(ag + (bg - ag) * t);
+  const bl = Math.round(ab + (bb - ab) * t);
+  return `rgb(${r}, ${g}, ${bl})`;
+}
+
+const GRADIENT_COLORS = Array.from({ length: GRADIENT_STEPS }, (_, i) =>
+  lerpColor(BRAND_EARLY, BRAND_LATE, i / (GRADIENT_STEPS - 1)),
+);
+
 export default function MapPage() {
   const f = useFilters();
   const cfg = useConfig();
@@ -70,14 +98,17 @@ export default function MapPage() {
     enabled: mode === "events",
   });
 
-  const eventTimes = useMemo(() => {
+  const eventTimestamps = useMemo(() => {
     const rows = events.data?.results ?? [];
-    const ts = rows
+    return rows
       .map((r) => (r.start ? new Date(r.start).getTime() : NaN))
       .filter((n) => !Number.isNaN(n));
-    if (!ts.length) return null;
-    return { min: Math.min(...ts), max: Math.max(...ts) };
   }, [events.data]);
+
+  const eventTimes = useMemo(() => {
+    if (!eventTimestamps.length) return null;
+    return { min: Math.min(...eventTimestamps), max: Math.max(...eventTimestamps) };
+  }, [eventTimestamps]);
 
   // Seek to today when event data first loads
   useEffect(() => {
@@ -200,6 +231,8 @@ export default function MapPage() {
           onOffsetChange={setOffsetDays}
           onWindowChange={setWindowDays}
           countLabel={`${eventPoints.length} of ${events.data?.count ?? 0} events`}
+          dataTimestamps={eventTimestamps}
+          gradientColors={GRADIENT_COLORS}
         />
       )}
 

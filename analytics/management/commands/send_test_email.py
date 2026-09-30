@@ -41,7 +41,9 @@ class Command(BaseCommand):
 
         send_mail(
             subject="SADIE test email",
-            message=f"This is a test email sent via 'manage.py send_test_email' to verify {recipient} can receive mail.",
+            message=(
+                f"This is a test email sent via 'manage.py send_test_email' to verify {recipient} can receive mail."
+            ),
             from_email=None,  # uses settings.DEFAULT_FROM_EMAIL
             recipient_list=[recipient],
             fail_silently=False,

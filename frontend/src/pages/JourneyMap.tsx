@@ -256,7 +256,11 @@ export default function JourneyMap() {
   }, [flows.data, myOrgIds]);
 
   // ── Individual visitors → coloured paths + step markers ──
-  const journeys = paths.data?.journeys ?? [];
+  // Only show visitors with a manageable journey length (4-10 stops) so the
+  // picker isn't dominated by one-off or extreme outlier visitors.
+  const journeys = (paths.data?.journeys ?? []).filter(
+    (j) => j.step_count >= 4 && j.step_count <= 10,
+  );
   const activeVisitor = selectedVisitor
     ? journeys.find((j) => j.visitor === selectedVisitor) ?? null
     : null;

@@ -81,9 +81,22 @@ export interface VenueFlowsResp {
   nodes: VenueNode[];
 }
 
-export function districtColor(districts: District[], code: string): string {
-  const idx = districts.findIndex((d) => d.code === code);
-  return DISTRICT_COLORS[idx % DISTRICT_COLORS.length] ?? "#6366f1";
+/**
+ * Deterministic colour for a postcode district code, independent of any
+ * particular array's ordering. Different endpoints (postcode-districts vs
+ * postcode-flows) return districts in different orders, so looking up a
+ * colour by array index made the same district render in different colours
+ * depending on which list happened to be in scope (choropleth vs sidebar
+ * chips vs Sankey lines). Deriving the index from the code itself keeps a
+ * given district's colour consistent everywhere.
+ */
+export function districtColor(code: string): string {
+  const numMatch = code.match(/(\d+)/);
+  const idx = numMatch
+    ? parseInt(numMatch[1], 10) - 1
+    : code.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+  const n = DISTRICT_COLORS.length;
+  return DISTRICT_COLORS[((idx % n) + n) % n] ?? "#6366f1";
 }
 
 export function escHtml(s: string) {

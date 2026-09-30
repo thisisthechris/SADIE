@@ -329,8 +329,19 @@ def event_list(request: Request) -> Response:
     Honours the standard FilterBar params and an optional ``limit``
     (default 500, max 2000). Powers the "Events" mode on /app/map/,
     which adds a client-side time slider on top of the returned set.
+
+    Like ``spatiotemporal``, defaults to a window around today when no
+    explicit date filter is given — otherwise ``order_by("start_datetime")``
+    combined with ``limit`` would silently return only the earliest N
+    events overall (which can exclude today/future events entirely once
+    the filtered total exceeds ``limit``), starving the time slider of any
+    current data to show.
     """
     p = parse_filter_params(request)
+    if not p.get("dfrom"):
+        p["dfrom"] = (date.today() - timedelta(days=180)).isoformat()
+    if not p.get("dto"):
+        p["dto"] = (date.today() + timedelta(days=180)).isoformat()
     try:
         limit = max(1, min(int(request.GET.get("limit", "500")), 2000))
     except (TypeError, ValueError):

@@ -154,7 +154,7 @@ export default function PostcodeAreasMap() {
             color: isCore
               ? metric === "tickets"
                 ? TICKET_TINT
-                : districtColor(districts, code)
+                : districtColor(code)
               : "#94a3b8",
             selected: selected === code,
             // Lightened ceiling — this was previously reported as "too dark":
@@ -183,6 +183,19 @@ export default function PostcodeAreasMap() {
     }
     return districts.filter((d) => CORE_PLYMOUTH.has(d.code)).reduce((s, d) => s + d.total, 0);
   }, [metric, districts, ticketDistrictsQuery.data]);
+
+  // Surface loading/error state explicitly — without this, a slow or failed
+  // fetch on navigation just showed "0 interactions" and an uncoloured map,
+  // which reads as "nothing loaded" rather than "still loading" or "failed".
+  const dataLoading =
+    summary.isLoading ||
+    boundariesQuery.isLoading ||
+    (metric === "tickets" && ticketDistrictsQuery.isLoading);
+  const dataError =
+    summary.isError ||
+    boundariesQuery.isError ||
+    corridorsQuery.isError ||
+    (metric === "tickets" && ticketDistrictsQuery.isError);
 
   // Colour transport corridors by mode + attach hover tooltips.
   const corridors = useMemo<CorridorFeatureCollection | undefined>(() => {
@@ -273,7 +286,7 @@ export default function PostcodeAreasMap() {
         id: `sk-${fl.from_code}-${fl.to_location_id}`,
         coordinates: [[fl.from_lng, fl.from_lat], [fl.to_lng, fl.to_lat]] as [[number, number], [number, number]],
         color: CORE_PLYMOUTH.has(fl.from_code)
-          ? districtColor(districts, fl.from_code)
+          ? districtColor(fl.from_code)
           : "#94a3b8",
         width: 0.5 + frac * 4,
         opacity: 0.25 + frac * 0.55,
@@ -296,6 +309,23 @@ export default function PostcodeAreasMap() {
         </div>
         <OrgToggle />
       </div>
+
+      {dataError && (
+        <div className="card p-3 flex items-center justify-between gap-3 text-sm text-red-700 bg-red-50 border border-red-200">
+          <span>Couldn't load postcode data — some layers may be missing.</span>
+          <button
+            onClick={() => {
+              summary.refetch();
+              boundariesQuery.refetch();
+              corridorsQuery.refetch();
+              if (metric === "tickets") ticketDistrictsQuery.refetch();
+            }}
+            className="btn-ghost text-xs font-medium"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* Map */}
       {!mapKey ? (
@@ -359,11 +389,17 @@ export default function PostcodeAreasMap() {
               </button>
             </div>
             <span className="text-xs text-muted">
-              Showing{" "}
-              <strong className="font-semibold text-foreground">
-                {metricTotal.toLocaleString()}
-              </strong>{" "}
-              {metric === "tickets" ? "tickets" : "interactions"} across Plymouth districts
+              {dataLoading ? (
+                "Loading postcode data…"
+              ) : (
+                <>
+                  Showing{" "}
+                  <strong className="font-semibold text-foreground">
+                    {metricTotal.toLocaleString()}
+                  </strong>{" "}
+                  {metric === "tickets" ? "tickets" : "interactions"} across Plymouth districts
+                </>
+              )}
             </span>
 
             <div className="flex flex-wrap items-center gap-3 ml-auto">
@@ -424,7 +460,7 @@ export default function PostcodeAreasMap() {
                 <div className="flex flex-col gap-1.5">
                   {postcodeNodesQuery.data.postcode_nodes.map((n) => {
                     const chipColor = CORE_PLYMOUTH.has(n.code)
-                      ? districtColor(postcodeNodesQuery.data.postcode_nodes, n.code)
+                      ? districtColor(n.code)
                       : "#94a3b8";
                     return (
                       <button
