@@ -9,6 +9,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import { useLegendToggle } from "../lib/useLegendToggle";
 
 interface DistrictSegmentDatum {
   district: string;
@@ -53,6 +54,8 @@ export function DistrictStackedBar({
   segments,
   height = 300,
 }: DistrictStackedBarProps) {
+  const { isHidden, onLegendClick, legendFormatter } = useLegendToggle();
+
   const chartData = useMemo(() => {
     const map = new Map<string, ChartRow>();
     for (const item of data) {
@@ -95,7 +98,11 @@ export function DistrictStackedBar({
           labelStyle={{ color: "#1f2937", fontWeight: 600 }}
           formatter={(value: number) => value.toLocaleString()}
         />
-        <Legend wrapperStyle={{ paddingTop: 16, fontSize: 12 }} />
+        <Legend
+          wrapperStyle={{ paddingTop: 16, fontSize: 12, cursor: "pointer" }}
+          onClick={onLegendClick}
+          formatter={legendFormatter}
+        />
         {segmentKeys.map((seg, i) => (
           <Bar
             key={seg}
@@ -105,6 +112,7 @@ export function DistrictStackedBar({
             name={seg}
             isAnimationActive
             animationDuration={400}
+            hide={isHidden(seg)}
           />
         ))}
       </BarChart>

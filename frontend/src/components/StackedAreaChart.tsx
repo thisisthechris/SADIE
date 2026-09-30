@@ -9,6 +9,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import { useLegendToggle } from "../lib/useLegendToggle";
 
 interface DataPoint {
   month: string;
@@ -42,6 +43,8 @@ export function StackedAreaChart({
   data,
   height = 300,
 }: StackedAreaChartProps) {
+  const { isHidden, onLegendClick, legendFormatter } = useLegendToggle();
+
   // Transform flat series into grouped by month
   const chartData = useMemo(() => {
     const monthMap = new Map<string, ChartDataItem>();
@@ -104,8 +107,10 @@ export function StackedAreaChart({
           formatter={(value: number) => value.toLocaleString()}
         />
         <Legend
-          wrapperStyle={{ paddingTop: 16, fontSize: 12 }}
+          wrapperStyle={{ paddingTop: 16, fontSize: 12, cursor: "pointer" }}
           iconType="line"
+          onClick={onLegendClick}
+          formatter={legendFormatter}
         />
         {categories.map((cat, i) => (
           <Area
@@ -117,6 +122,7 @@ export function StackedAreaChart({
             fill={`url(#grad-${i})`}
             isAnimationActive
             animationDuration={400}
+            hide={isHidden(cat)}
           />
         ))}
       </ComposedChart>

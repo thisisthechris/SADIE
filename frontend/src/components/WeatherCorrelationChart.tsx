@@ -9,6 +9,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import { useLegendToggle } from "../lib/useLegendToggle";
 
 interface WeatherCorrelationPoint {
   date: string;
@@ -62,6 +63,8 @@ function ChartTooltip({
  * sunshine hours alongside attendance to reveal correlation patterns.
  */
 export function WeatherCorrelationChart({ data, height = 300 }: WeatherCorrelationChartProps) {
+  const { isHidden, onLegendClick, legendFormatter } = useLegendToggle();
+
   if (!data || data.length === 0) {
     return null;
   }
@@ -93,8 +96,19 @@ export function WeatherCorrelationChart({ data, height = 300 }: WeatherCorrelati
           unit="°C"
         />
         <Tooltip content={<ChartTooltip />} />
-        <Legend wrapperStyle={{ fontSize: 12 }} />
-        <Bar yAxisId="left" dataKey="interactions" fill="#3b82f6" name="Interactions" radius={[3, 3, 0, 0]} />
+        <Legend
+          wrapperStyle={{ fontSize: 12, cursor: "pointer" }}
+          onClick={onLegendClick}
+          formatter={legendFormatter}
+        />
+        <Bar
+          yAxisId="left"
+          dataKey="interactions"
+          fill="#3b82f6"
+          name="Interactions"
+          radius={[3, 3, 0, 0]}
+          hide={isHidden("interactions")}
+        />
         <Line
           yAxisId="right"
           type="monotone"
@@ -104,6 +118,7 @@ export function WeatherCorrelationChart({ data, height = 300 }: WeatherCorrelati
           dot={false}
           connectNulls={false}
           name="Max temp (°C)"
+          hide={isHidden("temp_max_c")}
         />
         <Line
           yAxisId="right"
@@ -115,6 +130,7 @@ export function WeatherCorrelationChart({ data, height = 300 }: WeatherCorrelati
           connectNulls={false}
           strokeDasharray="4 2"
           name="Wind speed (m/s)"
+          hide={isHidden("wind_speed_ms")}
         />
         <Line
           yAxisId="right"
@@ -126,6 +142,7 @@ export function WeatherCorrelationChart({ data, height = 300 }: WeatherCorrelati
           connectNulls={false}
           strokeDasharray="2 4"
           name="Sunshine (hrs)"
+          hide={isHidden("sunshine_hours")}
         />
       </ComposedChart>
     </ResponsiveContainer>

@@ -8,6 +8,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import { useLegendToggle } from "../lib/useLegendToggle";
 
 interface TicketVolumeTrendPoint {
   month: string;
@@ -22,6 +23,8 @@ interface TicketVolumeTrendLineProps {
 
 /** Monthly ticket-purchase volume: tickets bought vs number of orders. */
 export function TicketVolumeTrendLine({ data, height = 300 }: TicketVolumeTrendLineProps) {
+  const { isHidden, onLegendClick, legendFormatter } = useLegendToggle();
+
   if (!data || data.length === 0) {
     return null;
   }
@@ -42,7 +45,11 @@ export function TicketVolumeTrendLine({ data, height = 300 }: TicketVolumeTrendL
           labelStyle={{ color: "#1f2937", fontWeight: 600 }}
           formatter={(value: number) => value.toLocaleString()}
         />
-        <Legend wrapperStyle={{ paddingTop: 16, fontSize: 12 }} />
+        <Legend
+          wrapperStyle={{ paddingTop: 16, fontSize: 12, cursor: "pointer" }}
+          onClick={onLegendClick}
+          formatter={legendFormatter}
+        />
         <Line
           type="monotone"
           dataKey="tickets"
@@ -52,6 +59,7 @@ export function TicketVolumeTrendLine({ data, height = 300 }: TicketVolumeTrendL
           dot={{ r: 3 }}
           isAnimationActive
           animationDuration={400}
+          hide={isHidden("tickets")}
         />
         <Line
           type="monotone"
@@ -62,6 +70,7 @@ export function TicketVolumeTrendLine({ data, height = 300 }: TicketVolumeTrendL
           dot={{ r: 3 }}
           isAnimationActive
           animationDuration={400}
+          hide={isHidden("orders")}
         />
       </LineChart>
     </ResponsiveContainer>

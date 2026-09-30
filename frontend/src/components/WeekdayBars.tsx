@@ -1,4 +1,5 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { useLegendToggle } from "../lib/useLegendToggle";
 
 interface WeekdayData {
   weekday: number;
@@ -13,6 +14,8 @@ interface WeekdayBarsProps {
 }
 
 export function WeekdayBars({ data, height = 300 }: WeekdayBarsProps) {
+  const { isHidden, onLegendClick, legendFormatter } = useLegendToggle();
+
   if (!data || data.length === 0) {
     return null;
   }
@@ -38,9 +41,13 @@ export function WeekdayBars({ data, height = 300 }: WeekdayBarsProps) {
           labelStyle={{ color: "#1f2937", fontWeight: 600 }}
           formatter={(value: number) => value.toLocaleString()}
         />
-        <Legend wrapperStyle={{ paddingTop: 16, fontSize: 12 }} />
-        <Bar dataKey="events" fill="#6366f1" name="Events" isAnimationActive animationDuration={400} />
-        <Bar dataKey="interactions" fill="#ec4899" name="Visitor interactions" isAnimationActive animationDuration={400} />
+        <Legend
+          wrapperStyle={{ paddingTop: 16, fontSize: 12, cursor: "pointer" }}
+          onClick={onLegendClick}
+          formatter={legendFormatter}
+        />
+        <Bar dataKey="events" fill="#6366f1" name="Events" isAnimationActive animationDuration={400} hide={isHidden("events")} />
+        <Bar dataKey="interactions" fill="#ec4899" name="Visitor interactions" isAnimationActive animationDuration={400} hide={isHidden("interactions")} />
       </BarChart>
     </ResponsiveContainer>
   );
