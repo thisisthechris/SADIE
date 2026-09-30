@@ -1,4 +1,4 @@
-﻿Order_ID,Event_Name,Event_Date,First_Name,Last_Name,Email,Postcode,Ticket_Type,Quantity,Ticket_Price,Purchase_Date,Attendance_Status
+Order_ID,Event_Name,Event_Date,First_Name,Last_Name,Email,Postcode,Ticket_Type,Quantity,Ticket_Price,Purchase_Date,Attendance_Status
 EVB-PC-342128,Music Showcase,2026-05-24,Alfie,Evans,alfie.evans65@hotmail.co.uk,PL1 5 SX,General Admission,1,29.85,2026-03-31 12:00,No-show
 EVB-PC-350480,Music Showcase,2026-05-24,Max,Bell,max.bell41@outlook.com,PL1 3 SE,General Admission,1,29.85,2026-05-03 15:00,No-show
 EVB-PC-347999,Music Showcase,2026-05-24,Amelia,Smith,amelia.smith12@outlook.com,TA6 9 XP,General Admission,1,29.85,2026-04-17 13:00:00.000003,Attended

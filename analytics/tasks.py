@@ -9,6 +9,7 @@ from datetime import date, timedelta
 
 from celery import shared_task
 from django.core.mail import EmailMessage
+from django.core.management import call_command
 from django.utils import timezone
 
 from events.models import Event
@@ -148,6 +149,21 @@ def send_scheduled_digests():
             logger.exception("Failed to send digest for organisation %s", sub.organisation_id)
     logger.info("Sent %d digest(s)", sent)
     return sent
+
+
+@shared_task
+def backfill_weather():
+    """Top up DailyWeather with any new days since the last run.
+
+    Thin wrapper around the ``backfill_weather`` management command — it
+    already defaults to (earliest data date → today) and skips dates that
+    already have a row, so a nightly no-arg run just appends yesterday's
+    (and today's, once Open-Meteo's archive has it) weather incrementally.
+    """
+    try:
+        call_command("backfill_weather")
+    except Exception:
+        logger.exception("Failed to backfill weather")
 
 
 @shared_task

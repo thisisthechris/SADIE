@@ -167,6 +167,14 @@ CELERY_BEAT_SCHEDULE = {
         "task": "organisations.tasks.generate_daily_synthetic_analytics",
         "schedule": crontab(hour=3, minute=0),
     },
+    # Top up Plymouth weather data nightly at 3:30 AM (after synthetic data,
+    # before the hourly stats refresh) — idempotent, only fetches days that
+    # don't already have a DailyWeather row, so this keeps the Trends page's
+    # weather-vs-attendance chart current without any manual re-run.
+    "backfill-weather-nightly": {
+        "task": "analytics.tasks.backfill_weather",
+        "schedule": crontab(hour=3, minute=30),
+    },
     # Refresh the pre-aggregated daily stats snapshot every hour so today's
     # row stays current without per-request aggregation.
     "refresh-daily-stats-snapshot-hourly": {

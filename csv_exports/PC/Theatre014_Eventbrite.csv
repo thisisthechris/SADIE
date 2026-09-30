@@ -1,4 +1,4 @@
-﻿Order_ID,Event_Name,Event_Date,First_Name,Last_Name,Email,Postcode,Ticket_Type,Quantity,Ticket_Price,Purchase_Date,Attendance_Status
+Order_ID,Event_Name,Event_Date,First_Name,Last_Name,Email,Postcode,Ticket_Type,Quantity,Ticket_Price,Purchase_Date,Attendance_Status
 EVB-PC-840720,Comedy Performance,2026-12-07,Grace,Perry,grace.perry61@outlook.com,PL4 5 YZ,General Admission,1,16.31,2026-10-18 12:00,Partial
 EVB-PC-697480,Comedy Performance,2026-12-07,Lucy,Ahmed,lucy.ahmed51@yahoo.co.uk,TR7 4 SI,General Admission,1,16.31,2026-10-19 16:00:00.000003,Partial
 EVB-PC-631284,Comedy Performance,2026-12-07,Megan,Ward,megan.ward19@icloud.com,TQ12 4 RX,General Admission,3,16.31,2026-10-31 19:59:59.999997,Partial

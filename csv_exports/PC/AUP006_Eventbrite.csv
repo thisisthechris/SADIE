@@ -1,4 +1,4 @@
-﻿Order_ID,Event_Name,Event_Date,First_Name,Last_Name,Email,Postcode,Ticket_Type,Quantity,Ticket_Price,Purchase_Date,Attendance_Status
+Order_ID,Event_Name,Event_Date,First_Name,Last_Name,Email,Postcode,Ticket_Type,Quantity,Ticket_Price,Purchase_Date,Attendance_Status
 EVB-PC-706680,Artist Residency Event,2026-06-12,Evie,Thomas,evie.thomas29@icloud.com,TR7 7 FE,General Admission,3,10.59,2026-03-28 18:00,Attended
 EVB-PC-596926,Artist Residency Event,2026-06-12,Jacob,Harris,jacob.harris98@gmail.com,PL1 7 JK,General Admission,1,10.59,2026-03-31 18:00,Attended
 EVB-PC-369089,Artist Residency Event,2026-06-12,Lily,Ward,lily.ward61@hotmail.co.uk,EX1 3 RK,General Admission,1,10.59,2026-04-13 10:59:59.999997,Attended

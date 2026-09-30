@@ -1,4 +1,4 @@
-﻿Order_ID,Event_Name,Event_Date,First_Name,Last_Name,Email,Postcode,Ticket_Type,Quantity,Ticket_Price,Purchase_Date,Attendance_Status
+Order_ID,Event_Name,Event_Date,First_Name,Last_Name,Email,Postcode,Ticket_Type,Quantity,Ticket_Price,Purchase_Date,Attendance_Status
 EVB-PC-934537,Live Performance,2026-01-09,Evie,White,evie.white47@gmail.com,PL9 6 HO,General Admission,1,34.67,2025-10-30 16:59:59.999997,Partial
 EVB-PC-665646,Live Performance,2026-01-09,Jacob,Jones,jacob.jones44@gmail.com,PL5 7 DL,General Admission,1,34.67,2025-11-14 12:00,Partial
 EVB-PC-908991,Live Performance,2026-01-09,Chloe,Martin,chloe.martin21@gmail.com,PL5 7 SO,General Admission,1,34.67,2025-12-28 15:00,Partial
