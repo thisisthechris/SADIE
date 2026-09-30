@@ -10,7 +10,6 @@ import { PeakTimesBar } from "../components/PeakTimesBar";
 import { PeakTimesTicketsBar } from "../components/PeakTimesTicketsBar";
 import { WeatherCorrelationChart } from "../components/WeatherCorrelationChart";
 import { AttendanceFrequencyBar } from "../components/AttendanceFrequencyBar";
-import { LeadTimeTrendLine } from "../components/LeadTimeTrendLine";
 import { DistrictStackedBar } from "../components/DistrictStackedBar";
 import { PartySizeBar } from "../components/PartySizeBar";
 import { TicketVolumeTrendLine } from "../components/TicketVolumeTrendLine";
@@ -68,11 +67,6 @@ interface LeadTimeByOrg {
   organisation__name: string;
   avg_days: number;
   event_count: number;
-}
-
-interface LeadTimeTrendPoint {
-  month: string;
-  avg_days: number;
 }
 
 interface PostcodeSegmentDatum {
@@ -215,17 +209,6 @@ export default function Trends() {
     queryFn: async () => {
       const res = await fetch(`/api/analytics/stats/event-lead-time/?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch event lead time");
-      return res.json();
-    },
-  });
-
-  // Lead Time Trend (monthly)
-  const leadTimeTrend = useQuery<{ series: LeadTimeTrendPoint[] }>({
-    queryKey: ["stats", "lead-time-trend", org, category, date_from, date_to],
-    staleTime: 5 * 60_000,
-    queryFn: async () => {
-      const res = await fetch(`/api/analytics/stats/lead-time-trend/?${params.toString()}`);
-      if (!res.ok) throw new Error("Failed to fetch lead time trend");
       return res.json();
     },
   });
@@ -501,19 +484,6 @@ export default function Trends() {
             </div>
           ) : (
             <EmptyState message="No lead time data available." />
-          )
-        }
-      </TrendCard>
-
-      {/* Lead Time Trend */}
-      <TrendCard title="Lead Time Trend" tooltipText="lead_time_trend">
-        {(h) =>
-          leadTimeTrend.isLoading ? (
-            <LoadingState />
-          ) : leadTimeTrend.data?.series?.length ? (
-            <LeadTimeTrendLine data={leadTimeTrend.data.series} height={h} />
-          ) : (
-            <EmptyState message="No lead time trend data available." />
           )
         }
       </TrendCard>
