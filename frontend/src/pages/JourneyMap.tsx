@@ -179,18 +179,21 @@ export default function JourneyMap() {
 
   // ── Brand buckets: divide the window into N slices, each a brand-gradient step ──
   // Colour ramps blue→pink as time moves from start to end.
-
+  // Derived from the DEBOUNCED window (not raw offsetDays/windowDays) — each
+  // bucket fires its own network request, so recomputing on every slider-drag
+  // tick fired a burst of 6 uncached requests per pixel of drag, which has
+  // taken the server down before. Only recompute once the drag settles.
   const buckets = useMemo(() => {
-    if (!dateTimes) return [];
-    const startMs = dateTimes.min + offsetDays * 86_400_000;
-    const endMs = startMs + windowDays * 86_400_000;
+    if (!debouncedTimeQuery.dfrom || !debouncedTimeQuery.dto) return [];
+    const startMs = new Date(debouncedTimeQuery.dfrom).getTime();
+    const endMs = new Date(debouncedTimeQuery.dto).getTime();
     const sliceMs = (endMs - startMs) / N_BUCKETS;
     return Array.from({ length: N_BUCKETS }, (_, i) => ({
       dfrom: msToDateStr(Math.round(startMs + i * sliceMs)),
       dto: msToDateStr(Math.round(startMs + (i + 1) * sliceMs)),
       color: lerpColor(BRAND_EARLY, BRAND_LATE, i / (N_BUCKETS - 1)),
     }));
-  }, [dateTimes, offsetDays, windowDays]);
+  }, [debouncedTimeQuery]);
 
   const bucketResults = useQueries({
     queries: buckets.map((b) => ({

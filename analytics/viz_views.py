@@ -1092,6 +1092,7 @@ def journeys_paths(request: Request) -> Response:
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticatedOrReadOnly])
+@cached_response(timeout=900)
 def journeys_flows(request: Request) -> Response:
     """Aggregated venue→venue movement flows across all visitors.
 
