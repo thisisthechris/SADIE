@@ -1,12 +1,12 @@
-ruff==0.15.4
+ruff==0.17.3
 
 # Test tooling for mcp_server/tests.py (pytest-style, factory-boy based)
-pytest==8.3.5
-pytest-django==4.9.0
+pytest==9.2.0
+pytest-django==4.14.0
 
 # GIS data assembly (scripts/gis/) — see scripts/gis/README.md
 # requests: required for both builders (Overpass + boundary download)
-requests==2.32.3
+requests==2.34.2
 # geopandas/shapely: optional — only for ODL shapefile input or --tolerance
-geopandas==1.0.1
-shapely==2.0.6
+geopandas==1.2.0
+shapely==2.2.0

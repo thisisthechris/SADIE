@@ -1,10 +1,8 @@
-version: "3.9"
-
 services:
   db:
-    # Postgres 15 + PostGIS 3.3 + pgvector + pg_trgm/unaccent.
+    # Postgres 15 + PostGIS 3 + pgvector + pg_trgm/unaccent.
     build: ./db
-    image: sadie-db:pg15-postgis33-pgvector
+    image: sadie-db:pg15
     environment:
       POSTGRES_DB: sadie
       POSTGRES_USER: sadie
@@ -20,7 +18,7 @@ services:
       retries: 5
 
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
     ports:
       - "6379:6379"
     healthcheck:
@@ -78,7 +76,7 @@ services:
         condition: service_healthy
 
   frontend:
-    image: node:20-alpine
+    image: node:26-alpine
     working_dir: /frontend
     # Install deps on startup (uses cached volume) then start the Vite dev server.
     command: sh -c "npm install --no-audit --no-fund && npm run dev"

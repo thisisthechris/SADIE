@@ -7,7 +7,7 @@ SADIE is a Django-based analytics platform for arts organisations — tracking e
 ### Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/) (recommended path)
-- **Or** Python 3.11+, PostgreSQL with PostGIS, and Redis (for a manual setup)
+- **Or** Python 3.12+, PostgreSQL 15 with PostGIS and pgvector, and Redis (for a manual setup)
 
 ---
 

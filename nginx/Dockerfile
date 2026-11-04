@@ -5,7 +5,7 @@
 #   docker build -f nginx/Dockerfile -t sadie-nginx .
 
 # ── Stage 1: build the SPA ───────────────────────────────────────────────────
-FROM node:20-alpine AS frontend
+FROM node:26-alpine AS frontend
 WORKDIR /frontend
 # Raise the Node.js heap limit so vite + source-map generation doesn't OOM
 # on memory-constrained CI runners (the default ~1.5 GB is too small).
@@ -21,7 +21,7 @@ RUN tsc -b
 RUN vite build
 
 # ── Stage 2: serve with nginx ────────────────────────────────────────────────
-FROM nginx:1.27-alpine
+FROM nginx:1.30-alpine
 # Replace the default server config with ours (SPA + backend proxying).
 COPY nginx/default.conf /etc/nginx/conf.d/default.conf
 # Ship the built SPA. nginx serves these static files directly at the root.

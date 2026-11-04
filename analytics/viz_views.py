@@ -792,7 +792,7 @@ def _postcode_flows_from_events(p, selected: str) -> dict | None:
     venue_meta: dict[int, dict] = {}
     any_rows = False
 
-    for it in qs.iterator():
+    for it in qs.iterator(chunk_size=2000):
         any_rows = True
         district = _district(it.postcode) or _district(it.area)
         if not district:
@@ -1016,7 +1016,7 @@ def _visitor_sequences(p, *, max_visitors: int, max_steps: int) -> list[tuple[st
     )
 
     sequences: dict[str, list[dict]] = {}
-    for it in interactions.iterator():
+    for it in interactions.iterator(chunk_size=2000):
         steps = sequences.setdefault(it.user_hash, [])
         if len(steps) >= max_steps:
             continue
@@ -1193,7 +1193,7 @@ def _postcode_event_sequences(p, *, max_steps: int) -> list[tuple[str, list[dict
     )
 
     sequences: dict[str, list[dict]] = {}
-    for it in interactions.iterator():
+    for it in interactions.iterator(chunk_size=2000):
         steps = sequences.setdefault(it.postcode.upper(), [])
         if len(steps) >= max_steps:
             continue

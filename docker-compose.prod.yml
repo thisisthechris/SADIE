@@ -61,7 +61,7 @@ services:
     # db port is intentionally NOT exposed externally
 
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]

@@ -33,7 +33,7 @@ services:
   # Proxies /api, /accounts, /media to the Django container (web:8000).
   # Browse to http://localhost:5173 for hot-reload during development.
   frontend:
-    image: node:20-alpine
+    image: node:26-alpine
     working_dir: /frontend
     volumes:
       - ./frontend:/frontend

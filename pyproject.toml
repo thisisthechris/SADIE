@@ -1,6 +1,6 @@
 [tool.ruff]
 line-length = 119
-target-version = "py311"
+target-version = "py312"
 exclude = [
     "*/migrations/*",
     ".git",
@@ -9,6 +9,10 @@ exclude = [
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP"]
+
+[tool.ruff.format]
+# Docs contain illustrative snippets (with "..." placeholders), not runnable code.
+exclude = ["*.md"]
 
 [tool.ruff.lint.per-file-ignores]
 # Settings files use wildcard imports intentionally
