@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useFilters } from "../lib/filters";
+import { PLACE } from "../lib/copy";
 import OrgToggle from "../components/OrgToggle";
 import EmptyState, { LoadingState } from "../components/EmptyState";
 import { StackedAreaChart } from "../components/StackedAreaChart";
@@ -305,7 +306,7 @@ export default function Trends() {
           <h1 className="heading-main mb-2">Trends</h1>
           <p className="body-lg">
             {org
-              ? "Key patterns for your organisation. Switch to City Wide to see Plymouth overall."
+              ? `Key patterns for your organisation. Switch to ${PLACE.placeLabel} to see the wider picture.`
               : "Key patterns across all organisations in Plymouth."}
           </p>
         </div>
@@ -313,7 +314,7 @@ export default function Trends() {
           <OrgToggle />
           {org && (
             <Link to="/insights/compare" className="btn-ghost text-xs border border-border">
-              Compare with City →
+              {PLACE.compareLabel}
             </Link>
           )}
         </div>

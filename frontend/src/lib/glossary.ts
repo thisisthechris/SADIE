@@ -12,8 +12,13 @@ export interface GlossaryTerm {
 export const GLOSSARY: Record<string, GlossaryTerm> = {
   interaction: {
     term: "Interaction",
-    short: "A visit to an event or venue.",
-    long: "An interaction represents a single visit or engagement — someone viewing an event page, checking event details, or visiting a venue. We count these to understand how much engagement events and venues generate.",
+    short: "One anonymous visitor linked to one ticketed event or venue.",
+    long: "An interaction is a single recorded visit by one anonymous visitor to one ticketed event or venue. One person attending two events counts as two interactions. Interactions come from ticketed events only, so they show intended attendance, not page views or browsing.",
+  },
+  pathway: {
+    term: "Pathway",
+    short: "A route a visitor takes between two places.",
+    long: "A pathway links the venues or postcode sectors that the same anonymous visitor went to, in order. When many visitors take the same route, that pathway is common. Pathways show how audiences move around the city, not who they are.",
   },
   unique_visitor: {
     term: "Unique Visitor",
@@ -27,8 +32,8 @@ export const GLOSSARY: Record<string, GlossaryTerm> = {
   },
   partner: {
     term: "Partner (Organisation)",
-    short: "An arts or cultural organisation in Plymouth.",
-    long: "A partner is an arts or cultural organisation in Plymouth that submits events to SADIE. Each event belongs to a partner, so we can track which organisations are most active and reach the most people.",
+    short: "An arts or cultural organisation that contributes data to SADIE.",
+    long: "A partner is an arts or cultural organisation in Plymouth whose ticketed events are recorded in SADIE. Partners are listed on the home page. Each event belongs to a partner, so we can see which organisations are most active and reach the most people.",
   },
   venue: {
     term: "Venue",
@@ -37,8 +42,8 @@ export const GLOSSARY: Record<string, GlossaryTerm> = {
   },
   postcode_area: {
     term: "Postcode Area",
-    short: "A geographic region in Plymouth (e.g., PL1, PL4).",
-    long: "Plymouth is divided into postcode areas (PL1, PL2, PL3, etc.). We show which postcode areas our visitors come from so partners can understand their geographic reach.",
+    short: "A geographic region in Plymouth (e.g., PL4).",
+    long: "Plymouth is divided into postcode areas (PL1, PL2, PL3, etc.). We show which postcode areas our visitors come from so partners can understand their geographic reach. Visitor postcodes are shown at postcode sector level (e.g., PL4 5), not full postcodes.",
   },
   privacy_grouping: {
     term: "Privacy Grouping",

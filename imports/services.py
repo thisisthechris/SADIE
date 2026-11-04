@@ -12,7 +12,7 @@ from __future__ import annotations
 import calendar
 from datetime import date
 
-from analytics.geocoding import normalize_postcode
+from analytics.geocoding import postcode_sector
 from analytics.models import (
     PostcodeAreaInteraction,
     PostcodeEventInteraction,
@@ -122,7 +122,7 @@ class ImportContext:
         location = self.get_location(org, booking.venue_name)
         event = self.get_event(org, booking.event_title, booking.event_datetime, location)
 
-        postcode = normalize_postcode(booking.postcode)
+        postcode = postcode_sector(booking.postcode)
         area = district_of(postcode)
         event_date = booking.event_datetime.date()
 

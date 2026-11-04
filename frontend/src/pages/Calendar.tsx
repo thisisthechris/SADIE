@@ -220,7 +220,7 @@ export default function CalendarPage() {
             onClick={() => f.set({ org: "" })}
             className="btn-ghost text-xs border border-border"
           >
-            Switch to City Wide
+            Switch to all of Plymouth
           </button>
         </div>
       )}

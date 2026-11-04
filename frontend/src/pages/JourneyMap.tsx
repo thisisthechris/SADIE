@@ -326,7 +326,7 @@ export default function JourneyMap() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="heading-main">Journey Map</h1>
+          <h1 className="heading-main">Common Pathways</h1>
           <p className="body-lg">
             Individual visitor routes and the common pathways visitors take between venues.
           </p>

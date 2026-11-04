@@ -1,8 +1,9 @@
 from django.contrib.auth import get_user_model
 from django.db.models import Count
 from rest_framework import status, viewsets
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from .models import Location, Organisation, OrgGoal
@@ -277,3 +278,17 @@ class OrgGoalViewSet(viewsets.ModelViewSet):
         if not is_org_editor(self.request.user, org):
             raise PermissionDenied("You can only edit goals for your own organisation.")
         serializer.save()
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def public_partners(request):
+    """Public list of partner organisations for the landing page.
+
+    Exposes only display fields. Partners are managed in the Django admin
+    by setting ``is_partner``.
+    """
+    partners = (
+        Organisation.objects.filter(is_partner=True).order_by("name").values("name", "slug", "website", "description")
+    )
+    return Response(list(partners))

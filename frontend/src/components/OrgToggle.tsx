@@ -3,7 +3,7 @@ import { useFilters } from "../lib/filters";
 
 /**
  * Simple toggle between "My Organisation" (user's first member org) and
- * "City Wide" (no org filter). Only rendered when the logged-in user has
+ * "All of Plymouth" (no org filter). Only rendered when the logged-in user has
  * at least one member organisation.
  */
 export default function OrgToggle() {
@@ -37,9 +37,9 @@ export default function OrgToggle() {
             ? "bg-accent text-white shadow-sm"
             : "text-muted hover:text-foreground"
         }`}
-        title="Show all organisations"
+        title="Show all of Plymouth"
       >
-        City Wide
+        All of Plymouth
       </button>
     </div>
   );

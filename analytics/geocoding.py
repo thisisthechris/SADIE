@@ -65,17 +65,30 @@ def normalize_postcode(postcode: str) -> str:
     # If it looks like a full postcode without space (7 chars), insert space before last 3
     # UK postcodes are: 1-2 letters + 0-1 digit + 0-1 letter + space + 1 digit + 2 letters
     # Full format = max 7 chars before normalization: AN/ANN/AAN/AANN [SPACE] N/AN/NAA
-    if len(pc) == 7 and " " not in pc:
-        # Insert space before last 3 chars
+    if len(pc) in (6, 7) and " " not in pc:
+        # Insert space before last 3 chars, e.g. 'PL45AB' -> 'PL4 5AB'
         pc = f"{pc[:-3]} {pc[-3:]}"
-    elif len(pc) == 5 and " " not in pc and not pc[-1].isdigit():
-        # E.g. 'PL45AB' (missing space)
-        pc = f"{pc[:-2]} {pc[-2:]}"
 
     # Normalize multiple spaces to single
     pc = " ".join(pc.split())
 
     return pc
+
+
+def postcode_sector(postcode: str) -> str:
+    """
+    Reduce a normalized postcode to its sector: outward code plus first inward digit.
+
+    Examples:
+      'PL4 5AB' → 'PL4 5'
+      'PL4 5'   → 'PL4 5'
+      'PL4'     → 'PL4' (no inward code to keep)
+    """
+    pc = normalize_postcode(postcode)
+    if " " not in pc:
+        return pc
+    outward, inward = pc.split(" ", 1)
+    return f"{outward} {inward[:1]}" if inward else outward
 
 
 def _extract_outcode(postcode: str) -> str:
