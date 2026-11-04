@@ -24,6 +24,7 @@ urlpatterns = [
     path("stats/summary/", stats_views.summary, name="stats-summary"),
     path("stats/top-orgs/", stats_views.top_orgs, name="stats-top-orgs"),
     path("stats/top-categories/", stats_views.top_categories, name="stats-top-categories"),
+    path("stats/free-vs-paid/", stats_views.free_vs_paid, name="stats-free-vs-paid"),
     path(
         "stats/interactions-timeseries/",
         stats_views.interactions_timeseries,

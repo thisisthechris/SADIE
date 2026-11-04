@@ -1,16 +1,19 @@
 import { useEffect, useState, type ReactNode } from "react";
 import InfoTooltip from "./InfoTooltip";
+import { CHARTS } from "../lib/copy";
 
 interface TrendCardProps {
   title: string;
   /** Glossary key passed to InfoTooltip (see lib/glossary.ts). */
   tooltipText: string;
   /** Render prop so the chart can be re-rendered bigger when expanded. */
-  children: (height: number) => ReactNode;
+  children: (height: number, percent: boolean) => ReactNode;
   /** Chart height in the normal (non-expanded) card. */
   height?: number;
   /** Chart height when the card is expanded to fullscreen. */
   expandedHeight?: number;
+  /** Show a "Count / % of total" switch and pass the choice to children. */
+  percentToggle?: boolean;
 }
 
 /**
@@ -24,8 +27,10 @@ export default function TrendCard({
   children,
   height = 300,
   expandedHeight = 600,
+  percentToggle = false,
 }: TrendCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const [percent, setPercent] = useState(false);
 
   useEffect(() => {
     if (!expanded) return;
@@ -42,28 +47,47 @@ export default function TrendCard({
         <h2 className="heading-small">{title}</h2>
         <InfoTooltip text={tooltipText} />
       </div>
-      <button
-        type="button"
-        onClick={() => setExpanded(!isExpanded)}
-        className="inline-flex items-center justify-center w-7 h-7 rounded border border-border text-muted hover:text-accent hover:border-accent/60 transition-colors"
-        aria-label={isExpanded ? "Exit fullscreen" : "View fullscreen"}
-        title={isExpanded ? "Exit fullscreen" : "View fullscreen"}
-      >
-        {isExpanded ? (
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        ) : (
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 8V4h4M20 8V4h-4M4 16v4h4M20 16v4h-4"
-            />
-          </svg>
+      <div className="flex items-center gap-2">
+        {percentToggle && (
+          <div className="inline-flex rounded border border-border text-xs" role="group" title={CHARTS.percentHint}>
+            {[false, true].map((isPct) => (
+              <button
+                key={String(isPct)}
+                type="button"
+                onClick={() => setPercent(isPct)}
+                aria-pressed={percent === isPct}
+                className={`px-2 py-1 transition-colors ${
+                  percent === isPct ? "bg-accent text-white" : "text-muted hover:text-accent"
+                }`}
+              >
+                {isPct ? CHARTS.percentLabel : CHARTS.countLabel}
+              </button>
+            ))}
+          </div>
         )}
-      </button>
+        <button
+          type="button"
+          onClick={() => setExpanded(!isExpanded)}
+          className="inline-flex items-center justify-center w-7 h-7 rounded border border-border text-muted hover:text-accent hover:border-accent/60 transition-colors"
+          aria-label={isExpanded ? "Exit fullscreen" : "View fullscreen"}
+          title={isExpanded ? "Exit fullscreen" : "View fullscreen"}
+        >
+          {isExpanded ? (
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          ) : (
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 8V4h4M20 8V4h-4M4 16v4h4M20 16v4h-4"
+              />
+            </svg>
+          )}
+        </button>
+      </div>
     </div>
   );
 
@@ -71,7 +95,7 @@ export default function TrendCard({
     <>
       <div className="card p-6">
         {header(false)}
-        {children(height)}
+        {children(height, percent)}
       </div>
 
       {expanded && (
@@ -84,7 +108,7 @@ export default function TrendCard({
             onClick={(e) => e.stopPropagation()}
           >
             {header(true)}
-            {children(expandedHeight)}
+            {children(expandedHeight, percent)}
           </div>
         </div>
       )}

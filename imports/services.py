@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import calendar
 from datetime import date
+from decimal import Decimal
 
 from analytics.geocoding import postcode_sector
 from analytics.models import (
@@ -49,6 +50,9 @@ class ImportContext:
         # Aggregated cohort counts, keyed by grouping tuple -> running total.
         self._event_interaction_agg: dict[tuple, int] = {}
         self._area_interaction_agg: dict[tuple, int] = {}
+
+        # Event pk -> lowest paid ticket price seen (None if only free tickets seen).
+        self._event_min_paid_price: dict[int, Decimal | None] = {}
 
         self.orgs_touched: set[str] = set()
 
@@ -147,6 +151,13 @@ class ImportContext:
             area_key = (org.pk, postcode, area, period_start, period_end)
             self._area_interaction_agg[area_key] = self._area_interaction_agg.get(area_key, 0) + booking.attended_count
 
+        if booking.ticket_price is not None:
+            current = self._event_min_paid_price.get(event.pk)
+            if booking.ticket_price > 0 and (current is None or booking.ticket_price < current):
+                self._event_min_paid_price[event.pk] = booking.ticket_price
+            else:
+                self._event_min_paid_price.setdefault(event.pk, None)
+
         if booking.has_ticket_data:
             self.ticket_purchases.append(
                 PostcodeTicketPurchase(
@@ -195,6 +206,13 @@ class ImportContext:
             for (org_id, postcode, area, period_start, period_end), count in self._area_interaction_agg.items()
         ]
         PostcodeAreaInteraction.objects.bulk_create(area_interactions, batch_size=_BULK_CREATE_BATCH_SIZE)
+
+        priced_events = [e for e in self._event_cache.values() if e.pk in self._event_min_paid_price]
+        for event in priced_events:
+            min_paid = self._event_min_paid_price[event.pk]
+            event.is_free = min_paid is None
+            event.price = min_paid
+        Event.objects.bulk_update(priced_events, ["is_free", "price"], batch_size=_BULK_CREATE_BATCH_SIZE)
 
         return {
             "user_hash_interactions": len(self.user_hash_interactions),

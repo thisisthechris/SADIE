@@ -3,7 +3,7 @@ from django.db.models import Count
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 
-from .models import Category, Event
+from .models import Category, Event, EventCategory
 from .serializers import CategorySerializer, EventDetailSerializer, EventSerializer
 
 
@@ -11,6 +11,12 @@ class EventFilter(django_filters.FilterSet):
     start_after = django_filters.DateTimeFilter(field_name="start_datetime", lookup_expr="gte")
     start_before = django_filters.DateTimeFilter(field_name="start_datetime", lookup_expr="lte")
     category = django_filters.NumberFilter(field_name="categories__id")
+    # Events with at least one category assigned by this method (partner/auto/manual).
+    category_source = django_filters.ChoiceFilter(
+        field_name="eventcategory__source", choices=EventCategory.Source.choices, distinct=True
+    )
+
+    is_free = django_filters.BooleanFilter(field_name="is_free")
 
     # Aliases matching the SPA filter store schema (org, date_from, date_to, period)
     org = django_filters.NumberFilter(field_name="organisation")
@@ -30,7 +36,7 @@ class EventFilter(django_filters.FilterSet):
 
     class Meta:
         model = Event
-        fields = ["organisation", "location", "start_after", "start_before", "category"]
+        fields = ["organisation", "location", "start_after", "start_before", "category", "category_source", "is_free"]
 
 
 class EventViewSet(viewsets.ReadOnlyModelViewSet):

@@ -340,12 +340,12 @@ export default function Trends() {
       </TrendCard>
 
       {/* Weekday Activity */}
-      <TrendCard title="Activity by Day of Week" tooltipText="weekday_activity">
-        {(h) =>
+      <TrendCard title="Activity by Day of Week" tooltipText="weekday_activity" percentToggle>
+        {(h, pct) =>
           weekdayActivity.isLoading ? (
             <LoadingState />
           ) : weekdayActivity.data?.series?.length ? (
-            <WeekdayBars data={weekdayActivity.data.series} height={h} />
+            <WeekdayBars data={weekdayActivity.data.series} height={h} percent={pct} />
           ) : (
             <EmptyState message="No activity data available." />
           )
@@ -353,12 +353,12 @@ export default function Trends() {
       </TrendCard>
 
       {/* Peak Times of Day */}
-      <TrendCard title="Peak Times of Day" tooltipText="peak_times">
-        {(h) =>
+      <TrendCard title="Peak Times of Day" tooltipText="peak_times" percentToggle>
+        {(h, pct) =>
           peakTimes.isLoading ? (
             <LoadingState />
           ) : peakTimes.data?.series?.some((d) => d.events > 0) ? (
-            <PeakTimesBar data={peakTimes.data.series} height={h} />
+            <PeakTimesBar data={peakTimes.data.series} height={h} percent={pct} />
           ) : (
             <EmptyState message="No event start-time data available." />
           )
@@ -366,8 +366,8 @@ export default function Trends() {
       </TrendCard>
 
       {/* Time of Day vs Ticket Volume */}
-      <TrendCard title="Time of Day vs Ticket Volume" tooltipText="peak_times_tickets">
-        {(h) =>
+      <TrendCard title="Time of Day vs Ticket Volume" tooltipText="peak_times_tickets" percentToggle>
+        {(h, pct) =>
           peakTimesTickets.isLoading ? (
             <LoadingState />
           ) : peakTimesTickets.data?.series?.some((d) => d.tickets > 0) ? (
@@ -375,6 +375,7 @@ export default function Trends() {
               data={peakTimesTickets.data.series}
               height={h}
               midnightExcludedCount={peakTimesTickets.data.midnight_excluded_count}
+              percent={pct}
             />
           ) : (
             <EmptyState message="No ticket purchase time-of-day data available." />
@@ -430,8 +431,8 @@ export default function Trends() {
       </TrendCard>
 
       {/* Attendance Frequency */}
-      <TrendCard title="Attendance Frequency" tooltipText="attendance_frequency">
-        {(h) =>
+      <TrendCard title="Attendance Frequency" tooltipText="attendance_frequency" percentToggle>
+        {(h, pct) =>
           attendanceFrequency.isLoading ? (
             <LoadingState />
           ) : attendanceFrequency.data?.series?.some((d) => d.visitors > 0) ? (
@@ -444,7 +445,7 @@ export default function Trends() {
                   </span>
                 </div>
               </div>
-              <AttendanceFrequencyBar data={attendanceFrequency.data.series} height={h} />
+              <AttendanceFrequencyBar data={attendanceFrequency.data.series} height={h} percent={pct} />
             </div>
           ) : (
             <EmptyState message="No attendance data available." />
@@ -490,8 +491,8 @@ export default function Trends() {
       </TrendCard>
 
       {/* Peak Times by Postcode */}
-      <TrendCard title="Peak Times by Postcode" tooltipText="peak_times_by_postcode">
-        {(h) =>
+      <TrendCard title="Peak Times by Postcode" tooltipText="peak_times_by_postcode" percentToggle>
+        {(h, pct) =>
           peakTimesByPostcode.isLoading ? (
             <LoadingState />
           ) : peakTimesByPostcode.data?.series?.length ? (
@@ -503,6 +504,7 @@ export default function Trends() {
               }))}
               districts={peakTimesByPostcode.data.districts}
               segments={peakTimesByPostcode.data.dayparts}
+              percent={pct}
               height={h}
             />
           ) : (
@@ -512,8 +514,8 @@ export default function Trends() {
       </TrendCard>
 
       {/* Event Types by Postcode */}
-      <TrendCard title="Event Types by Postcode" tooltipText="event_types_by_postcode">
-        {(h) =>
+      <TrendCard title="Event Types by Postcode" tooltipText="event_types_by_postcode" percentToggle>
+        {(h, pct) =>
           eventTypesByPostcode.isLoading ? (
             <LoadingState />
           ) : eventTypesByPostcode.data?.series?.length ? (
@@ -525,6 +527,7 @@ export default function Trends() {
               }))}
               districts={eventTypesByPostcode.data.districts}
               segments={eventTypesByPostcode.data.categories}
+              percent={pct}
               height={h}
             />
           ) : (
@@ -560,8 +563,8 @@ export default function Trends() {
       </TrendCard>
 
       {/* Party Size Distribution */}
-      <TrendCard title="Party Size Distribution" tooltipText="party_size_distribution">
-        {(h) =>
+      <TrendCard title="Party Size Distribution" tooltipText="party_size_distribution" percentToggle>
+        {(h, pct) =>
           ticketSummary.isLoading ? (
             <LoadingState />
           ) : ticketSummary.data?.party_size_distribution?.some((d) => d.orders > 0) ? (
@@ -574,7 +577,7 @@ export default function Trends() {
                   </span>
                 </div>
               </div>
-              <PartySizeBar data={ticketSummary.data.party_size_distribution} height={h} />
+              <PartySizeBar data={ticketSummary.data.party_size_distribution} height={h} percent={pct} />
             </div>
           ) : (
             <EmptyState message="No ticket purchase data available." />

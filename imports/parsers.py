@@ -15,6 +15,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from datetime import datetime
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 from dateutil import parser as dateutil_parser
@@ -105,6 +106,8 @@ class NormalizedBooking:
     purchase_datetime: datetime
     venue_name: str | None = None
     has_ticket_data: bool = True
+    # Price of one ticket, when the export provides it; None means unknown.
+    ticket_price: Decimal | None = None
 
     @property
     def attended(self) -> bool:
@@ -133,6 +136,18 @@ def _to_int(value: str, default: int = 0) -> int:
         return int(float(value))
     except ValueError:
         return default
+
+
+def _to_price(value: str) -> Decimal | None:
+    """Parse a money string ('2.85', '£12', '1,200.00') into a Decimal, or None."""
+    value = (value or "").strip().replace("£", "").replace(",", "")
+    if not value:
+        return None
+    try:
+        price = Decimal(value)
+    except InvalidOperation:
+        return None
+    return price if price >= 0 else None
 
 
 def _clean_postcode(raw: str) -> str:
@@ -180,6 +195,7 @@ def parse_eventbrite_row(row: dict, org_code: str) -> NormalizedBooking | None:
         ticket_quantity=quantity,
         attended_count=attended_count,
         purchase_datetime=purchase_dt,
+        ticket_price=_to_price(row.get("Ticket_Price", "")),
     )
 
 
@@ -193,6 +209,11 @@ def parse_digitickets_row(row: dict, org_code: str) -> NormalizedBooking | None:
         return None
 
     quantity = _to_int(row.get("Quantity", ""), default=1)
+    # Order_Value is the whole order (donations are a separate column).
+    order_value = _to_price(row.get("Order_Value", ""))
+    ticket_price = None
+    if order_value is not None and quantity > 0:
+        ticket_price = (order_value / quantity).quantize(Decimal("0.01"))
 
     return NormalizedBooking(
         org_code=org_code,
@@ -205,6 +226,7 @@ def parse_digitickets_row(row: dict, org_code: str) -> NormalizedBooking | None:
         ticket_quantity=quantity,
         attended_count=quantity,  # no no-show tracking in this export
         purchase_datetime=booking_dt,
+        ticket_price=ticket_price,
     )
 
 

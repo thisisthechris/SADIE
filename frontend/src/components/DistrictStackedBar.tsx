@@ -9,6 +9,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import { percentOfRow, valueFormatter } from "../lib/percent";
 import { useLegendToggle } from "../lib/useLegendToggle";
 
 interface DistrictSegmentDatum {
@@ -29,6 +30,8 @@ interface DistrictStackedBarProps {
   /** Fixed segment ordering (e.g. dayparts in chronological order). Falls back to sorted unique segments. */
   segments?: string[];
   height?: number;
+  /** Show each district as 100%, split by segment share, instead of raw counts. */
+  percent?: boolean;
 }
 
 const COLORS = [
@@ -53,6 +56,7 @@ export function DistrictStackedBar({
   districts,
   segments,
   height = 300,
+  percent = false,
 }: DistrictStackedBarProps) {
   const { isHidden, onLegendClick, legendFormatter } = useLegendToggle();
 
@@ -82,12 +86,21 @@ export function DistrictStackedBar({
     return null;
   }
 
+  const rows = percent ? percentOfRow(chartData, segmentKeys) : chartData;
+
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <BarChart data={chartData}>
+      <BarChart data={rows}>
         <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
         <XAxis dataKey="district" stroke="#9ca3af" style={{ fontSize: 12 }} tick={{ fill: "#6b7280" }} />
-        <YAxis stroke="#9ca3af" style={{ fontSize: 12 }} tick={{ fill: "#6b7280" }} allowDecimals={false} />
+        <YAxis
+          stroke="#9ca3af"
+          style={{ fontSize: 12 }}
+          tick={{ fill: "#6b7280" }}
+          allowDecimals={percent}
+          domain={percent ? [0, 100] : undefined}
+          tickFormatter={valueFormatter(percent)}
+        />
         <Tooltip
           contentStyle={{
             backgroundColor: "#fff",
@@ -96,7 +109,7 @@ export function DistrictStackedBar({
             boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
           }}
           labelStyle={{ color: "#1f2937", fontWeight: 600 }}
-          formatter={(value: number) => value.toLocaleString()}
+          formatter={(value: number) => valueFormatter(percent)(value)}
         />
         <Legend
           wrapperStyle={{ paddingTop: 16, fontSize: 12, cursor: "pointer" }}

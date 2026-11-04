@@ -24,7 +24,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from events.models import Category, Event
+from events.models import Category, Event, EventCategory
 from organisations.models import Organisation
 
 
@@ -169,7 +169,7 @@ class Command(BaseCommand):
                             pass
 
                         if category:
-                            event.categories.add(category)
+                            event.categories.add(category, through_defaults={"source": EventCategory.Source.PARTNER})
 
                 else:
                     # Create the event
@@ -185,7 +185,7 @@ class Command(BaseCommand):
                         source_tags=[category_name.lower()] if category_name else [],
                     )
                     if category:
-                        event.categories.add(category)
+                        event.categories.add(category, through_defaults={"source": EventCategory.Source.PARTNER})
                     created += 1
 
         summary = f"enrich_events complete — created: {created}, updated: {updated}, skipped: {skipped}"

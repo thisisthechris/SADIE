@@ -65,3 +65,22 @@ export const PLACE = {
   placeLabel: "All of Plymouth",
   compareLabel: "Compare with all of Plymouth →",
 };
+
+export const CHARTS = {
+  countLabel: "Count",
+  percentLabel: "% of total",
+  percentHint: "Switch between raw counts and each bar's share of the total.",
+};
+
+export const FREE_VS_PAID = {
+  title: "Free vs paid events",
+  description:
+    "How many events were free or paid, and how much of the intended attendance each accounts for. Price comes from ticketing exports; events whose export had no price are shown as \"price not recorded\".",
+  groups: {
+    free: "Free",
+    paid: "Paid",
+    unknown: "Price not recorded",
+  },
+  eventsLabel: "Events",
+  attendanceLabel: "Intended attendance",
+};

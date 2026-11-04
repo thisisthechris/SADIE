@@ -15,6 +15,7 @@ Endpoints (mounted at /api/analytics/stats/):
     GET summary/                  -> top-line counts for the home page
     GET top-orgs/                 -> top organisations by event count
     GET top-categories/           -> top categories by event count
+    GET free-vs-paid/             -> events and attendance split by free / paid / unknown price
     GET interactions-timeseries/  -> monthly interaction counts
     GET interactions-by-type/     -> breakdown by interaction_type
     GET postcode-aggregates/      -> per-area sums for the choropleth
@@ -132,6 +133,49 @@ def top_categories(request: Request) -> Response:
         .order_by("-n")[:limit]
     )
     return Response({"filters": p, "results": rows})
+
+
+def _price_group(is_free: bool | None) -> str:
+    if is_free is None:
+        return "unknown"
+    return "free" if is_free else "paid"
+
+
+def _pct(part: int, total: int) -> float:
+    return round(100 * part / total, 1) if total else 0.0
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticatedOrReadOnly])
+@cached_response(timeout=900)
+def free_vs_paid(request: Request) -> Response:
+    """Events and attendance split by free / paid / unknown pricing.
+
+    Attendance is the intended-attendance headcount from ticketed bookings
+    (``PostcodeEventInteraction.interaction_count``). "unknown" covers events
+    whose source export carried no price.
+    """
+    p, events, _, _ = _filtered(request)
+    groups = {key: {"group": key, "events": 0, "attendance": 0} for key in ("free", "paid", "unknown")}
+
+    for row in events.values("is_free").annotate(n=Count("id", distinct=True)).order_by():
+        groups[_price_group(row["is_free"])]["events"] += row["n"]
+    for row in postcode_event_qs(p).values("event__is_free").annotate(n=Sum("interaction_count")).order_by():
+        groups[_price_group(row["event__is_free"])]["attendance"] += row["n"] or 0
+
+    total_events = sum(g["events"] for g in groups.values())
+    total_attendance = sum(g["attendance"] for g in groups.values())
+    for g in groups.values():
+        g["events_pct"] = _pct(g["events"], total_events)
+        g["attendance_pct"] = _pct(g["attendance"], total_attendance)
+
+    return Response(
+        {
+            "filters": p,
+            "results": list(groups.values()),
+            "totals": {"events": total_events, "attendance": total_attendance},
+        }
+    )
 
 
 @api_view(["GET"])

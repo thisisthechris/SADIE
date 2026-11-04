@@ -53,7 +53,22 @@ export const GLOSSARY: Record<string, GlossaryTerm> = {
   category: {
     term: "Category",
     short: "A type of event (e.g., music, theatre, learning).",
-    long: "Categories describe the type of event — music, theatre, visual arts, learning, dance, etc. Events can belong to multiple categories, helping people find what interests them.",
+    long: "Categories describe the type of event — music, theatre, visual arts, learning, dance, etc. An event can have several. Each category is recorded with how it was assigned: tagged by the partner, set automatically from keywords in the event's title and description, or set by staff. Both methods are kept so they can be compared.",
+  },
+  intended_attendance: {
+    term: "Intended attendance",
+    short: "How many people a booking says will attend a ticketed event.",
+    long: "Attendance figures come from ticketed events only. They count the people a booking says will attend (the recorded headcount, or the number of tickets when no headcount was recorded), not confirmed footfall. Non-ticketed activity, such as drop-in visits, is not included.",
+  },
+  free_vs_paid: {
+    term: "Free vs paid",
+    short: "Whether an event's tickets cost money, based on ticketing exports.",
+    long: "An event is free when every recorded ticket price was zero, and paid when at least one ticket cost money; the price shown is the lowest paid ticket. Some ticketing exports don't include prices, so those events are listed as \"price not recorded\" rather than guessed.",
+  },
+  percent_of_total: {
+    term: "% of total",
+    short: "Each bar shown as its share of the whole, instead of a raw count.",
+    long: "Charts with a Count / % of total switch can show each bar as a percentage of the total for that series. This makes it easier to compare shapes between series or periods of different sizes. On postcode charts, each district is shown as 100%, split by its own mix.",
   },
   network: {
     term: "Network (Graph)",

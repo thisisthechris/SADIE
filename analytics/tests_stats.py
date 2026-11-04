@@ -7,6 +7,7 @@ since both consume the same helpers in ``analytics.queries``.
 """
 
 from datetime import date, datetime, timedelta
+from decimal import Decimal
 
 from django.contrib.auth.models import User
 from django.test import TestCase
@@ -14,6 +15,8 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from events.models import Category, Event
+from imports.parsers import NormalizedBooking
+from imports.services import ImportContext
 from organisations.models import Organisation
 
 from .models import (
@@ -593,3 +596,49 @@ class EngagementEndpointTest(TestCase):
         self.assertGreaterEqual(d["current_quarter_interactions"], d["current_month_interactions"])
         self.assertIsInstance(d["quarter_events_pct_change"], float)
         self.assertIsInstance(d["quarter_interactions_pct_change"], float)
+
+
+class FreeVsPaidEndpointTest(TestCase):
+    """Free / paid / unknown split of events and intended attendance."""
+
+    @classmethod
+    def setUpTestData(cls):
+        when = timezone.make_aware(datetime(2026, 3, 14, 19, 0))
+
+        def booking(title, price, user, qty):
+            return NormalizedBooking(
+                org_code="Theatre",
+                channel="Test",
+                event_title=title,
+                event_datetime=when,
+                postcode="PL4 5AB",
+                user_hash=user,
+                ticket_quantity=qty,
+                attended_count=qty,
+                purchase_datetime=when,
+                ticket_price=price,
+            )
+
+        ctx = ImportContext()
+        for b in (
+            booking("Free Talk", Decimal("0"), "u1", 1),
+            booking("Paid Play", Decimal("12"), "u2", 2),
+            booking("Paid Play", Decimal("12"), "u3", 1),
+            booking("No Price Gig", None, "u4", 4),
+        ):
+            ctx.record_booking(b)
+        ctx.flush()
+
+    def test_counts_and_percentages(self):
+        r = self.client.get("/api/analytics/stats/free-vs-paid/")
+        self.assertEqual(r.status_code, 200)
+        groups = {g["group"]: g for g in r.json()["results"]}
+        self.assertEqual(r.json()["totals"], {"events": 3, "attendance": 8})
+
+        self.assertEqual((groups["free"]["events"], groups["free"]["attendance"]), (1, 1))
+        self.assertEqual((groups["paid"]["events"], groups["paid"]["attendance"]), (1, 3))
+        self.assertEqual((groups["unknown"]["events"], groups["unknown"]["attendance"]), (1, 4))
+
+        self.assertEqual(groups["paid"]["attendance_pct"], 37.5)
+        self.assertEqual(groups["unknown"]["attendance_pct"], 50.0)
+        self.assertEqual(groups["free"]["events_pct"], 33.3)

@@ -7,7 +7,7 @@ import logging
 import requests
 from django.contrib.gis.geos import Point
 
-from events.models import Category, Event
+from events.models import Category, Event, EventCategory
 from organisations.models import Location, Organisation
 
 from .models import ImportedEvent
@@ -107,13 +107,18 @@ def _get_or_create_location(imported_event: ImportedEvent, organisation: Organis
 
 
 def _sync_categories(event: Event, imported_event: ImportedEvent):
-    """Add Category objects from categories_raw list."""
+    """Add Category objects from categories_raw list.
+
+    Scrapers that infer categories from text set ``categories_source="auto"``
+    in raw_data; otherwise categories came from the venue's own listing.
+    """
+    source = EventCategory.source_from_raw((imported_event.raw_data or {}).get("categories_source"))
     for cat_name in imported_event.categories_raw or []:
         cat_name = cat_name.strip()
         if not cat_name:
             continue
         cat, _ = Category.objects.get_or_create(name=cat_name)
-        event.categories.add(cat)
+        event.categories.add(cat, through_defaults={"source": source})
 
 
 def import_approved_event(imported_event: ImportedEvent) -> Event:

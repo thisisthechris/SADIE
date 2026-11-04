@@ -953,6 +953,7 @@ def _extract_real_ideas_card(card, base_url: str) -> dict | None:
         "venue_lat": None,
         "venue_lng": None,
         "categories_raw": categories,
+        "categories_source": "auto",
         "tags_raw": [],
         "_org_name": venue["org_name"],
     }
