@@ -62,7 +62,7 @@ export function HashScramble({ from, to }: { from: string; to: string }) {
 
   return (
     <div className="flex items-center gap-2 font-mono text-xs">
-      <span className="text-muted line-through decoration-pink-400/70">{from}</span>
+      <span className="text-muted line-through decoration-pink/70">{from}</span>
       <span aria-hidden>→</span>
       <span className="text-accent">{shown}…</span>
     </div>

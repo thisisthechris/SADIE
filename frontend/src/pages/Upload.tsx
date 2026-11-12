@@ -6,7 +6,7 @@ import { UPLOAD } from "../lib/copy";
 import { FORMATS, type UploadRow } from "../lib/upload/formats";
 import { chunk, fileFingerprint, type Prepared } from "../lib/upload/prepare";
 import { prepareInWorker } from "../lib/upload/runPrepare";
-import { bucketLabel, toIsoDate } from "../lib/filters";
+import { toIsoDate } from "../lib/filters";
 import { useMe } from "../lib/auth";
 import DataCalendar from "../components/DataCalendar";
 import BrandShape from "../components/BrandShape";
@@ -62,6 +62,11 @@ function weeksBetween(from: string | null, to: string | null): Set<string> {
     cur.setDate(cur.getDate() + 7);
   }
   return out;
+}
+
+function shortDate(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
 function errorMessage(e: unknown): string {
@@ -294,7 +299,7 @@ function StepTracker({ current }: { current: number }) {
                 state === "done"
                   ? "bg-accent text-white scale-100"
                   : state === "active"
-                    ? "bg-pink-500 text-white scale-110 animate-bounce-soft"
+                    ? "bg-pink text-white scale-110 animate-bounce-soft"
                     : "bg-border/40 text-muted"
               }`}
               aria-current={state === "active" ? "step" : undefined}
@@ -342,7 +347,7 @@ function DropZone({
       }}
       className={`relative w-full overflow-hidden rounded-xl border-2 border-dashed p-10 text-center transition-all duration-200 ${
         dragging
-          ? "border-pink-400 bg-pink-50 shadow-lg animate-wobble"
+          ? "border-pink bg-pink/10 shadow-lg animate-wobble"
           : "border-border hover:border-accent/60 hover:bg-accent/5"
       }`}
     >
@@ -354,7 +359,7 @@ function DropZone({
       </span>
       <UploadCloud
         className={`mx-auto mb-3 w-12 h-12 transition-transform duration-200 ${
-          dragging ? "text-pink-500 -translate-y-1 scale-110" : "text-accent"
+          dragging ? "text-pink -translate-y-1 scale-110" : "text-accent"
         }`}
       />
       <div className="font-semibold">{dragging ? UPLOAD.dropActive : UPLOAD.dropTitle}</div>
@@ -389,7 +394,8 @@ function ReadyCard({
   onCancel: () => void;
 }) {
   const p = stage.prepared;
-  const sent = p.header.filter((h) => !p.format.personalColumns.includes(h));
+  const used = p.format.usedColumns.filter((c) => !p.format.personalColumns.includes(c));
+  const ignored = p.header.filter((h) => !p.format.usedColumns.includes(h) && !p.format.personalColumns.includes(h));
   return (
     <div className="card p-6 space-y-5 animate-fade-in">
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -406,8 +412,7 @@ function ReadyCard({
 
       {p.dateFrom && (
         <p className="text-sm">
-          Covers <strong>{bucketLabel(p.dateFrom, "week")}</strong> to{" "}
-          <strong>{bucketLabel(p.dateTo ?? p.dateFrom, "week")}</strong>.
+          Covers <strong>{shortDate(p.dateFrom)}</strong> to <strong>{shortDate(p.dateTo ?? p.dateFrom)}</strong>.
         </p>
       )}
 
@@ -431,19 +436,31 @@ function ReadyCard({
         <div className="flex flex-wrap gap-1.5 pt-1 text-xs">
           <span className="text-muted">{UPLOAD.staysHere}:</span>
           {p.format.personalColumns.map((c) => (
-            <span key={c} className="rounded-full bg-pink-100 text-pink-700 px-2 py-0.5 line-through">
+            <span key={c} className="rounded-full bg-pink/15 text-pink px-2 py-0.5 line-through">
               {c}
             </span>
           ))}
         </div>
         <div className="flex flex-wrap gap-1.5 text-xs">
           <span className="text-muted">Used:</span>
-          {sent.map((c) => (
+          <span className="rounded-full bg-accent/10 text-accent px-2 py-0.5">Email → code</span>
+          <span className="rounded-full bg-accent/10 text-accent px-2 py-0.5">Postcode → sector</span>
+          {used.map((c) => (
             <span key={c} className="rounded-full bg-accent/10 text-accent px-2 py-0.5">
               {c}
             </span>
           ))}
         </div>
+        {ignored.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 text-xs">
+            <span className="text-muted">Not needed:</span>
+            {ignored.map((c) => (
+              <span key={c} className="rounded-full bg-border/30 text-muted px-2 py-0.5">
+                {c}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       <details className="text-sm">
@@ -558,7 +575,7 @@ function Progress({ value }: { value: number }) {
   return (
     <div className="h-2 rounded-full bg-border/40 overflow-hidden max-w-md mx-auto">
       <div
-        className="h-full rounded-full bg-gradient-to-r from-accent to-pink-500 transition-[width] duration-300"
+        className="h-full rounded-full bg-gradient-to-r from-accent to-pink transition-[width] duration-300"
         style={{ width: `${Math.round(Math.min(1, value) * 100)}%` }}
       />
     </div>

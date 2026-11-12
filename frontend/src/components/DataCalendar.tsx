@@ -57,7 +57,7 @@ export function WeekStrip({
             role="listitem"
             title={weekTitle(w)}
             aria-label={weekTitle(w)}
-            className={`${dim} rounded-sm ${cellClass(w, max)} ${fresh ? "animate-pop-in ring-2 ring-pink-400" : ""}`}
+            className={`${dim} rounded-sm ${cellClass(w, max)} ${fresh ? "animate-pop-in ring-2 ring-pink" : ""}`}
             style={fresh ? { animationDelay: `${delay}ms` } : undefined}
           />
         );

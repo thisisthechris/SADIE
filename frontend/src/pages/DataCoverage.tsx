@@ -10,6 +10,8 @@ export default function DataCoverage() {
   const q = useQuery({
     queryKey: ["data-calendar", "all"],
     queryFn: () => api<{ results: OrgCalendar[] }>("/api/analytics/data-calendar/", { query: { weeks: 52 } }),
+    // Non-staff get a 403, which retrying won't change.
+    retry: false,
   });
   const rows = [...(q.data?.results ?? [])].sort((a, b) => b.gap_weeks - a.gap_weeks);
 
@@ -22,6 +24,8 @@ export default function DataCoverage() {
       <div className="card p-5">
         {q.isLoading ? (
           <p className="text-sm text-muted">Loading…</p>
+        ) : q.isError ? (
+          <p className="text-sm text-muted">The coverage overview is for SADIE staff. Your organisation's calendar is on the Upload data page.</p>
         ) : !rows.length ? (
           <p className="text-sm text-muted">No partner organisations yet.</p>
         ) : (

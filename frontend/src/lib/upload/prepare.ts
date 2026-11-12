@@ -7,7 +7,7 @@ import { detectFormat, toUploadRow, type CsvFormat, type SkipReason, type Upload
 import { clientHash, sha256Hex } from "./hash";
 
 export interface Prepared {
-  format: { id: string; label: string; personalColumns: string[] };
+  format: { id: string; label: string; personalColumns: string[]; usedColumns: string[] };
   header: string[];
   rows: UploadRow[];
   skipped: Partial<Record<SkipReason, number>>;
@@ -67,7 +67,12 @@ export async function prepareCsv(text: string, onProgress?: ProgressFn): Promise
   return {
     ok: true,
     prepared: {
-      format: { id: format.id, label: format.label, personalColumns: format.personalColumns },
+      format: {
+        id: format.id,
+        label: format.label,
+        personalColumns: format.personalColumns,
+        usedColumns: format.usedColumns,
+      },
       header,
       rows,
       skipped,

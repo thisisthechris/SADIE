@@ -54,6 +54,12 @@ describe("detectFormat", () => {
     for (const f of FORMATS) expect(detectFormat(f.header)?.id).toBe(f.id);
     expect(detectFormat(["Email", "Postcode"])).toBeNull();
   });
+
+  it("only lists real header columns as used or personal", () => {
+    for (const f of FORMATS) {
+      for (const c of [...f.usedColumns, ...f.personalColumns]) expect(f.header, `${f.id}: ${c}`).toContain(c);
+    }
+  });
 });
 
 describe("prepareCsv", () => {

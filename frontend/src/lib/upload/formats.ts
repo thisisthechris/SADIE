@@ -43,6 +43,8 @@ export interface CsvFormat {
   header: string[];
   /** Columns holding personal data, shown as "stays on your device". */
   personalColumns: string[];
+  /** Columns the mapper reads (postcodes only as a sector; emails only as a hash). */
+  usedColumns: string[];
   map: (r: Record<string, string>) => ParsedRow | SkipReason;
 }
 
@@ -104,6 +106,7 @@ export const FORMATS: CsvFormat[] = [
     label: "Eventbrite",
     header: ["Order_ID", "Event_Name", "Event_Date", "First_Name", "Last_Name", "Email", "Postcode", "Ticket_Type", "Quantity", "Ticket_Price", "Purchase_Date", "Attendance_Status"],
     personalColumns: ["Order_ID", "First_Name", "Last_Name", "Email", "Postcode"],
+    usedColumns: ["Event_Name",  "Event_Date",  "Postcode",  "Quantity",  "Ticket_Price",  "Purchase_Date",  "Attendance_Status"],
     map: (r) => {
       const b = base(r, { email: "Email", postcode: "Postcode", event: "Event_Name", date: "Event_Date" });
       if (typeof b === "string") return b;
@@ -125,6 +128,7 @@ export const FORMATS: CsvFormat[] = [
     label: "Digitickets",
     header: ["Booking_Reference", "Booking_Date", "Visit", "Email", "Postcode", "Ticket_Type", "Quantity", "Order_Value", "Donation", "Gift_Aid", "Promo_Code"],
     personalColumns: ["Booking_Reference", "Email", "Postcode", "Gift_Aid"],
+    usedColumns: ["Visit",  "Booking_Date",  "Postcode",  "Quantity",  "Order_Value"],
     map: (r) => {
       const b = base(r, { email: "Email", postcode: "Postcode", event: "Visit", date: "Booking_Date" });
       if (typeof b === "string") return b;
@@ -146,6 +150,7 @@ export const FORMATS: CsvFormat[] = [
     label: "Monday.com CRM",
     header: ["Item", "Contact_Name", "Email", "Postcode", "Event", "Event_Date", "Status", "Comments"],
     personalColumns: ["Item", "Contact_Name", "Email", "Postcode", "Comments"],
+    usedColumns: ["Event",  "Event_Date",  "Postcode",  "Status"],
     map: (r) => {
       const b = base(r, { email: "Email", postcode: "Postcode", event: "Event", date: "Event_Date" });
       if (typeof b === "string") return b;
@@ -165,6 +170,7 @@ export const FORMATS: CsvFormat[] = [
     label: "Theatre Box Office",
     header: ["Booking_ID", "Customer_Email", "Customer_Postcode", "Customer_Name", "Performance", "Performance_Date", "Venue", "Tickets", "Seat_Category", "Booking_Channel", "Membership_Status", "Attendance"],
     personalColumns: ["Booking_ID", "Customer_Email", "Customer_Postcode", "Customer_Name", "Membership_Status"],
+    usedColumns: ["Performance",  "Performance_Date",  "Customer_Postcode",  "Venue",  "Tickets",  "Attendance"],
     map: (r) => {
       const b = base(r, { email: "Customer_Email", postcode: "Customer_Postcode", event: "Performance", date: "Performance_Date" });
       if (typeof b === "string") return b;
@@ -185,6 +191,7 @@ export const FORMATS: CsvFormat[] = [
     label: "Museum Attendance Register",
     header: ["Booking_Reference", "Event", "Date", "Name", "Email", "Postcode", "Tickets_Booked", "Attended", "Notes"],
     personalColumns: ["Booking_Reference", "Name", "Email", "Postcode", "Notes"],
+    usedColumns: ["Event",  "Date",  "Postcode",  "Tickets_Booked",  "Attended"],
     map: (r) => {
       const b = base(r, { email: "Email", postcode: "Postcode", event: "Event", date: "Date" });
       if (typeof b === "string") return b;
@@ -205,6 +212,7 @@ export const FORMATS: CsvFormat[] = [
     label: "Museum Booking Export",
     header: ["Booking_Reference", "Session", "Visit_Date", "Email", "Postcode", "Adults", "Children", "Total_Attendees", "Booking_Date"],
     personalColumns: ["Booking_Reference", "Email", "Postcode"],
+    usedColumns: ["Session",  "Visit_Date",  "Postcode",  "Total_Attendees",  "Booking_Date"],
     map: (r) => {
       const b = base(r, { email: "Email", postcode: "Postcode", event: "Session", date: "Visit_Date" });
       if (typeof b === "string") return b;
