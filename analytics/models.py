@@ -34,6 +34,10 @@ class UserHashInteraction(models.Model):
     interaction_date = models.DateField()
     created_at = models.DateTimeField(auto_now_add=True)
 
+    upload_batch = models.ForeignKey(
+        "imports.UploadBatch", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+
     class Meta:
         ordering = ["-interaction_date"]
         indexes = [
@@ -58,6 +62,10 @@ class PostcodeAreaInteraction(models.Model):
     period_start = models.DateField()
     period_end = models.DateField()
     created_at = models.DateTimeField(auto_now_add=True)
+
+    upload_batch = models.ForeignKey(
+        "imports.UploadBatch", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
 
     class Meta:
         ordering = ["-period_end", "-interaction_count"]
@@ -108,6 +116,10 @@ class PostcodeEventInteraction(models.Model):
     interaction_date = models.DateField()
     created_at = models.DateTimeField(auto_now_add=True)
 
+    upload_batch = models.ForeignKey(
+        "imports.UploadBatch", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+
     class Meta:
         ordering = ["-interaction_date", "-interaction_count"]
         indexes = [
@@ -156,6 +168,10 @@ class PostcodeTicketPurchase(models.Model):
     ticket_quantity = models.PositiveIntegerField(default=1)
     purchase_date = models.DateField()
     created_at = models.DateTimeField(auto_now_add=True)
+
+    upload_batch = models.ForeignKey(
+        "imports.UploadBatch", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
 
     class Meta:
         ordering = ["-purchase_date"]

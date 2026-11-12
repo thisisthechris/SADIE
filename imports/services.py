@@ -38,7 +38,11 @@ def _month_bounds(d: date) -> tuple[date, date]:
 class ImportContext:
     """Per-run cache + in-memory aggregation, flushed to the DB at the end."""
 
-    def __init__(self):
+    def __init__(self, organisation: Organisation | None = None, upload_batch=None):
+        """``organisation`` pins every booking to one org (browser uploads);
+        ``upload_batch`` tags every created row so the batch can be undone."""
+        self.organisation = organisation
+        self.upload_batch = upload_batch
         self._org_cache: dict[str, Organisation] = {}
         self._location_cache: dict[tuple[int, str], Location] = {}
         self._event_cache: dict[tuple[int, str, object], Event] = {}
@@ -59,6 +63,9 @@ class ImportContext:
     # -- resolution -----------------------------------------------------
 
     def get_organisation(self, code: str) -> Organisation:
+        if self.organisation is not None:
+            self.orgs_touched.add(self.organisation.name)
+            return self.organisation
         if code not in self._org_cache:
             name = ORG_CODE_MAP[code]
             org, _created = Organisation.objects.get_or_create(
@@ -173,9 +180,16 @@ class ImportContext:
 
     # -- flush --------------------------------------------------------------
 
+    def _tag(self, rows) -> None:
+        if self.upload_batch is not None:
+            for row in rows:
+                row.upload_batch = self.upload_batch
+
     def flush(self) -> dict[str, int]:
         """Bulk-create everything accumulated so far. Returns row counts created."""
+        self._tag(self.user_hash_interactions)
         UserHashInteraction.objects.bulk_create(self.user_hash_interactions, batch_size=_BULK_CREATE_BATCH_SIZE)
+        self._tag(self.ticket_purchases)
         PostcodeTicketPurchase.objects.bulk_create(self.ticket_purchases, batch_size=_BULK_CREATE_BATCH_SIZE)
 
         event_interactions = [
@@ -192,6 +206,7 @@ class ImportContext:
                 self._event_interaction_agg.items()
             )
         ]
+        self._tag(event_interactions)
         PostcodeEventInteraction.objects.bulk_create(event_interactions, batch_size=_BULK_CREATE_BATCH_SIZE)
 
         area_interactions = [
@@ -205,6 +220,7 @@ class ImportContext:
             )
             for (org_id, postcode, area, period_start, period_end), count in self._area_interaction_agg.items()
         ]
+        self._tag(area_interactions)
         PostcodeAreaInteraction.objects.bulk_create(area_interactions, batch_size=_BULK_CREATE_BATCH_SIZE)
 
         priced_events = [e for e in self._event_cache.values() if e.pk in self._event_min_paid_price]
@@ -219,7 +235,7 @@ class ImportContext:
             "ticket_purchases": len(self.ticket_purchases),
             "postcode_event_interactions": len(event_interactions),
             "postcode_area_interactions": len(area_interactions),
-            "organisations": len(self._org_cache),
+            "organisations": len(self._org_cache) or int(self.organisation is not None),
             "events": len(self._event_cache),
         }
 

@@ -46,6 +46,7 @@ const NAV: NavEntry[] = [
       { to: "/insights/org-connections", label: "Org Connections" },
     ],
   },
+  { to: "/insights/upload", label: "Upload data" },
   { to: "/insights/help", label: "Help" },
   {
     label: "Internal",
@@ -57,6 +58,7 @@ const NAV: NavEntry[] = [
       { to: "/insights/postcode-volume", label: "Ticket Volume", staff: true },
       { to: "/insights/overview", label: "System Overview", staff: true },
       { to: "/insights/imports", label: "Imports", staff: true },
+      { to: "/insights/data-coverage", label: "Data coverage", staff: true },
       { to: "/insights/accounts", label: "Accounts", staff: true },
     ],
     staff: true,

@@ -19,6 +19,8 @@ const TimeCube = lazy(() => import("./pages/TimeCube"));
 const SavedViews = lazy(() => import("./pages/SavedViews"));
 const ViewResolver = lazy(() => import("./pages/ViewResolver"));
 const Imports = lazy(() => import("./pages/Imports"));
+const Upload = lazy(() => import("./pages/Upload"));
+const DataCoverage = lazy(() => import("./pages/DataCoverage"));
 const AddAccount = lazy(() => import("./pages/AddAccount"));
 const Journeys = lazy(() => import("./pages/Journeys"));
 const JourneyMap = lazy(() => import("./pages/JourneyMap"));
@@ -111,6 +113,14 @@ export default function App() {
         <Route
           path="imports"
           element={<Suspense fallback={VizFallback}><Imports /></Suspense>}
+        />
+        <Route
+          path="upload"
+          element={<Suspense fallback={VizFallback}><Upload /></Suspense>}
+        />
+        <Route
+          path="data-coverage"
+          element={<Suspense fallback={VizFallback}><DataCoverage /></Suspense>}
         />
         <Route
           path="accounts"

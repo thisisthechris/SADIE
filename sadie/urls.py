@@ -25,6 +25,7 @@ urlpatterns = [
     path("api/events/", include("events.urls")),
     path("api/analytics/", include("analytics.urls")),
     path("api/upload/", include("analytics.upload_urls")),
+    path("api/uploads/", include("imports.urls")),
     path("api/", include("dashboard.api_urls")),
     path("api/", include("scraping.urls")),
     # Public feeds (ICS/RSS/JSON) and saved-view short links. The React SPA is

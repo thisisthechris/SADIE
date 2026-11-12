@@ -6,6 +6,7 @@ import { useFilters } from "../lib/filters";
 import { useMe } from "../lib/auth";
 import PartnerBadge from "../components/PartnerBadge";
 import AnimatedNumber from "../components/AnimatedNumber";
+import DataCalendar from "../components/DataCalendar";
 import type { OrganisationDetail, OrgGoal, Paginated } from "../lib/types";
 
 interface PostcodeBarsResp {
@@ -114,6 +115,8 @@ export default function OrganisationDetailPage() {
       </div>
 
       {org.children.length > 0 && <ChildrenGrid children={org.children} />}
+
+      {org.can_edit && <DataCalendar orgId={org.id} />}
 
       {org.locations.length > 0 && (org.can_edit ? <VenueManagePanel org={org} onMerged={() => qc.invalidateQueries({ queryKey: ["org-detail", slug] })} /> : <LocationsTable locations={org.locations} />)}
 

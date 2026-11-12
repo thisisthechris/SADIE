@@ -46,11 +46,39 @@ export default {
       },
       animation: {
         "fade-in": "fadeIn 0.4s ease-in-out",
+        wobble: "wobble 0.6s ease-in-out infinite",
+        "float-slow": "floatSlow 4s ease-in-out infinite",
+        "pop-in": "popIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both",
+        "confetti-fall": "confettiFall 1.6s ease-in forwards",
+        "bounce-soft": "bounceSoft 1s ease-in-out infinite",
       },
       keyframes: {
         fadeIn: {
           "0%": { opacity: "0", transform: "scale(0.95)" },
           "100%": { opacity: "1", transform: "scale(1)" },
+        },
+        wobble: {
+          "0%, 100%": { transform: "rotate(-1deg) scale(1.02)" },
+          "50%": { transform: "rotate(1deg) scale(1.03)" },
+        },
+        floatSlow: {
+          "0%, 100%": { transform: "translateY(0) rotate(0deg)" },
+          "50%": { transform: "translateY(-10px) rotate(8deg)" },
+        },
+        popIn: {
+          "0%": { opacity: "0", transform: "scale(0.6)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
+        confettiFall: {
+          "0%": { opacity: "1", transform: "translate(0, 0) rotate(0deg)" },
+          "100%": {
+            opacity: "0",
+            transform: "translate(var(--dx), var(--dy)) rotate(var(--spin))",
+          },
+        },
+        bounceSoft: {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-6px)" },
         },
       },
     },

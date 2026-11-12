@@ -101,3 +101,41 @@ export const REPORT = {
     quarter: "Each point is one calendar quarter.",
   },
 };
+
+export const UPLOAD = {
+  title: "Upload data",
+  intro:
+    "Add your latest ticketing or attendance export. Your file is read and anonymised in this browser: names, emails and full postcodes never leave your device.",
+  steps: ["Choose organisation", "Add a file", "Check", "Upload", "Done"],
+  dropTitle: "Drop a CSV here",
+  dropHint: "or click to choose a file. Exports from Eventbrite, Digitickets, Monday.com, the box office and museum registers all work.",
+  dropActive: "Let go, we've got it!",
+  readingFile: "Reading your file…",
+  crunching: (n: number) => `Crunching ${n.toLocaleString()} bookings…`,
+  privacyTitle: "Anonymising on your device",
+  privacyLine: "Emails are turned into one-way codes here. Only the codes are sent.",
+  unrecognisedTitle: "We don't recognise these columns",
+  unrecognisedHint: "Please export one of these formats without renaming or reordering columns:",
+  duplicateTitle: "Looks like you've uploaded this file before",
+  duplicateHint: "Uploading it again would double-count these bookings.",
+  previewTitle: "Exactly what we'll send",
+  previewHint: "These are the first rows of the upload. Everything else in your file stays here.",
+  staysHere: "Stays on your device",
+  uploading: (done: number, total: number) => `Sending ${done.toLocaleString()} of ${total.toLocaleString()} rows…`,
+  doneTitle: "All done, thank you!",
+  doneLine: (n: number, weeks: number) =>
+    `${n.toLocaleString()} bookings added across ${weeks} week${weeks === 1 ? "" : "s"}. Your data calendar is up to date.`,
+  undo: "Undo this upload",
+  undoConfirm: "Remove everything this upload added?",
+  another: "Upload another file",
+  historyTitle: "Recent uploads",
+  noOrgs: "You aren't linked to an organisation yet. Ask a SADIE administrator to add you.",
+};
+
+export const DATA_CALENDAR = {
+  title: "Data calendar",
+  intro: "Each square is one Monday–Sunday week. Pale squares are weeks with no data yet: a quick upload fills the gap.",
+  gap: "No data this week",
+  coverageTitle: "Data coverage",
+  coverageIntro: "Which partners have sent data for each of the last 52 weeks. Pale squares are gaps.",
+};
