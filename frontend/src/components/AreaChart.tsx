@@ -9,14 +9,15 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { BUCKETS, bucketLabel, useFilters } from "../lib/filters";
 
-interface MonthlyPoint {
-  month: string; // YYYY-MM
+interface TrendPoint {
+  month: string; // bucket start date, YYYY-MM-DD
   count: number;
 }
 
 interface TimeseriesResp {
-  series: MonthlyPoint[];
+  series: TrendPoint[];
 }
 
 interface AreaChartProps {
@@ -26,28 +27,24 @@ interface AreaChartProps {
   className?: string;
 }
 
-/** Format a "YYYY-MM" string as UK short month label, e.g. "Jan 2025". */
-function ukMonthLabel(monthStr: string): string {
-  const [year, month] = monthStr.split("-");
-  const d = new Date(parseInt(year), parseInt(month) - 1, 1);
-  return d.toLocaleDateString("en-GB", { month: "short", year: "numeric" });
-}
-
 /**
- * HeadlineAreaChart: Monthly visitor interaction trend over the full data range.
- * Uses the interactions-timeseries endpoint so the chart spans all available
- * months rather than just the last two. Dates are formatted in UK style (e.g.
- * "Jan 2025").
+ * HeadlineAreaChart: visitor interactions over the selected date range,
+ * grouped by the chosen bucket (week by default, so the weekly report shows
+ * the last 12 weeks). Dates are formatted in UK style.
  */
 export const HeadlineAreaChart: React.FC<AreaChartProps> = ({
   orgId,
   className = "",
 }) => {
-  const params = new URLSearchParams();
+  const { category, date_from, date_to, bucket } = useFilters();
+  const params = new URLSearchParams({ bucket });
   if (orgId) params.append("org", String(orgId));
+  if (category) params.append("category", category);
+  if (date_from) params.append("date_from", date_from);
+  if (date_to) params.append("date_to", date_to);
 
   const { data, isLoading, error } = useQuery<TimeseriesResp>({
-    queryKey: ["stats", "interactions-timeseries", orgId],
+    queryKey: ["stats", "interactions-timeseries", orgId, category, date_from, date_to, bucket],
     queryFn: async () => {
       const res = await fetch(`/api/analytics/stats/interactions-timeseries/?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch interaction timeseries");
@@ -72,13 +69,14 @@ export const HeadlineAreaChart: React.FC<AreaChartProps> = ({
   }
 
   const chartData = data.series.map((p) => ({
-    period: ukMonthLabel(p.month),
+    period: bucketLabel(p.month, bucket),
     interactions: p.count,
   }));
+  const bucketName = (BUCKETS.find((b) => b.v === bucket)?.l ?? "Month").toLowerCase();
 
   return (
     <div className={`card p-6 ${className}`}>
-      <h3 className="heading-sub mb-4">Visitor Interactions by Month</h3>
+      <h3 className="heading-sub mb-4">Visitor Interactions by {bucketName}</h3>
       <ResponsiveContainer width="100%" height={280}>
         <AreaChart data={chartData}>
           <defs>

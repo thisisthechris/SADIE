@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useFilters } from "../lib/filters";
+import { periodRange, useFilters } from "../lib/filters";
 import { useSavedView } from "../lib/savedViews";
 
 /**
@@ -21,7 +21,11 @@ export default function ViewResolver() {
       patch[k] = v;
     });
     f.reset();
-    f.set(patch as any);
+    // Views saved before the weekly report stored no dates (meaning all time)
+    // or a day-based period; derive their range rather than keep the default 12 weeks.
+    const hasDates = "date_from" in patch || "date_to" in patch;
+    const period = patch.period ?? "";
+    f.set({ period: hasDates ? "custom" : period, ...(hasDates ? {} : periodRange(period)), ...patch });
     // Strip /app prefix if present, since router is mounted at /
     const path = data.path.replace(/^\/app/, "") || "/";
     nav(path, { replace: true });

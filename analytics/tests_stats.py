@@ -515,13 +515,45 @@ class PostcodeAndTicketStatsEndpointsTest(TestCase):
         self.assertIsNone(series["2026-01-20"]["temp_max_c"])
 
 
-class EngagementEndpointTest(TestCase):
-    """Tests for the engagement endpoint's month AND quarter deltas."""
+class TrendBucketTest(TestCase):
+    """``bucket`` switches trend endpoints between week, month and quarter."""
 
-    @staticmethod
-    def _quarter_start(d: date) -> date:
-        quarter_start_month = ((d.month - 1) // 3) * 3 + 1
-        return date(d.year, quarter_start_month, 1)
+    @classmethod
+    def setUpTestData(cls):
+        org = Organisation.objects.create(name="Bucket Org")
+        for d in (date(2026, 11, 2), date(2026, 11, 4), date(2026, 11, 10)):
+            UserHashInteraction.objects.create(
+                user_hash=d.isoformat().ljust(64, "0"),
+                interaction_type="event",
+                organisation=org,
+                interaction_date=d,
+            )
+
+    def _series(self, url, bucket):
+        r = self.client.get(url, {"bucket": bucket, "date_from": "2026-11-01", "date_to": "2026-11-15"})
+        self.assertEqual(r.status_code, 200)
+        return r.json()["series"]
+
+    def test_timeseries_by_week_month_quarter(self):
+        url = "/api/analytics/stats/interactions-timeseries/"
+        by_week = [(s["month"], s["count"]) for s in self._series(url, "week")]
+        self.assertEqual(by_week, [("2026-11-02", 2), ("2026-11-09", 1)])
+        self.assertEqual([(s["month"], s["count"]) for s in self._series(url, "month")], [("2026-11-01", 3)])
+        self.assertEqual([(s["month"], s["count"]) for s in self._series(url, "quarter")], [("2026-10-01", 3)])
+
+    def test_new_returning_by_week(self):
+        series = self._series("/api/analytics/stats/visitors-new-returning/", "week")
+        self.assertEqual([s["month"] for s in series], ["2026-11-02", "2026-11-09"])
+
+
+class EngagementEndpointTest(TestCase):
+    """Latest week/month/quarter vs the one before, anchored to a fixed report date.
+
+    Report date Sunday 8 Nov 2026: week = 2-8 Nov vs 26 Oct-1 Nov,
+    month = October vs September, quarter = Q3 vs Q2.
+    """
+
+    REPORT_DATE = "2026-11-08"
 
     @classmethod
     def setUpTestData(cls):
@@ -529,73 +561,62 @@ class EngagementEndpointTest(TestCase):
         cls.org = Organisation.objects.create(name="Org D")
         tz = timezone.get_current_timezone()
 
-        today = date.today()
-        cls.first_of_this_month = date(today.year, today.month, 1)
-        last_of_prev_month = cls.first_of_this_month - timedelta(days=1)
-        cls.first_of_prev_month = date(last_of_prev_month.year, last_of_prev_month.month, 1)
+        def add(d: date, n: int, tag: str):
+            for i in range(n):
+                Event.objects.create(
+                    organisation=cls.org,
+                    title=f"{tag} {i}",
+                    start_datetime=timezone.make_aware(datetime(d.year, d.month, d.day, 10, 0), tz),
+                )
+                UserHashInteraction.objects.create(
+                    user_hash=f"{tag}{i}".ljust(64, "0"),
+                    interaction_type="event",
+                    organisation=cls.org,
+                    interaction_date=d,
+                )
 
-        def mk_dt(d: date):
-            return timezone.make_aware(datetime(d.year, d.month, d.day, 10, 0), tz)
-
-        # 2 events + 2 interactions in the current month.
-        for i in range(2):
-            Event.objects.create(
-                organisation=cls.org, title=f"This month {i}", start_datetime=mk_dt(cls.first_of_this_month)
-            )
-            UserHashInteraction.objects.create(
-                user_hash=f"{i:064d}",
-                interaction_type="event",
-                organisation=cls.org,
-                interaction_date=cls.first_of_this_month,
-            )
-
-        # 1 event + 1 interaction in the previous calendar month.
-        Event.objects.create(organisation=cls.org, title="Prev month", start_datetime=mk_dt(cls.first_of_prev_month))
-        UserHashInteraction.objects.create(
-            user_hash="9" * 64,
-            interaction_type="event",
-            organisation=cls.org,
-            interaction_date=cls.first_of_prev_month,
-        )
+        add(date(2026, 11, 3), 2, "wk")  # report week
+        add(date(2026, 10, 28), 1, "pw")  # previous week, also October
+        add(date(2026, 9, 15), 1, "sep")  # September, Q3
 
     def setUp(self):
         self.client = APIClient()
         self.client.force_authenticate(self.user)
 
-    def test_engagement_month_fields(self):
-        r = self.client.get("/api/analytics/stats/engagement/")
+    def _get(self, **params):
+        r = self.client.get("/api/analytics/stats/engagement/", {"date_to": self.REPORT_DATE, **params})
         self.assertEqual(r.status_code, 200)
-        d = r.json()
-        self.assertEqual(d["current_month_events"], 2)
-        self.assertEqual(d["previous_month_events"], 1)
-        self.assertEqual(d["current_month_interactions"], 2)
-        self.assertEqual(d["previous_month_interactions"], 1)
+        return r.json()
 
-    def test_engagement_quarter_fields_present_and_consistent(self):
-        r = self.client.get("/api/analytics/stats/engagement/")
-        self.assertEqual(r.status_code, 200)
-        d = r.json()
-        for key in (
-            "current_quarter_events",
-            "previous_quarter_events",
-            "current_quarter_interactions",
-            "previous_quarter_interactions",
-            "quarter_events_pct_change",
-            "quarter_interactions_pct_change",
-            "quarter_buzz_current",
-            "quarter_buzz_previous",
-            "quarter_buzz_change",
-        ):
-            self.assertIn(key, d)
+    def test_defaults_to_week_vs_previous_week(self):
+        d = self._get()
+        self.assertEqual(d["compare"], "week")
+        self.assertEqual((d["current"]["period_start"], d["current"]["period_end"]), ("2026-11-02", "2026-11-08"))
+        self.assertEqual((d["previous"]["period_start"], d["previous"]["period_end"]), ("2026-10-26", "2026-11-01"))
+        self.assertEqual((d["current"]["events"], d["current"]["interactions"]), (2, 2))
+        self.assertEqual((d["previous"]["events"], d["previous"]["interactions"]), (1, 1))
+        self.assertEqual(d["deltas"]["events_pct_change"], 100.0)
 
-        # Quarter-to-date always starts on/before the current month, and both
-        # queries are unbounded above, so quarter-to-date must be a superset
-        # of the current month's counts regardless of what day of the year
-        # the test runs on.
-        self.assertGreaterEqual(d["current_quarter_events"], d["current_month_events"])
-        self.assertGreaterEqual(d["current_quarter_interactions"], d["current_month_interactions"])
-        self.assertIsInstance(d["quarter_events_pct_change"], float)
-        self.assertIsInstance(d["quarter_interactions_pct_change"], float)
+    def test_month_and_quarter_use_latest_complete_period(self):
+        month = self._get(compare="month")
+        self.assertEqual(month["current"]["period_start"], "2026-10-01")
+        self.assertEqual((month["current"]["events"], month["previous"]["events"]), (1, 1))
+
+        quarter = self._get(compare="quarter")
+        current = quarter["current"]
+        self.assertEqual((current["period_start"], current["period_end"]), ("2026-07-01", "2026-09-30"))
+        self.assertEqual((quarter["current"]["events"], quarter["previous"]["events"]), (1, 0))
+
+    def test_date_from_does_not_clip_the_previous_period(self):
+        d = self._get(date_from="2026-11-02")
+        self.assertEqual(d["previous"]["events"], 1)
+
+    def test_headline_follows_the_same_periods(self):
+        r = self.client.get("/api/analytics/stats/headline/", {"date_to": self.REPORT_DATE})
+        d = r.json()
+        self.assertEqual(d["compare"], "week")
+        self.assertEqual(d["current_period"]["period_start"], "2026-11-02")
+        self.assertEqual((d["current_period"]["attendees_count"], d["previous_period"]["attendees_count"]), (2, 1))
 
 
 class FreeVsPaidEndpointTest(TestCase):

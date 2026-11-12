@@ -11,7 +11,7 @@ export const SITE_NAME = "SADIE";
 export const LANDING = {
   tagline: "A place-based data hub for Plymouth's ticketed cultural events.",
   intro:
-    "SADIE brings together ticketed event data from partner arts and cultural organisations across Plymouth. It shows what is on, where it happens, and who attends, so partners can plan together and see their collective reach.",
+    "SADIE brings together ticketed event data from partner arts and cultural organisations across Plymouth. It's published as a weekly report: every Monday it updates to cover the week that ended the day before, so partners can plan together and see their collective reach.",
   scopeNote:
     "Figures cover ticketed events only and count intended attendance (headcount), not tickets sold. CRM records without ticket data are excluded from ticket metrics.",
   partnersHeading: "Partners contributing data",
@@ -28,7 +28,7 @@ export const SECTIONS: Record<"insights" | "maps" | "analysis" | "exploration" |
   insights: {
     title: "Insights",
     description:
-      "Headline figures for the place and period you select: attendance, events, and visitors at a glance.",
+      "The weekly report: attendance, events and visitors for the latest week, compared with the week before.",
   },
   maps: {
     title: "Maps",
@@ -38,7 +38,7 @@ export const SECTIONS: Record<"insights" | "maps" | "analysis" | "exploration" |
   analysis: {
     title: "Analysis",
     description:
-      "Trends over time, comparisons between periods or partners, and how events are categorised.",
+      "Trends by week, month or quarter, comparisons between periods or partners, and how events are categorised.",
   },
   exploration: {
     title: "Exploration",
@@ -83,4 +83,23 @@ export const FREE_VS_PAID = {
   },
   eventsLabel: "Events",
   attendanceLabel: "Intended attendance",
+};
+
+export const REPORT = {
+  /** Heading prefix, followed by the long date of the report's Sunday. */
+  weekEndingPrefix: "Week ending",
+  cadence: "Weekly report · new data every Monday, covering the week to the previous Sunday.",
+  customView: "You're viewing a custom range rather than the weekly report.",
+  filteredLabel: "Custom view",
+  resetLabel: "Back to weekly report",
+  compareOptions: {
+    week: { tab: "Week", previous: "previous week", current: "Latest week" },
+    month: { tab: "Month", previous: "previous month", current: "Latest month" },
+    quarter: { tab: "Quarter", previous: "previous quarter", current: "Latest quarter" },
+  },
+  trendBucketNote: {
+    week: "Each point is one Monday–Sunday week.",
+    month: "Each point is one calendar month.",
+    quarter: "Each point is one calendar quarter.",
+  },
 };

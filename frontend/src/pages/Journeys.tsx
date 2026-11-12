@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
-import { useFilters } from "../lib/filters";
+import { BUCKETS, bucketLabel, useFilters } from "../lib/filters";
 import ExportMenu from "../components/ExportMenu";
 import InfoTooltip from "../components/InfoTooltip";
 import OrgToggle from "../components/OrgToggle";
@@ -71,10 +71,12 @@ function SummaryView() {
 
       <section className="grid gap-4 lg:grid-cols-3">
         <div className="card p-4 lg:col-span-2">
-          <h2 className="heading-sub mb-3">Monthly trend</h2>
+          <h2 className="heading-sub mb-3">
+            Trend by {(BUCKETS.find((b) => b.v === f.bucket)?.l ?? "month").toLowerCase()}
+          </h2>
           <Sparkline
             points={(data?.monthly ?? []).map((p) => p.count)}
-            labels={(data?.monthly ?? []).map((p) => p.month ?? "")}
+            labels={(data?.monthly ?? []).map((p) => bucketLabel(p.month ?? "", f.bucket))}
           />
         </div>
         <div className="card p-4">

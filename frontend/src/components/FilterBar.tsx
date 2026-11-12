@@ -1,16 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
-import { useFilters } from "../lib/filters";
+import { BUCKETS, PERIODS, useFilters } from "../lib/filters";
 import type { Category, OrganisationSummary, Paginated } from "../lib/types";
 import SaveViewButton from "./SaveViewButton";
-
-const PERIODS = [
-  { v: "", l: "All time" },
-  { v: "7d", l: "Last 7 days" },
-  { v: "30d", l: "Last 30 days" },
-  { v: "90d", l: "Last 90 days" },
-  { v: "1y", l: "Last year" },
-];
 
 /**
  * Shared filter bar — mirrors the dashboard `_filter_ctx` template helper so
@@ -78,14 +70,17 @@ export default function FilterBar() {
       <Field label="Period">
         <select
           className="input"
-          value={f.period}
-          onChange={(e) => f.set({ period: e.target.value, date_from: "" })}
+          value={PERIODS.some((p) => p.v === f.period) ? f.period : "custom"}
+          onChange={(e) => f.setPeriod(e.target.value)}
         >
           {PERIODS.map((p) => (
             <option key={p.v} value={p.v}>
               {p.l}
             </option>
           ))}
+          <option value="custom" disabled hidden>
+            Custom dates
+          </option>
         </select>
       </Field>
       <Field label="From">
@@ -93,7 +88,7 @@ export default function FilterBar() {
           type="date"
           className="input"
           value={f.date_from}
-          onChange={(e) => f.set({ date_from: e.target.value, period: "" })}
+          onChange={(e) => f.set({ date_from: e.target.value, period: "custom" })}
         />
       </Field>
       <Field label="To">
@@ -101,8 +96,17 @@ export default function FilterBar() {
           type="date"
           className="input"
           value={f.date_to}
-          onChange={(e) => f.set({ date_to: e.target.value })}
+          onChange={(e) => f.set({ date_to: e.target.value, period: "custom" })}
         />
+      </Field>
+      <Field label="Group by">
+        <select className="input" value={f.bucket} onChange={(e) => f.set({ bucket: e.target.value })}>
+          {BUCKETS.map((b) => (
+            <option key={b.v} value={b.v}>
+              {b.l}
+            </option>
+          ))}
+        </select>
       </Field>
       <Field label="Type">
         <select

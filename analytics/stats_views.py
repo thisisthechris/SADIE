@@ -16,22 +16,23 @@ Endpoints (mounted at /api/analytics/stats/):
     GET top-orgs/                 -> top organisations by event count
     GET top-categories/           -> top categories by event count
     GET free-vs-paid/             -> events and attendance split by free / paid / unknown price
-    GET interactions-timeseries/  -> monthly interaction counts
+    GET interactions-timeseries/  -> interaction counts per week/month/quarter (``bucket``)
     GET interactions-by-type/     -> breakdown by interaction_type
     GET postcode-aggregates/      -> per-area sums for the choropleth
-    GET visitors-new-returning/   -> monthly new vs returning visitor counts
+    GET visitors-new-returning/   -> new vs returning visitors per bucket
     GET activity-by-weekday/      -> event and interaction counts by weekday
-    GET category-trends/          -> monthly category interaction trends
+    GET category-trends/          -> category interaction trends per bucket
     GET top-venues/               -> top locations by event count and interactions
-    GET engagement/               -> engagement metrics (buzz, current vs previous month)
+    GET headline/                 -> events & attendees, latest week/month/quarter vs previous
+    GET engagement/               -> engagement (buzz) for latest week/month/quarter vs previous
     GET peak-times/               -> event count by hour-of-day
     GET attendance-frequency/     -> distribution of events attended per visitor
     GET event-lead-time/          -> avg days between scrape and event, by org
-    GET lead-time-trend/          -> monthly avg scrape-to-event lead time
+    GET lead-time-trend/          -> avg scrape-to-event lead time per bucket
     GET peak-times-by-postcode/   -> interaction volume by daypart, per postcode district
     GET event-types-by-postcode/  -> interaction volume by event category, per postcode district
-    GET postcode-engagement-trend/ -> monthly interaction totals, top 5 postcode districts
-    GET ticket-volume-trend/      -> monthly ticket-purchase volume (tickets + orders)
+    GET postcode-engagement-trend/ -> interaction totals per bucket, top 5 postcode districts
+    GET ticket-volume-trend/      -> ticket-purchase volume per bucket (tickets + orders)
     GET peak-times-tickets/       -> ticket volume by hour-of-day (via linked event's start time)
     GET weather-correlation/      -> daily interactions/tickets joined with Plymouth weather
 """
@@ -53,6 +54,9 @@ from organisations.models import Location, Organisation
 from .caching import cached_response
 from .models import DailyWeather, UserHashInteraction
 from .queries import (
+    COMPARE_PERIODS,
+    bucket_start,
+    comparison_periods,
     district_of,
     events_qs,
     interactions_qs,
@@ -60,6 +64,7 @@ from .queries import (
     postcode_event_qs,
     postcode_qs,
     postcode_ticket_qs,
+    trunc_for,
 )
 
 
@@ -182,13 +187,13 @@ def free_vs_paid(request: Request) -> Response:
 @permission_classes([IsAuthenticatedOrReadOnly])
 @cached_response(timeout=900)
 def interactions_timeseries(request: Request) -> Response:
-    """Monthly interaction totals for the journeys page line chart."""
+    """Interaction totals per week, month or quarter (``bucket``) for trend line charts."""
     p, _, interactions, _ = _filtered(request)
     # Exclude future-dated rows (synthesized/imported demo data can include them)
     # so trend charts never show incomplete/future months.
     rows = (
         interactions.filter(interaction_date__lte=date.today())
-        .annotate(month=TruncMonth("interaction_date"))
+        .annotate(month=trunc_for(p["bucket"], "interaction_date"))
         .values("month")
         .annotate(count=Count("id"))
         .order_by("month")
@@ -269,118 +274,95 @@ def postcode_aggregates(request: Request) -> Response:
     )
 
 
+def _pct_change(current: float, previous: float) -> float:
+    if previous > 0:
+        return round(((current - previous) / previous) * 100, 1)
+    return 100.0 if current > 0 else 0.0
+
+
+def _comparison_context(request: Request):
+    """Shared setup for period-vs-period endpoints.
+
+    ``compare`` (week | month | quarter, default week) picks the period length.
+    ``date_to`` is the report date: the latest complete period ending on or before
+    it is compared with the one before. The date range itself is not applied to the
+    querysets, so neither period gets clipped by it.
+    """
+    p = parse_filter_params(request)
+    compare = request.GET.get("compare", "week")
+    if compare not in COMPARE_PERIODS:
+        compare = "week"
+    try:
+        anchor = date.fromisoformat(p["dto"]) if p["dto"] else None
+    except ValueError:
+        anchor = None
+    undated = {**p, "dfrom": "", "dto": "", "period": ""}
+    current, previous = comparison_periods(compare, anchor)
+    return p, compare, current, previous, events_qs(undated), interactions_qs(undated)
+
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticatedOrReadOnly])
 @cached_response(timeout=900)
 def headline(request: Request) -> Response:
-    """Headline stats for org insights: events & attendees last month vs month before.
+    """Headline stats for org insights: events & unique attendees, latest period vs the one before.
+
+    Query params: the usual filters, plus ``compare`` (week | month | quarter,
+    default week). ``date_to`` sets the report date (default: last Sunday).
 
     Returns:
     {
         "filters": {...},
+        "compare": "week",
         "scope_label": "Plymouth Arts Centre" or "City (all)",
-        "current_period": {
-            "period_start": "2025-12-01",
-            "period_end": "2025-12-31",
-            "events_count": 42,
-            "attendees_count": 1234
-        },
-        "previous_period": {
-            "period_start": "2025-11-01",
-            "period_end": "2025-11-30",
-            "events_count": 38,
-            "attendees_count": 1100
-        },
-        "deltas": {
-            "events_pct_change": 10.5,  # positive means increase
-            "attendees_pct_change": 12.2
-        }
+        "current_period": {"period_start": "2026-11-02", "period_end": "2026-11-08",
+                           "events_count": 42, "attendees_count": 1234},
+        "previous_period": {"period_start": "2026-10-26", "period_end": "2026-11-01", ...},
+        "deltas": {"events_pct_change": 10.5, "attendees_pct_change": 12.2}
     }
     """
-    p = parse_filter_params(request)
+    p, compare, (cs, ce), (ps, pe), events, interactions = _comparison_context(request)
 
-    # Determine scope label (org name or "City (all)").
     scope_label = "City (all)"
     if p.get("org"):
         try:
-            org_id = int(p["org"])
-            org = Organisation.objects.get(pk=org_id)
-            scope_label = org.name
+            scope_label = Organisation.objects.get(pk=int(p["org"])).name
         except (TypeError, ValueError, Organisation.DoesNotExist):
             pass
 
-    # Calculate previous calendar month.
-    today = date.today()
-    # First day of this month
-    first_of_this_month = date(today.year, today.month, 1)
-    # Last day of previous month
-    last_of_prev_month = first_of_this_month - timedelta(days=1)
-    # First day of previous month
-    first_of_prev_month = date(last_of_prev_month.year, last_of_prev_month.month, 1)
-    # First day of month before that
-    first_of_prev_prev_month = date(
-        (first_of_prev_month - timedelta(days=1)).year, (first_of_prev_month - timedelta(days=1)).month, 1
-    )
-    last_of_prev_prev_month = first_of_prev_month - timedelta(days=1)
-
-    # Get filtered querysets.
-    _, events, interactions, _ = _filtered(request)
-
-    # Current period (previous calendar month).
-    curr_events = events.filter(
-        start_datetime__date__gte=first_of_prev_month, start_datetime__date__lte=last_of_prev_month
-    ).count()
-    curr_attendees = (
-        interactions.filter(interaction_date__gte=first_of_prev_month, interaction_date__lte=last_of_prev_month)
-        .values("user_hash")
-        .distinct()
-        .count()
-    )
-
-    # Previous period (month before that).
-    prev_events = events.filter(
-        start_datetime__date__gte=first_of_prev_prev_month, start_datetime__date__lte=last_of_prev_prev_month
-    ).count()
-    prev_attendees = (
-        interactions.filter(
-            interaction_date__gte=first_of_prev_prev_month, interaction_date__lte=last_of_prev_prev_month
+    def _counts(start: date, end: date) -> tuple[int, int]:
+        n_events = events.filter(start_datetime__date__gte=start, start_datetime__date__lte=end).count()
+        n_attendees = (
+            interactions.filter(interaction_date__gte=start, interaction_date__lte=end)
+            .values("user_hash")
+            .distinct()
+            .count()
         )
-        .values("user_hash")
-        .distinct()
-        .count()
-    )
+        return n_events, n_attendees
 
-    # Calculate deltas.
-    events_pct_change = (
-        round(((curr_events - prev_events) / max(1, prev_events)) * 100, 1)
-        if prev_events > 0
-        else (100.0 if curr_events > 0 else 0.0)
-    )
-    attendees_pct_change = (
-        round(((curr_attendees - prev_attendees) / max(1, prev_attendees)) * 100, 1)
-        if prev_attendees > 0
-        else (100.0 if curr_attendees > 0 else 0.0)
-    )
+    curr_events, curr_attendees = _counts(cs, ce)
+    prev_events, prev_attendees = _counts(ps, pe)
 
     return Response(
         {
             "filters": p,
+            "compare": compare,
             "scope_label": scope_label,
             "current_period": {
-                "period_start": first_of_prev_month.isoformat(),
-                "period_end": last_of_prev_month.isoformat(),
+                "period_start": cs.isoformat(),
+                "period_end": ce.isoformat(),
                 "events_count": curr_events,
                 "attendees_count": curr_attendees,
             },
             "previous_period": {
-                "period_start": first_of_prev_prev_month.isoformat(),
-                "period_end": last_of_prev_prev_month.isoformat(),
+                "period_start": ps.isoformat(),
+                "period_end": pe.isoformat(),
                 "events_count": prev_events,
                 "attendees_count": prev_attendees,
             },
             "deltas": {
-                "events_pct_change": events_pct_change,
-                "attendees_pct_change": attendees_pct_change,
+                "events_pct_change": _pct_change(curr_events, prev_events),
+                "attendees_pct_change": _pct_change(curr_attendees, prev_attendees),
             },
         }
     )
@@ -390,15 +372,15 @@ def headline(request: Request) -> Response:
 @permission_classes([IsAuthenticatedOrReadOnly])
 @cached_response(timeout=900)
 def visitors_new_returning(request: Request) -> Response:
-    """Monthly new vs returning visitor counts.
+    """New vs returning visitor counts per bucket (week, month or quarter).
 
-    A visitor is "new" if their first interaction falls within the month;
-    "returning" if they had prior interactions.
+    An interaction is "new" if it is the visitor's first in the filtered data;
+    otherwise it counts as "returning".
 
     Returns: {
         "filters": {...},
         "series": [
-            {"month": "2025-01", "new": 42, "returning": 128},
+            {"month": "2025-01-01", "new": 42, "returning": 128},  # bucket start date
             ...
         ]
     }
@@ -417,26 +399,20 @@ def visitors_new_returning(request: Request) -> Response:
         if user_hash not in first_seen:
             first_seen[user_hash] = interaction["interaction_date"]
 
-    # Bin interactions by month into new/returning
-    monthly_data = {}
+    buckets: dict[str, dict[str, int]] = {}
     for interaction in all_interactions:
         user_hash = interaction["user_hash"]
         interaction_date = interaction["interaction_date"]
-        month_key = interaction_date.strftime("%Y-%m") if interaction_date else None
-
-        if not month_key:
+        if not interaction_date:
             continue
-
-        if month_key not in monthly_data:
-            monthly_data[month_key] = {"new": 0, "returning": 0}
-
-        # Check if this is the first interaction for this user (in any month)
+        key = bucket_start(interaction_date, p["bucket"]).isoformat()
+        counts = buckets.setdefault(key, {"new": 0, "returning": 0})
         if first_seen[user_hash] == interaction_date:
-            monthly_data[month_key]["new"] += 1
+            counts["new"] += 1
         else:
-            monthly_data[month_key]["returning"] += 1
+            counts["returning"] += 1
 
-    series = [{"month": month, **counts} for month, counts in sorted(monthly_data.items())]
+    series = [{"month": key, **counts} for key, counts in sorted(buckets.items())]
 
     return Response(
         {
@@ -506,7 +482,7 @@ def activity_by_weekday(request: Request) -> Response:
 @permission_classes([IsAuthenticatedOrReadOnly])
 @cached_response(timeout=900)
 def category_trends(request: Request) -> Response:
-    """Monthly interaction counts grouped by category.
+    """Interaction counts per bucket (week, month or quarter) grouped by category.
 
     Returns: {
         "filters": {...},
@@ -521,7 +497,7 @@ def category_trends(request: Request) -> Response:
     # Get categories and build interaction data by month and category
     rows = (
         interactions.select_related("event")
-        .annotate(month=TruncMonth("interaction_date"))
+        .annotate(month=trunc_for(p["bucket"], "interaction_date"))
         .values("month", "event__categories__name")
         .annotate(count=Count("id"))
         .order_by("month", "event__categories__name")
@@ -614,128 +590,48 @@ def top_venues(request: Request) -> Response:
 @permission_classes([IsAuthenticatedOrReadOnly])
 @cached_response(timeout=900)
 def engagement(request: Request) -> Response:
-    """Engagement metrics: current month/quarter vs previous, plus buzz (interactions per event).
+    """Engagement for the latest period vs the one before, plus buzz (interactions per event).
+
+    Query params: the usual filters, plus ``compare`` (week | month | quarter,
+    default week). ``date_to`` sets the report date (default: last Sunday).
 
     Returns: {
         "filters": {...},
-        "current_month_interactions": 1234,
-        "current_month_events": 42,
-        "previous_month_interactions": 1100,
-        "previous_month_events": 38,
-        "buzz_current": 29.4,  # interactions / events
-        "buzz_previous": 28.9,
-        "buzz_change": 0.5,  # percentage change
-        "current_quarter_interactions": 3500,
-        "current_quarter_events": 120,
-        "previous_quarter_interactions": 3100,
-        "previous_quarter_events": 105,
-        "quarter_events_pct_change": 14.3,
-        "quarter_interactions_pct_change": 12.9,
-        "quarter_buzz_current": 29.2,
-        "quarter_buzz_previous": 29.5,
-        "quarter_buzz_change": -1.0
+        "compare": "week",
+        "current": {"period_start": "2026-11-02", "period_end": "2026-11-08",
+                    "events": 42, "interactions": 1234, "buzz": 29.4},
+        "previous": {...same keys...},
+        "deltas": {"events_pct_change": 10.5, "interactions_pct_change": 12.2, "buzz_change": 1.7}
     }
     """
-    p = parse_filter_params(request)
+    p, compare, current, previous, events, interactions = _comparison_context(request)
 
-    today = date.today()
-    first_of_this_month = date(today.year, today.month, 1)
-    last_of_prev_month = first_of_this_month - timedelta(days=1)
-    first_of_prev_month = date(last_of_prev_month.year, last_of_prev_month.month, 1)
+    def _period(start: date, end: date) -> dict:
+        n_events = events.filter(start_datetime__date__gte=start, start_datetime__date__lte=end).count()
+        n_interactions = interactions.filter(interaction_date__gte=start, interaction_date__lte=end).count()
+        return {
+            "period_start": start.isoformat(),
+            "period_end": end.isoformat(),
+            "events": n_events,
+            "interactions": n_interactions,
+            "buzz": round(n_interactions / max(1, n_events), 1),
+        }
 
-    # Calendar-quarter bounds (Q1 Jan-Mar, Q2 Apr-Jun, Q3 Jul-Sep, Q4 Oct-Dec).
-    def _quarter_start(d: date) -> date:
-        quarter_start_month = ((d.month - 1) // 3) * 3 + 1
-        return date(d.year, quarter_start_month, 1)
-
-    first_of_this_quarter = _quarter_start(today)
-    last_of_prev_quarter = first_of_this_quarter - timedelta(days=1)
-    first_of_prev_quarter = _quarter_start(last_of_prev_quarter)
-
-    # Get filtered querysets
-    _, events, interactions, _ = _filtered(request)
-
-    # Current month
-    curr_events_count = events.filter(
-        start_datetime__date__gte=first_of_this_month,
-    ).count()
-    curr_interactions_count = interactions.filter(
-        interaction_date__gte=first_of_this_month,
-    ).count()
-
-    # Previous month
-    prev_events_count = events.filter(
-        start_datetime__date__gte=first_of_prev_month,
-        start_datetime__date__lte=last_of_prev_month,
-    ).count()
-    prev_interactions_count = interactions.filter(
-        interaction_date__gte=first_of_prev_month,
-        interaction_date__lte=last_of_prev_month,
-    ).count()
-
-    # Current quarter (quarter-to-date onwards, mirroring the month calculation above)
-    curr_q_events_count = events.filter(
-        start_datetime__date__gte=first_of_this_quarter,
-    ).count()
-    curr_q_interactions_count = interactions.filter(
-        interaction_date__gte=first_of_this_quarter,
-    ).count()
-
-    # Previous quarter
-    prev_q_events_count = events.filter(
-        start_datetime__date__gte=first_of_prev_quarter,
-        start_datetime__date__lte=last_of_prev_quarter,
-    ).count()
-    prev_q_interactions_count = interactions.filter(
-        interaction_date__gte=first_of_prev_quarter,
-        interaction_date__lte=last_of_prev_quarter,
-    ).count()
-
-    # Calculate buzz (interactions per event)
-    buzz_current = curr_interactions_count / max(1, curr_events_count)
-    buzz_previous = prev_interactions_count / max(1, prev_events_count)
-    buzz_change = (
-        round(((buzz_current - buzz_previous) / max(0.1, buzz_previous)) * 100, 1) if buzz_previous > 0 else 0.0
-    )
-
-    quarter_buzz_current = curr_q_interactions_count / max(1, curr_q_events_count)
-    quarter_buzz_previous = prev_q_interactions_count / max(1, prev_q_events_count)
-    quarter_buzz_change = (
-        round(((quarter_buzz_current - quarter_buzz_previous) / max(0.1, quarter_buzz_previous)) * 100, 1)
-        if quarter_buzz_previous > 0
-        else 0.0
-    )
-
-    quarter_events_pct_change = (
-        round(((curr_q_events_count - prev_q_events_count) / max(1, prev_q_events_count)) * 100, 1)
-        if prev_q_events_count > 0
-        else (100.0 if curr_q_events_count > 0 else 0.0)
-    )
-    quarter_interactions_pct_change = (
-        round(((curr_q_interactions_count - prev_q_interactions_count) / max(1, prev_q_interactions_count)) * 100, 1)
-        if prev_q_interactions_count > 0
-        else (100.0 if curr_q_interactions_count > 0 else 0.0)
-    )
+    curr = _period(*current)
+    prev = _period(*previous)
+    buzz_change = round(((curr["buzz"] - prev["buzz"]) / max(0.1, prev["buzz"])) * 100, 1) if prev["buzz"] > 0 else 0.0
 
     return Response(
         {
             "filters": p,
-            "current_month_interactions": curr_interactions_count,
-            "current_month_events": curr_events_count,
-            "previous_month_interactions": prev_interactions_count,
-            "previous_month_events": prev_events_count,
-            "buzz_current": round(buzz_current, 1),
-            "buzz_previous": round(buzz_previous, 1),
-            "buzz_change": buzz_change,
-            "current_quarter_interactions": curr_q_interactions_count,
-            "current_quarter_events": curr_q_events_count,
-            "previous_quarter_interactions": prev_q_interactions_count,
-            "previous_quarter_events": prev_q_events_count,
-            "quarter_events_pct_change": quarter_events_pct_change,
-            "quarter_interactions_pct_change": quarter_interactions_pct_change,
-            "quarter_buzz_current": round(quarter_buzz_current, 1),
-            "quarter_buzz_previous": round(quarter_buzz_previous, 1),
-            "quarter_buzz_change": quarter_buzz_change,
+            "compare": compare,
+            "current": curr,
+            "previous": prev,
+            "deltas": {
+                "events_pct_change": _pct_change(curr["events"], prev["events"]),
+                "interactions_pct_change": _pct_change(curr["interactions"], prev["interactions"]),
+                "buzz_change": buzz_change,
+            },
         }
     )
 
@@ -905,7 +801,7 @@ def event_lead_time(request: Request) -> Response:
 @permission_classes([IsAuthenticatedOrReadOnly])
 @cached_response(timeout=900)
 def lead_time_trend(request: Request) -> Response:
-    """Monthly average lead time (days) between scrape and event date.
+    """Average lead time (days) between scrape and event date, per bucket.
 
     Grouped by the event's ``start_datetime`` month. Same exclusion rule as
     ``event_lead_time`` (negative leads dropped).
@@ -925,7 +821,7 @@ def lead_time_trend(request: Request) -> Response:
     ).filter(lead__gte=timedelta(0))
 
     rows = (
-        with_lead.annotate(month=TruncMonth("start_datetime"))
+        with_lead.annotate(month=trunc_for(p["bucket"], "start_datetime"))
         .values("month")
         .annotate(avg_lead=Avg("lead"))
         .order_by("month")
@@ -1070,7 +966,7 @@ def event_types_by_postcode(request: Request) -> Response:
 @permission_classes([IsAuthenticatedOrReadOnly])
 @cached_response(timeout=900)
 def postcode_engagement_trend(request: Request) -> Response:
-    """Monthly interaction totals for the top 5 postcode districts.
+    """Interaction totals per bucket for the top 5 postcode districts.
 
     Sourced from ``PostcodeAreaInteraction`` (period-based aggregate, grouped by
     ``period_start`` month). Shaped to match ``category_trends`` — a flat
@@ -1087,7 +983,7 @@ def postcode_engagement_trend(request: Request) -> Response:
 
     rows = (
         postcode_qs(p)
-        .annotate(month=TruncMonth("period_start"))
+        .annotate(month=trunc_for(p["bucket"], "period_start"))
         .values("month", "postcode", "area")
         .annotate(n=Sum("interaction_count"))
         .order_by()
@@ -1122,7 +1018,7 @@ def postcode_engagement_trend(request: Request) -> Response:
 @permission_classes([IsAuthenticatedOrReadOnly])
 @cached_response(timeout=900)
 def ticket_volume_trend(request: Request) -> Response:
-    """Monthly ticket-purchase volume (tickets + orders), from ``PostcodeTicketPurchase``.
+    """Ticket-purchase volume (tickets + orders) per bucket, from ``PostcodeTicketPurchase``.
 
     Returns: {
         "filters": {...},
@@ -1133,7 +1029,7 @@ def ticket_volume_trend(request: Request) -> Response:
 
     rows = (
         postcode_ticket_qs(p)
-        .annotate(month=TruncMonth("purchase_date"))
+        .annotate(month=trunc_for(p["bucket"], "purchase_date"))
         .values("month")
         .annotate(tickets=Sum("ticket_quantity"), orders=Count("id"))
         .order_by("month")

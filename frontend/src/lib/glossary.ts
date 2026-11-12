@@ -93,7 +93,7 @@ export const GLOSSARY: Record<string, GlossaryTerm> = {
   category_trends: {
     term: "Category Trends",
     short: "How the mix of event types changes over time.",
-    long: "A chart showing how many events (and which categories) have been offered each month. Helps identify whether certain event types are growing or declining.",
+    long: "A chart showing visitor interactions for each category in every week, month or quarter (choose with Group by). Helps identify whether certain event types are growing or declining.",
   },
   venue_popularity: {
     term: "Venue Popularity",
@@ -105,6 +105,11 @@ export const GLOSSARY: Record<string, GlossaryTerm> = {
     short: "Average interactions (engagement) generated per event.",
     long: "A measure of how much engagement each event generates on average. High 'buzz' means events are attracting strong interest; low buzz might suggest events need better promotion.",
   },
+  weekly_report: {
+    term: "Weekly report",
+    short: "The dashboard's default view: the latest complete Monday–Sunday week.",
+    long: "Each Monday the dashboard moves on to the week that ended the day before. Headline numbers cover that week and compare it with the week before; trend charts show the last 12 weeks. Change the period or grouping in the filters for a custom view, and use \"Back to weekly report\" to return.",
+  },
   saved_view: {
     term: "Saved View",
     short: "A bookmark of a specific dashboard view with filters.",
@@ -113,7 +118,7 @@ export const GLOSSARY: Record<string, GlossaryTerm> = {
   comparison: {
     term: "Comparison (Side-by-Side)",
     short: "View two organisations or two time periods side-by-side.",
-    long: "Compare two organisations to see which is reaching more people or hosting more events. Or compare two time periods (e.g., last month vs the month before) to spot growth or decline.",
+    long: "Compare two organisations to see which is reaching more people or hosting more events. Or compare two time periods (e.g., the latest week vs the week before) to spot growth or decline.",
   },
   peak_times: {
     term: "Peak Times",
@@ -132,7 +137,7 @@ export const GLOSSARY: Record<string, GlossaryTerm> = {
   },
   lead_time_trend: {
     term: "Lead Time Trend",
-    short: "How average event lead time changes month to month.",
+    short: "How average event lead time changes week to week, month to month or quarter to quarter.",
     long: "Tracks the average scrape-to-event lead time over time, to see whether organisations are, on average, listing events further in advance or closer to the date.",
   },
   peak_times_by_postcode: {
@@ -148,12 +153,12 @@ export const GLOSSARY: Record<string, GlossaryTerm> = {
   postcode_engagement_trend: {
     term: "Postcode Engagement Trend",
     short: "How interaction volume from the top postcode districts changes over time.",
-    long: "Monthly interaction totals for the 5 postcode districts with the highest overall volume, so you can see which areas are growing or declining in engagement.",
+    long: "Interaction totals per week, month or quarter for the 5 postcode districts with the highest overall volume, so you can see which areas are growing or declining in engagement.",
   },
   ticket_volume_trend: {
     term: "Ticket Volume Trend",
-    short: "Tickets purchased and orders placed, month by month.",
-    long: "Tracks total ticket-purchase volume over time: the number of tickets bought and the number of separate orders placed each month, across all postcodes.",
+    short: "Tickets purchased and orders placed, per week, month or quarter.",
+    long: "Tracks total ticket-purchase volume over time: the number of tickets bought and the number of separate orders placed in each week, month or quarter, across all postcodes.",
   },
   party_size_distribution: {
     term: "Party Size Distribution",

@@ -7,7 +7,8 @@ import {
 } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMe } from "../lib/auth";
-import { useFilters } from "../lib/filters";
+import { BUCKETS, describeRange, isDefaultView, useFilters } from "../lib/filters";
+import { REPORT } from "../lib/copy";
 import { api } from "../lib/api";
 import type { OrganisationSummary, Paginated } from "../lib/types";
 import SearchModal from "./SearchModal";
@@ -201,11 +202,12 @@ export default function Layout() {
  * persists across page navigation in-memory, but several pages (e.g.
  * Calendar) don't render the filter controls themselves — so a filter set
  * on one page can silently keep applying on another with no visible cue.
- * This banner surfaces whatever's active, everywhere, with a one-click clear.
+ * This banner surfaces anything that differs from the default weekly report
+ * view, with a one-click return to it. On the default view it stays hidden.
  */
 function ActiveFilterBanner() {
   const f = useFilters();
-  const hasFilters = Boolean(f.org || f.category || f.date_from || f.date_to || f.period || f.search);
+  const hasFilters = Boolean(f.org) || !isDefaultView(f);
 
   const orgs = useQuery({
     queryKey: ["filter-orgs-banner"],
@@ -220,20 +222,22 @@ function ActiveFilterBanner() {
   if (!hasFilters) return null;
 
   const orgName = f.org ? orgs.data?.results.find((o) => String(o.id) === f.org)?.name ?? `#${f.org}` : null;
+  const bucket = BUCKETS.find((b) => b.v === f.bucket)?.l;
   const parts: string[] = [];
   if (orgName) parts.push(`Organisation: ${orgName}`);
   if (f.category) parts.push("Category filter");
-  if (f.period) parts.push(`Period: ${f.period}`);
-  if (f.date_from || f.date_to) parts.push(`Dates: ${f.date_from || "…"} – ${f.date_to || "…"}`);
+  parts.push(`Dates: ${describeRange(f)}`);
+  if (f.bucket !== "week" && bucket) parts.push(`Grouped by ${bucket.toLowerCase()}`);
+  if (f.itype) parts.push(`Type: ${f.itype}`);
   if (f.search) parts.push(`Search: "${f.search}"`);
 
   return (
     <div className="bg-accent/10 border-b border-accent/20 text-xs">
       <div className="mx-auto max-w-7xl px-4 py-1.5 flex items-center gap-3 flex-wrap">
-        <span className="font-medium text-accent">Filtered</span>
+        <span className="font-medium text-accent">{REPORT.filteredLabel}</span>
         <span className="text-muted">{parts.join(" · ")}</span>
         <button onClick={f.reset} className="btn-ghost text-xs ml-auto">
-          Clear filters
+          {REPORT.resetLabel}
         </button>
       </div>
     </div>

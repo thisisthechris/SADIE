@@ -11,6 +11,8 @@ interface BigStatProps {
   deltaPercent: number;
   /** Optional CSS classes for the container */
   className?: string;
+  /** What the delta is measured against, e.g. "previous week". */
+  comparisonLabel?: string;
 }
 
 /**
@@ -23,6 +25,7 @@ export const BigStat: React.FC<BigStatProps> = ({
   label,
   deltaPercent,
   className = "",
+  comparisonLabel = "previous week",
 }) => {
   const animatedValue = useAnimatedNumber(value);
   const animatedDelta = useAnimatedNumber(deltaPercent);
@@ -56,7 +59,7 @@ export const BigStat: React.FC<BigStatProps> = ({
             </span>
           </>
         )}
-        <span className="text-sm text-muted ml-1">vs last month</span>
+        <span className="text-sm text-muted ml-1">vs {comparisonLabel}</span>
       </div>
     </div>
   );

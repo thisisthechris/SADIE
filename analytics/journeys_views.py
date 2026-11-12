@@ -16,13 +16,12 @@ All filters from ``analytics.queries.parse_filter_params`` are honoured.
 from __future__ import annotations
 
 from django.db.models import Count
-from django.db.models.functions import TruncMonth
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 
-from .queries import interactions_qs, parse_filter_params
+from .queries import interactions_qs, parse_filter_params, trunc_for
 
 
 def _short_hash(h: str | None) -> str:
@@ -38,7 +37,7 @@ def journeys_summary(request: Request) -> Response:
     interactions = interactions_qs(p)
 
     monthly_qs = (
-        interactions.annotate(month=TruncMonth("interaction_date"))
+        interactions.annotate(month=trunc_for(p["bucket"], "interaction_date"))
         .values("month")
         .annotate(count=Count("id"))
         .order_by("month")

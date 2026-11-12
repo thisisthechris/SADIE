@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useFilters } from "../lib/filters";
-import { PLACE } from "../lib/copy";
+import { PLACE, REPORT } from "../lib/copy";
 import OrgToggle from "../components/OrgToggle";
+import ReportHeader from "../components/ReportHeader";
 import EmptyState, { LoadingState } from "../components/EmptyState";
 import { StackedAreaChart } from "../components/StackedAreaChart";
 import { WeekdayBars } from "../components/WeekdayBars";
@@ -112,10 +113,10 @@ interface WeatherCorrelationPoint {
  * TrendCard's expand toggle.
  */
 export default function Trends() {
-  const { org, category, date_from, date_to, search } = useFilters();
+  const { org, category, date_from, date_to, search, bucket } = useFilters();
 
   // Build filter query params
-  const params = new URLSearchParams();
+  const params = new URLSearchParams({ bucket });
   if (org) params.append("org", String(org));
   if (category) params.append("category", String(category));
   if (date_from) params.append("date_from", date_from);
@@ -124,7 +125,7 @@ export default function Trends() {
 
   // New vs Returning
   const newReturning = useQuery<{ series: NewReturningData[] }>({
-    queryKey: ["stats", "visitors-new-returning", org, category, date_from, date_to],
+    queryKey: ["stats", "visitors-new-returning", org, category, date_from, date_to, bucket],
     staleTime: 5 * 60_000,
     queryFn: async () => {
       const res = await fetch(
@@ -150,7 +151,7 @@ export default function Trends() {
 
   // Category Trends
   const categoryTrends = useQuery<{ series: CategoryTrendData[] }>({
-    queryKey: ["stats", "category-trends", org, category, date_from, date_to],
+    queryKey: ["stats", "category-trends", org, category, date_from, date_to, bucket],
     staleTime: 5 * 60_000,
     queryFn: async () => {
       const res = await fetch(
@@ -246,7 +247,7 @@ export default function Trends() {
 
   // Postcode Engagement Trend (top 5 districts, monthly)
   const postcodeEngagementTrend = useQuery<{ series: PostcodeEngagementPoint[] }>({
-    queryKey: ["stats", "postcode-engagement-trend", org, category, date_from, date_to],
+    queryKey: ["stats", "postcode-engagement-trend", org, category, date_from, date_to, bucket],
     staleTime: 5 * 60_000,
     queryFn: async () => {
       const res = await fetch(`/api/analytics/stats/postcode-engagement-trend/?${params.toString()}`);
@@ -257,7 +258,7 @@ export default function Trends() {
 
   // Ticket Volume Trend (monthly tickets + orders)
   const ticketVolumeTrend = useQuery<{ series: TicketVolumeTrendPoint[] }>({
-    queryKey: ["stats", "ticket-volume-trend", org, category, date_from, date_to],
+    queryKey: ["stats", "ticket-volume-trend", org, category, date_from, date_to, bucket],
     staleTime: 5 * 60_000,
     queryFn: async () => {
       const res = await fetch(`/api/analytics/stats/ticket-volume-trend/?${params.toString()}`);
@@ -304,11 +305,13 @@ export default function Trends() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="heading-main mb-2">Trends</h1>
-          <p className="body-lg">
+          <p className="body-lg mb-2">
             {org
               ? `Key patterns for your organisation. Switch to ${PLACE.placeLabel} to see the wider picture.`
-              : "Key patterns across all organisations in Plymouth."}
+              : "Key patterns across all organisations in Plymouth."}{" "}
+            {REPORT.trendBucketNote[bucket as keyof typeof REPORT.trendBucketNote] ?? ""}
           </p>
+          <ReportHeader />
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <OrgToggle />

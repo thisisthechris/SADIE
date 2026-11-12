@@ -14,7 +14,10 @@ Filter parameter schema (matches the existing dashboard query string):
     date_from   ISO date (YYYY-MM-DD)
     date_to     ISO date (YYYY-MM-DD)
     search      free-text (icontains over title/description; FTS later)
-    period      shortcut: 7d | 30d | 90d | 1y  (sets date_from if empty)
+    period      shortcut, sets date_from (and date_to for week periods) if empty:
+                  1w | 4w | 12w | 52w  complete Mon-Sun weeks ending last Sunday
+                  7d | 30d | 90d | 1y  days back from today (legacy)
+    bucket      trend grouping: week | month | quarter (default month)
     itype       interaction_type: event | location
 
 The helpers accept either a Django ``HttpRequest`` or a plain ``dict`` /
@@ -28,6 +31,8 @@ from datetime import date, timedelta
 from typing import Any
 
 from django.db.models import Q
+from django.db.models.functions import TruncMonth, TruncQuarter, TruncWeek
+from django.utils import timezone
 
 from analytics.models import (
     PostcodeAreaInteraction,
@@ -39,6 +44,71 @@ from events.models import Event
 from organisations.models import org_and_descendants_ids
 
 PERIOD_DAYS = {"7d": 7, "30d": 30, "90d": 90, "1y": 365}
+PERIOD_WEEKS = {"1w": 1, "4w": 4, "12w": 12, "52w": 52}
+BUCKETS = {"week": TruncWeek, "month": TruncMonth, "quarter": TruncQuarter}
+
+
+def last_complete_week(today: date | None = None) -> tuple[date, date]:
+    """(Monday, Sunday) of the most recent week that has fully finished.
+
+    Weeks run Monday to Sunday, so on a Monday the report rolls forward to the
+    week that ended the day before. On a Sunday the current week isn't over yet.
+    """
+    today = today or timezone.localdate()
+    end = today - timedelta(days=today.isoweekday() % 7 or 7)
+    return end - timedelta(days=6), end
+
+
+def week_period_bounds(weeks: int, today: date | None = None) -> tuple[date, date]:
+    """(start, end) covering the last ``weeks`` complete Mon-Sun weeks."""
+    start, end = last_complete_week(today)
+    return start - timedelta(weeks=weeks - 1), end
+
+
+COMPARE_PERIODS = ("week", "month", "quarter")
+
+
+def _month_start(d: date) -> date:
+    return d.replace(day=1)
+
+
+def _quarter_start(d: date) -> date:
+    return d.replace(month=((d.month - 1) // 3) * 3 + 1, day=1)
+
+
+def comparison_periods(compare: str, anchor: date | None = None) -> tuple[tuple[date, date], tuple[date, date]]:
+    """Latest complete week/month/quarter ending on or before ``anchor``, and the one before it.
+
+    ``anchor`` is the report date (defaults to the end of the last complete week).
+    A period only counts as complete if its last day is on or before the anchor,
+    so a mid-month anchor reports the previous full month.
+    """
+    anchor = anchor or last_complete_week()[1]
+    if compare == "week":
+        start, end = last_complete_week(anchor + timedelta(days=1))
+        return (start, end), (start - timedelta(weeks=1), start - timedelta(days=1))
+
+    period_start = _quarter_start if compare == "quarter" else _month_start
+    # Day after the anchor: if that starts a new period, the anchor's period is complete.
+    next_start = period_start(anchor + timedelta(days=1))
+    end = next_start - timedelta(days=1)
+    start = period_start(end)
+    prev_end = start - timedelta(days=1)
+    return (start, end), (period_start(prev_end), prev_end)
+
+
+def bucket_start(d: date, bucket: str) -> date:
+    """Python counterpart of :func:`trunc_for` for a single date."""
+    if bucket == "week":
+        return d - timedelta(days=d.weekday())
+    if bucket == "quarter":
+        return _quarter_start(d)
+    return _month_start(d)
+
+
+def trunc_for(bucket: str, field: str):
+    """Truncation expression for a trend bucket; unknown values fall back to month."""
+    return BUCKETS.get(bucket, TruncMonth)(field)
 
 
 def _org_ids_for(p: Mapping[str, str]) -> list[int]:
@@ -75,11 +145,17 @@ def parse_filter_params(source: Any) -> dict:
         "search": getter("search", "") or "",
         "period": getter("period", "") or "",
         "itype": getter("itype", "") or "",
+        "bucket": getter("bucket", "") or "",
     }
+    if p["bucket"] not in BUCKETS:
+        p["bucket"] = "month"
     if p["period"] and not p["dfrom"]:
-        days = PERIOD_DAYS.get(p["period"])
-        if days:
-            p["dfrom"] = (date.today() - timedelta(days=days)).isoformat()
+        if p["period"] in PERIOD_WEEKS:
+            start, end = week_period_bounds(PERIOD_WEEKS[p["period"]])
+            p["dfrom"] = start.isoformat()
+            p["dto"] = p["dto"] or end.isoformat()
+        elif p["period"] in PERIOD_DAYS:
+            p["dfrom"] = (date.today() - timedelta(days=PERIOD_DAYS[p["period"]])).isoformat()
     return p
 
 

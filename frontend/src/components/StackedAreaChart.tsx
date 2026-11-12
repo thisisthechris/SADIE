@@ -10,6 +10,7 @@ import {
   Legend,
 } from "recharts";
 import { useLegendToggle } from "../lib/useLegendToggle";
+import { bucketLabel, useFilters } from "../lib/filters";
 
 interface DataPoint {
   month: string;
@@ -44,6 +45,7 @@ export function StackedAreaChart({
   height = 300,
 }: StackedAreaChartProps) {
   const { isHidden, onLegendClick, legendFormatter } = useLegendToggle();
+  const { bucket } = useFilters();
 
   // Transform flat series into grouped by month
   const chartData = useMemo(() => {
@@ -94,6 +96,8 @@ export function StackedAreaChart({
           stroke="#9ca3af"
           style={{ fontSize: 12 }}
           tick={{ fill: "#6b7280" }}
+          tickFormatter={(v: string) => bucketLabel(v, bucket)}
+          minTickGap={24}
         />
         <YAxis stroke="#9ca3af" style={{ fontSize: 12 }} tick={{ fill: "#6b7280" }} />
         <Tooltip
@@ -104,6 +108,7 @@ export function StackedAreaChart({
             boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
           }}
           labelStyle={{ color: "#1f2937", fontWeight: 600 }}
+          labelFormatter={(v: string) => bucketLabel(v, bucket)}
           formatter={(value: number) => value.toLocaleString()}
         />
         <Legend

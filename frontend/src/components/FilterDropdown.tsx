@@ -1,17 +1,9 @@
 import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
-import { useFilters, type FilterState } from "../lib/filters";
+import { PERIODS, useFilters, type FilterState } from "../lib/filters";
 import type { Category, OrganisationSummary, Paginated } from "../lib/types";
 import SaveViewButton from "./SaveViewButton";
-
-const PERIODS = [
-  { v: "", l: "All time" },
-  { v: "7d", l: "Last 7 days" },
-  { v: "30d", l: "Last 30 days" },
-  { v: "90d", l: "Last 90 days" },
-  { v: "1y", l: "Last year" },
-];
 
 const INTERACTION_TYPES = [
   { v: "event", l: "Events" },
@@ -203,9 +195,7 @@ export default function FilterDropdown({
             <select
               className="input"
               value={f.period}
-              onChange={(e) =>
-                f.set({ period: e.target.value, date_from: "", date_to: "" })
-              }
+              onChange={(e) => f.setPeriod(e.target.value)}
             >
               {PERIODS.map((p) => (
                 <option key={p.v} value={p.v}>
@@ -222,7 +212,7 @@ export default function FilterDropdown({
                 className="input"
                 value={f.date_from}
                 onChange={(e) =>
-                  f.set({ date_from: e.target.value, period: "" })
+                  f.set({ date_from: e.target.value, period: "custom" })
                 }
               />
             </Field>

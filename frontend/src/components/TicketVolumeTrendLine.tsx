@@ -9,6 +9,7 @@ import {
   Legend,
 } from "recharts";
 import { useLegendToggle } from "../lib/useLegendToggle";
+import { bucketLabel, useFilters } from "../lib/filters";
 
 interface TicketVolumeTrendPoint {
   month: string;
@@ -21,9 +22,10 @@ interface TicketVolumeTrendLineProps {
   height?: number;
 }
 
-/** Monthly ticket-purchase volume: tickets bought vs number of orders. */
+/** Ticket-purchase volume per week/month/quarter: tickets bought vs number of orders. */
 export function TicketVolumeTrendLine({ data, height = 300 }: TicketVolumeTrendLineProps) {
   const { isHidden, onLegendClick, legendFormatter } = useLegendToggle();
+  const { bucket } = useFilters();
 
   if (!data || data.length === 0) {
     return null;
@@ -33,7 +35,14 @@ export function TicketVolumeTrendLine({ data, height = 300 }: TicketVolumeTrendL
     <ResponsiveContainer width="100%" height={height}>
       <LineChart data={data}>
         <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-        <XAxis dataKey="month" stroke="#9ca3af" style={{ fontSize: 12 }} tick={{ fill: "#6b7280" }} />
+        <XAxis
+          dataKey="month"
+          stroke="#9ca3af"
+          style={{ fontSize: 12 }}
+          tick={{ fill: "#6b7280" }}
+          tickFormatter={(v: string) => bucketLabel(v, bucket)}
+          minTickGap={24}
+        />
         <YAxis stroke="#9ca3af" style={{ fontSize: 12 }} tick={{ fill: "#6b7280" }} allowDecimals={false} />
         <Tooltip
           contentStyle={{
@@ -43,6 +52,7 @@ export function TicketVolumeTrendLine({ data, height = 300 }: TicketVolumeTrendL
             boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
           }}
           labelStyle={{ color: "#1f2937", fontWeight: 600 }}
+          labelFormatter={(v: string) => bucketLabel(v, bucket)}
           formatter={(value: number) => value.toLocaleString()}
         />
         <Legend

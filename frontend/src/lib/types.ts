@@ -167,6 +167,7 @@ export interface PostcodeAggregatesResponse {
 
 export interface HeadlineResponse {
   filters: Record<string, string>;
+  compare: "week" | "month" | "quarter";
   scope_label: string;
   current_period: {
     period_start: string;
