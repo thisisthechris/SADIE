@@ -24,6 +24,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from analytics.caching import invalidate_stats_cache
+from analytics.journey_flows import rebuild_journey_flows
 from imports.parsers import UnknownOrganisationCode, get_parser_for_header, resolve_org_code
 from imports.services import ImportContext, clear_partner_data
 
@@ -91,6 +92,7 @@ class Command(BaseCommand):
         with transaction.atomic():
             summary = ctx.flush()
 
+        rebuild_journey_flows()
         invalidate_stats_cache()
 
         self.stdout.write(self.style.SUCCESS("\n=== Import complete ==="))

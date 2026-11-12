@@ -32,6 +32,7 @@ from organisations.models import Location, Organisation
 
 from .caching import cached_response
 from .geocoding import cluster_points
+from .journey_flows import precomputed_flows
 from .models import PostcodeGeo
 from .queries import (
     district_of,
@@ -1048,6 +1049,7 @@ def _visitor_sequences(p, *, max_visitors: int, max_steps: int) -> list[tuple[st
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticatedOrReadOnly])
+@cached_response(timeout=900)
 def journeys_paths(request: Request) -> Response:
     """Per-visitor ordered journeys as GeoJSON LineStrings + step lists.
 
@@ -1100,12 +1102,84 @@ def journeys_flows(request: Request) -> Response:
     order), producing weighted directed edges plus venue nodes. Self-loops
     (consecutive visits to the same venue) are ignored. Honours the standard
     FilterBar params. Powers the "common pathways" view.
+
+    Answered from the pre-computed journey tables (``analytics.journey_flows``)
+    when they exist and no category/type filter is set; otherwise computed live.
+    ``source`` in the response says which.
+
+    Optional ``slices`` (1-12) splits the date range into that many equal date
+    slices and also returns flows per slice, assigning each move to the slice of
+    the visit it arrives at. The map uses this to colour flows by time with one
+    request instead of one per slice. Needs both date_from and date_to.
     """
     p = parse_filter_params(request)
+    slice_bounds = _slice_bounds(p, request.GET.get("slices"))
 
+    result = precomputed_flows(p, slice_bounds)
+    source = "precomputed"
+    if result is None:
+        result = _live_flows(p, slice_bounds)
+        source = "live"
+    node_visits, node_meta, edges, slice_edges = result
+
+    nodes = [{**meta, "visits": node_visits.get(lid, 0)} for lid, meta in node_meta.items()]
+    nodes.sort(key=lambda n: n["visits"], reverse=True)
+
+    def flow_rows(edge_counts: dict[tuple[int, int], int]) -> list[dict]:
+        rows = [
+            {
+                "from_id": src,
+                "from_name": node_meta[src]["name"],
+                "to_id": dst,
+                "to_name": node_meta[dst]["name"],
+                "count": count,
+            }
+            for (src, dst), count in edge_counts.items()
+            if src in node_meta and dst in node_meta
+        ]
+        rows.sort(key=lambda r: r["count"], reverse=True)
+        return rows
+
+    flows = flow_rows(edges)
+    features = [
+        {
+            "type": "Feature",
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [node_meta[r["from_id"]]["lng"], node_meta[r["from_id"]]["lat"]],
+                    [node_meta[r["to_id"]]["lng"], node_meta[r["to_id"]]["lat"]],
+                ],
+            },
+            "properties": {k: r[k] for k in ("from_id", "to_id", "from_name", "to_name", "count")},
+        }
+        for r in flows
+    ]
+    slices = [
+        {"date_from": start.isoformat(), "date_to": end.isoformat(), "flows": flow_rows(slice_edges[i])}
+        for i, (start, end) in enumerate(slice_bounds)
+    ]
+
+    return Response(
+        {
+            "filters": p,
+            "source": source,
+            "node_count": len(nodes),
+            "flow_count": len(flows),
+            "nodes": nodes,
+            "flows": flows,
+            "slices": slices,
+            "geojson": {"type": "FeatureCollection", "features": features},
+        }
+    )
+
+
+def _live_flows(p, slice_bounds: list[tuple[date, date]]):
+    """Build flows straight from interactions (used when the pre-computed tables can't answer)."""
     sequences = _visitor_sequences(p, max_visitors=1_000_000, max_steps=200)
 
     edges: dict[tuple[int, int], int] = {}
+    slice_edges: list[dict[tuple[int, int], int]] = [{} for _ in slice_bounds]
     node_visits: dict[int, int] = {}
     node_meta: dict[int, dict] = {}
 
@@ -1128,54 +1202,38 @@ def journeys_flows(request: Request) -> Response:
                 continue
             key = (prev, lid)
             edges[key] = edges.get(key, 0) + 1
+            idx = _slice_index(slice_bounds, step["date"])
+            if idx is not None:
+                slice_edges[idx][key] = slice_edges[idx].get(key, 0) + 1
 
-    nodes = [{**meta, "visits": node_visits.get(lid, 0)} for lid, meta in node_meta.items()]
-    nodes.sort(key=lambda n: n["visits"], reverse=True)
+    return node_visits, node_meta, edges, slice_edges
 
-    flows = []
-    features = []
-    for (src, dst), count in edges.items():
-        a = node_meta[src]
-        b = node_meta[dst]
-        flows.append(
-            {
-                "from_id": src,
-                "from_name": a["name"],
-                "to_id": dst,
-                "to_name": b["name"],
-                "count": count,
-            }
-        )
-        features.append(
-            {
-                "type": "Feature",
-                "geometry": {
-                    "type": "LineString",
-                    "coordinates": [[a["lng"], a["lat"]], [b["lng"], b["lat"]]],
-                },
-                "properties": {
-                    "from_id": src,
-                    "to_id": dst,
-                    "from_name": a["name"],
-                    "to_name": b["name"],
-                    "count": count,
-                },
-            }
-        )
 
-    flows.sort(key=lambda r: r["count"], reverse=True)
-    features.sort(key=lambda f: f["properties"]["count"], reverse=True)
+def _slice_bounds(p, raw_slices) -> list[tuple[date, date]]:
+    """Split [dfrom, dto] into up to ``raw_slices`` contiguous, inclusive date ranges."""
+    try:
+        n = max(0, min(int(raw_slices or 0), 12))
+        start, end = date.fromisoformat(p["dfrom"]), date.fromisoformat(p["dto"])
+    except (TypeError, ValueError):
+        return []
+    total_days = (end - start).days + 1
+    if n == 0 or total_days < 1:
+        return []
+    n = min(n, total_days)
+    return [
+        (start + timedelta(days=i * total_days // n), start + timedelta(days=(i + 1) * total_days // n - 1))
+        for i in range(n)
+    ]
 
-    return Response(
-        {
-            "filters": p,
-            "node_count": len(nodes),
-            "flow_count": len(flows),
-            "nodes": nodes,
-            "flows": flows,
-            "geojson": {"type": "FeatureCollection", "features": features},
-        }
-    )
+
+def _slice_index(bounds: list[tuple[date, date]], iso_day: str | None) -> int | None:
+    if not bounds or not iso_day:
+        return None
+    day = date.fromisoformat(iso_day)
+    for i, (start, end) in enumerate(bounds):
+        if start <= day <= end:
+            return i
+    return None
 
 
 def _postcode_event_sequences(p, *, max_steps: int) -> list[tuple[str, list[dict]]]:

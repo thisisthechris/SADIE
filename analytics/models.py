@@ -327,3 +327,57 @@ class AnomalyAlert(models.Model):
     def __str__(self):
         scope = self.organisation.name if self.organisation_id else "City-wide"
         return f"{scope} {self.metric} anomaly week of {self.week_start} (z={self.z_score:.2f})"
+
+
+class JourneyFlowDaily(models.Model):
+    """Pre-computed venue→venue moves per day, read by the Common Pathways map.
+
+    Rebuilt from ``UserHashInteraction`` by ``analytics.journey_flows.rebuild_journey_flows``
+    (nightly, and after imports), so the map sums a few rows instead of
+    rebuilding every visitor's journey on each request. ``scope`` is the
+    organisation filter the moves were built for (null = all of Plymouth);
+    ``from_day`` and ``day`` are the dates of the visits the move leaves and
+    arrives at, so a date range can require both to fall inside it.
+    """
+
+    scope = models.ForeignKey(
+        Organisation, null=True, blank=True, on_delete=models.CASCADE, related_name="journey_flows"
+    )
+    from_day = models.DateField()
+    day = models.DateField()
+    from_location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name="+")
+    to_location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name="+")
+    count = models.PositiveIntegerField()
+
+    class Meta:
+        indexes = [models.Index(fields=["scope", "day"])]
+
+
+class JourneyNodeDaily(models.Model):
+    """Pre-computed located visits per venue per day, for the map's venue markers."""
+
+    scope = models.ForeignKey(
+        Organisation, null=True, blank=True, on_delete=models.CASCADE, related_name="journey_nodes"
+    )
+    day = models.DateField()
+    location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name="+")
+    visits = models.PositiveIntegerField()
+
+    class Meta:
+        indexes = [models.Index(fields=["scope", "day"])]
+
+
+class JourneyFlowBuild(models.Model):
+    """One row per rebuild of the journey tables; the latest marks them as usable."""
+
+    built_at = models.DateTimeField(auto_now_add=True)
+    interaction_count = models.PositiveIntegerField()
+    max_interaction_id = models.PositiveBigIntegerField(default=0)
+    flow_rows = models.PositiveIntegerField()
+    duration_ms = models.PositiveIntegerField()
+
+    class Meta:
+        ordering = ["-built_at"]
+
+    def __str__(self):
+        return f"Journey flows built {self.built_at:%Y-%m-%d %H:%M} ({self.flow_rows} rows)"

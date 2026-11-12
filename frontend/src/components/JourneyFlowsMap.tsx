@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { useQuery, useQueries } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import Map2D, { type MapPoint, type MapPath } from "../viz/Map2D";
 
@@ -21,11 +21,18 @@ interface Flow {
   count: number;
 }
 
+interface FlowSlice {
+  date_from: string;
+  date_to: string;
+  flows: Flow[];
+}
+
 interface JourneysFlows {
   node_count: number;
   flow_count: number;
   nodes: FlowNode[];
   flows: Flow[];
+  slices?: FlowSlice[];
 }
 
 const N_BUCKETS = 6;
@@ -61,11 +68,6 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-/** Format a millisecond timestamp as YYYY-MM-DD. */
-function msToDateStr(ms: number): string {
-  return new Date(ms).toISOString().slice(0, 10);
-}
-
 interface JourneyFlowsMapProps {
   /** Org filter (org ID) or empty/undefined for city-wide. */
   org?: string | number | null;
@@ -98,59 +100,43 @@ export const JourneyFlowsMap: React.FC<JourneyFlowsMapProps> = ({
     return q;
   }, [org]);
 
-  // Divide the insights period into N slices, each a brand-gradient step.
-  const buckets = useMemo(() => {
-    if (!dateFrom || !dateTo) return [];
-    const startMs = new Date(dateFrom).getTime();
-    const endMs = new Date(dateTo).getTime();
-    if (!(endMs > startMs)) return [];
-    const sliceMs = (endMs - startMs) / N_BUCKETS;
-    return Array.from({ length: N_BUCKETS }, (_, i) => ({
-      dfrom: msToDateStr(Math.round(startMs + i * sliceMs)),
-      dto: msToDateStr(Math.round(startMs + (i + 1) * sliceMs)),
-      color: lerpColor(BRAND_EARLY, BRAND_LATE, i / (N_BUCKETS - 1)),
-    }));
-  }, [dateFrom, dateTo]);
-
-  const bucketResults = useQueries({
-    queries: buckets.map((b) => ({
-      queryKey: ["insights-journeys-flows-bucket", baseQuery, b.dfrom, b.dto],
-      queryFn: () =>
-        api<JourneysFlows>("/api/analytics/viz/journeys-flows/", {
-          query: { ...baseQuery, dfrom: b.dfrom, dto: b.dto },
-        }),
-      enabled: buckets.length > 0,
-      staleTime: 5 * 60_000,
-    })),
-  });
-
-  // Full-period flows for the venue nodes.
+  // One request: full-period flows and nodes, plus N date slices for the
+  // brand gradient (blue → pink across time).
   const flows = useQuery({
     queryKey: ["insights-journeys-flows", baseQuery, dateFrom, dateTo],
     queryFn: () =>
       api<JourneysFlows>("/api/analytics/viz/journeys-flows/", {
         query: {
           ...baseQuery,
-          ...(dateFrom ? { dfrom: dateFrom } : {}),
-          ...(dateTo ? { dto: dateTo } : {}),
+          ...(dateFrom ? { date_from: dateFrom } : {}),
+          ...(dateTo ? { date_to: dateTo } : {}),
+          slices: String(N_BUCKETS),
         },
       }),
   });
 
+  const buckets = useMemo(
+    () =>
+      (flows.data?.slices ?? []).map((s, i, all) => ({
+        flows: s.flows,
+        color: lerpColor(BRAND_EARLY, BRAND_LATE, all.length > 1 ? i / (all.length - 1) : 0),
+      })),
+    [flows.data],
+  );
+
   const flowPaths: MapPath[] = useMemo(() => {
-    if (!buckets.length) return [];
+    if (!buckets.length || !flows.data) return [];
+    const nodeById = new Map(flows.data.nodes.map((n) => [n.location_id, n]));
 
     // Aggregate total count per (from_id, to_id) pair across all time buckets,
     // then keep only the top 5 connections to avoid visual clutter.
     const pairTotals = new Map<string, number>();
-    buckets.forEach((_bucket, idx) => {
-      const data = bucketResults[idx]?.data;
-      if (!data?.flows.length) return;
-      for (const r of data.flows) {
+    for (const bucket of buckets) {
+      for (const r of bucket.flows) {
         const key = `${r.from_id}-${r.to_id}`;
         pairTotals.set(key, (pairTotals.get(key) ?? 0) + r.count);
       }
-    });
+    }
     const top5 = new Set(
       [...pairTotals.entries()]
         .sort((a, b) => b[1] - a[1])
@@ -160,11 +146,9 @@ export const JourneyFlowsMap: React.FC<JourneyFlowsMapProps> = ({
 
     const paths: MapPath[] = [];
     buckets.forEach((bucket, idx) => {
-      const data = bucketResults[idx]?.data;
-      if (!data?.flows.length) return;
-      const nodeById = new Map(data.nodes.map((n) => [n.location_id, n]));
-      const max = Math.max(...data.flows.map((r) => r.count), 1);
-      for (const r of data.flows) {
+      if (!bucket.flows.length) return;
+      const max = Math.max(...bucket.flows.map((r) => r.count), 1);
+      for (const r of bucket.flows) {
         if (!top5.has(`${r.from_id}-${r.to_id}`)) continue;
         const a = nodeById.get(r.from_id);
         const b = nodeById.get(r.to_id);
@@ -185,7 +169,7 @@ export const JourneyFlowsMap: React.FC<JourneyFlowsMapProps> = ({
       }
     });
     return paths;
-  }, [buckets, bucketResults]);
+  }, [buckets, flows.data]);
 
   const flowNodes: MapPoint[] = useMemo(() => {
     const nodes = flows.data?.nodes ?? [];
@@ -203,8 +187,7 @@ export const JourneyFlowsMap: React.FC<JourneyFlowsMapProps> = ({
     }));
   }, [flows.data]);
 
-  const loading =
-    flows.isLoading || bucketResults.some((r) => r.isLoading);
+  const loading = flows.isLoading;
 
   if (!maptilerKey) {
     return (

@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from "react";
-import { useQuery, useQueries } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { useFilters } from "../lib/filters";
 import { useConfig, useMe } from "../lib/auth";
@@ -53,11 +53,18 @@ interface Flow {
   count: number;
 }
 
+interface FlowSlice {
+  date_from: string;
+  date_to: string;
+  flows: Flow[];
+}
+
 interface JourneysFlows {
   node_count: number;
   flow_count: number;
   nodes: FlowNode[];
   flows: Flow[];
+  slices?: FlowSlice[];
 }
 
 type Mode = "flows" | "visitors";
@@ -172,52 +179,39 @@ export default function JourneyMap() {
     queryKey: ["journeys-flows", q, debouncedTimeQuery],
     queryFn: () =>
       api<JourneysFlows>("/api/analytics/viz/journeys-flows/", {
-        query: { ...q, ...debouncedTimeQuery },
+        // The timeline window replaces the global date range, and the same
+        // request returns per-band flows for the blue→pink time gradient.
+        query: {
+          ...q,
+          ...(debouncedTimeQuery.dfrom
+            ? { date_from: debouncedTimeQuery.dfrom, date_to: debouncedTimeQuery.dto, slices: String(N_BUCKETS) }
+            : {}),
+        },
       }),
     enabled: mode === "flows",
   });
 
-  // ── Brand buckets: divide the window into N slices, each a brand-gradient step ──
-  // Colour ramps blue→pink as time moves from start to end.
-  // Derived from the DEBOUNCED window (not raw offsetDays/windowDays) — each
-  // bucket fires its own network request, so recomputing on every slider-drag
-  // tick fired a burst of 6 uncached requests per pixel of drag, which has
-  // taken the server down before. Only recompute once the drag settles.
-  const buckets = useMemo(() => {
-    if (!debouncedTimeQuery.dfrom || !debouncedTimeQuery.dto) return [];
-    const startMs = new Date(debouncedTimeQuery.dfrom).getTime();
-    const endMs = new Date(debouncedTimeQuery.dto).getTime();
-    const sliceMs = (endMs - startMs) / N_BUCKETS;
-    return Array.from({ length: N_BUCKETS }, (_, i) => ({
-      dfrom: msToDateStr(Math.round(startMs + i * sliceMs)),
-      dto: msToDateStr(Math.round(startMs + (i + 1) * sliceMs)),
-      color: lerpColor(BRAND_EARLY, BRAND_LATE, i / (N_BUCKETS - 1)),
-    }));
-  }, [debouncedTimeQuery]);
-
-  const bucketResults = useQueries({
-    queries: buckets.map((b) => ({
-      queryKey: ["journeys-flows-bucket", q, b.dfrom, b.dto],
-      queryFn: () =>
-        api<JourneysFlows>("/api/analytics/viz/journeys-flows/", {
-          query: { ...q, dfrom: b.dfrom, dto: b.dto },
-        }),
-      enabled: mode === "flows" && buckets.length > 0,
-      staleTime: 5 * 60_000,
-    })),
-  });
-
+  // ── Brand buckets: the window's slices, coloured blue → pink from start to end ──
+  const buckets = useMemo(
+    () =>
+      (flows.data?.slices ?? []).map((s, i, all) => ({
+        dfrom: s.date_from,
+        dto: s.date_to,
+        flows: s.flows,
+        color: lerpColor(BRAND_EARLY, BRAND_LATE, all.length > 1 ? i / (all.length - 1) : 0),
+      })),
+    [flows.data],
+  );
 
   // ── Common pathways (flows) → rainbow map paths + venue nodes ──
   const flowPaths: MapPath[] = useMemo(() => {
-    if (!buckets.length) return [];
+    if (!buckets.length || !flows.data) return [];
+    const nodeById = new Map(flows.data.nodes.map((n) => [n.location_id, n]));
     const paths: MapPath[] = [];
     buckets.forEach((bucket, idx) => {
-      const data = bucketResults[idx]?.data;
-      if (!data?.flows.length) return;
-      const nodeById = new Map(data.nodes.map((n) => [n.location_id, n]));
-      const max = Math.max(...data.flows.map((r) => r.count), 1);
-      for (const r of data.flows) {
+      if (!bucket.flows.length) return;
+      const max = Math.max(...bucket.flows.map((r) => r.count), 1);
+      for (const r of bucket.flows) {
         if (r.count <= 3) continue;
         const a = nodeById.get(r.from_id);
         const b = nodeById.get(r.to_id);
@@ -238,7 +232,7 @@ export default function JourneyMap() {
       }
     });
     return paths;
-  }, [buckets, bucketResults]);
+  }, [buckets, flows.data]);
 
   const flowNodes: MapPoint[] = useMemo(() => {
     const nodes = flows.data?.nodes ?? [];

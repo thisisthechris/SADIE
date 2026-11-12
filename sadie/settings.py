@@ -194,7 +194,16 @@ CELERY_BEAT_SCHEDULE = {
         "task": "analytics.tasks.detect_anomalies",
         "schedule": crontab(hour=6, minute=30, day_of_week=1),
     },
+    # Rebuild the pre-computed Common Pathways tables nightly at 4:00 AM, after
+    # the 3:00 synthetic data top-up, so Monday's weekly report includes Sunday.
+    "rebuild-journey-flows-nightly": {
+        "task": "analytics.rebuild_journey_flows",
+        "schedule": crontab(hour=4, minute=0),
+    },
 }
+
+# Task modules outside the autodiscovered ``tasks.py`` files.
+CELERY_IMPORTS = ["analytics.journey_flows"]
 
 # Upload API token (simple shared-secret for upload endpoints)
 UPLOAD_API_TOKEN = os.environ.get("UPLOAD_API_TOKEN", "")

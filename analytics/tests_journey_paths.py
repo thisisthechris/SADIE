@@ -6,14 +6,15 @@ Covers ``/api/analytics/viz/journeys-paths/`` and
 
 from datetime import date, timedelta
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
 from events.models import Event
 from organisations.models import Location, Organisation
 
-from .models import UserHashInteraction
+from .journey_flows import rebuild_journey_flows
+from .models import JourneyFlowBuild, UserHashInteraction
 
 
 def _set_point(loc, lng, lat):
@@ -26,6 +27,7 @@ def _set_point(loc, lng, lat):
     loc.save()
 
 
+@override_settings(CACHES={"default": {"BACKEND": "django.core.cache.backends.dummy.DummyCache"}})
 class JourneyPathwayTest(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -134,3 +136,51 @@ class JourneyPathwayTest(TestCase):
         self.assertEqual(len(top["geometry"]["coordinates"]), 2)
         # Sorted by count desc — strongest edge (A→B) first.
         self.assertEqual(top["properties"]["count"], 2)
+
+    # ── pre-computed tables and slices ──
+
+    def _flows(self, **params):
+        r = self.client.get("/api/analytics/viz/journeys-flows/", params)
+        self.assertEqual(r.status_code, 200)
+        d = r.json()
+        return d["source"], {(f["from_id"], f["to_id"]): f["count"] for f in d["flows"]}, d
+
+    def test_precomputed_matches_live(self):
+        live_source, live, _ = self._flows()
+        rebuild_journey_flows()
+        source, precomputed, _ = self._flows()
+        self.assertEqual((live_source, source), ("live", "precomputed"))
+        self.assertEqual(precomputed, live)
+        self.assertEqual(precomputed[(self.loc_a.pk, self.loc_b.pk)], 2)
+
+    def test_new_interactions_fall_back_to_live_until_rebuilt(self):
+        rebuild_journey_flows()
+        UserHashInteraction.objects.create(
+            user_hash="v4" + "0" * 62,
+            interaction_type="event",
+            organisation=self.org,
+            event=self.ev_c,
+            interaction_date=date.today(),
+        )
+        self.assertEqual(self._flows()[0], "live")
+        rebuild_journey_flows()
+        self.assertEqual(self._flows()[0], "precomputed")
+
+    def test_category_filter_is_computed_live(self):
+        rebuild_journey_flows()
+        self.assertEqual(self._flows(category="1")[0], "live")
+
+    def test_date_range_matches_live_and_slices_by_arrival_day(self):
+        today = date.today()
+        rebuild_journey_flows()
+        sources = []
+        for _ in range(2):  # once precomputed, once live (after invalidating the build)
+            source, flows, d = self._flows(
+                date_from=(today - timedelta(days=1)).isoformat(), date_to=today.isoformat(), slices="2"
+            )
+            # Only moves with both visits in range: A→B is out (A was two days ago), B→C is in.
+            self.assertEqual(flows, {(self.loc_b.pk, self.loc_c.pk): 1})
+            self.assertEqual([len(s["flows"]) for s in d["slices"]], [0, 1])
+            sources.append(source)
+            JourneyFlowBuild.objects.all().delete()
+        self.assertEqual(sources, ["precomputed", "live"])
