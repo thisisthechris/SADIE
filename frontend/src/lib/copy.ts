@@ -14,8 +14,6 @@ export const LANDING = {
     "SADIE brings together ticketed event data from partner arts and cultural organisations across Plymouth. It's published as a weekly report: every Monday it updates to cover the week that ended the day before, so partners can plan together and see their collective reach.",
   scopeNote:
     "Figures cover ticketed events only and count intended attendance (headcount), not tickets sold. CRM records without ticket data are excluded from ticket metrics.",
-  partnersHeading: "Partners contributing data",
-  partnersEmpty: "Partner organisations will appear here once they are added.",
   sectionsHeading: "What you can explore",
 };
 

@@ -5,7 +5,6 @@ import { api, ApiError } from "../lib/api";
 import { useMe } from "../lib/auth";
 import Logo from "../components/Logo";
 import BrandShape from "../components/BrandShape";
-import PartnerList from "../components/PartnerList";
 
 export default function Login() {
   const { data: me, isLoading } = useMe();
@@ -84,8 +83,6 @@ export default function Login() {
             {busy ? "Signing in…" : "Sign in"}
           </button>
         </form>
-
-        <PartnerList />
       </div>
     </div>
   );

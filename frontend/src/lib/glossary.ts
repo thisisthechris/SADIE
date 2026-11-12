@@ -33,7 +33,7 @@ export const GLOSSARY: Record<string, GlossaryTerm> = {
   partner: {
     term: "Partner (Organisation)",
     short: "An arts or cultural organisation that contributes data to SADIE.",
-    long: "A partner is an arts or cultural organisation in Plymouth whose ticketed events are recorded in SADIE. Partners are listed on the home page. Each event belongs to a partner, so we can see which organisations are most active and reach the most people.",
+    long: "A partner is an arts or cultural organisation in Plymouth whose ticketed events are recorded in SADIE. Each event belongs to a partner, so we can see which organisations are most active and reach the most people.",
   },
   venue: {
     term: "Venue",
