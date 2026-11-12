@@ -42,3 +42,13 @@ class UploadBatch(models.Model):
 
     def __str__(self):
         return f"{self.organisation} · {self.source_format} · {self.created_at:%Y-%m-%d %H:%M} ({self.status})"
+
+
+class DataUpgrade(models.Model):
+    """A one-off data step (e.g. a re-import) already applied by ``apply_data_upgrades``."""
+
+    name = models.CharField(max_length=100, unique=True)
+    applied_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.applied_at:%Y-%m-%d %H:%M})"

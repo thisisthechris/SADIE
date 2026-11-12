@@ -11,3 +11,6 @@ set -e
 
 python manage.py enable_postgis
 python manage.py migrate --noinput
+# One-off data steps that ship with code (e.g. re-imports). Each runs once per
+# environment; see imports/management/commands/apply_data_upgrades.py.
+python manage.py apply_data_upgrades

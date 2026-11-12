@@ -164,6 +164,8 @@ python manage.py generate_synthetic_data
 5. **One manual follow-up step:** the `sadie-web` service's rewrite destinations in `render.yaml` assume its hostname is exactly `sadie-web.onrender.com`. If that name was already taken by another Render user, Render will have appended a random suffix — check the real hostname on `sadie-web`'s page in the Dashboard, and if it differs, open `sadie-frontend → Redirects/Rewrites` and correct the destination URLs there directly (faster than editing `render.yaml` and re-syncing).
 6. Once all six resources show *Live*/*Available*, visit `sadie-frontend`'s URL, log in with the superuser credentials from step 2, and confirm the seeded test data (organisations, events, geocoded venues) appears.
 
+**Data changes on later deploys.** `initialDeployHook` never runs again after the first deploy, so one-off data steps that ship with code (such as re-importing after a hashing change) live in `apply_data_upgrades` (`imports/management/commands/apply_data_upgrades.py`). `preDeployCommand` runs it after `migrate` on every deploy. Each step runs once per environment and is then recorded in the `DataUpgrade` table; `python manage.py apply_data_upgrades --list` shows what's applied. A failing step fails the deploy, so the previous version keeps serving.
+
 The [Render CLI](https://render.com/docs/cli) isn't required for any of this — it's only useful afterwards for tailing logs or validating `render.yaml` locally (`render blueprints validate render.yaml`).
 
 ---
