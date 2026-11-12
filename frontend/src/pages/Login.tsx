@@ -5,6 +5,7 @@ import { api, ApiError } from "../lib/api";
 import { useMe } from "../lib/auth";
 import Logo from "../components/Logo";
 import BrandShape from "../components/BrandShape";
+import PartnerList from "../components/PartnerList";
 
 export default function Login() {
   const { data: me, isLoading } = useMe();
@@ -50,38 +51,42 @@ export default function Login() {
         <BrandShape name="halfmoon-yellow" size={100} rotation={-30} />
       </div>
 
-      <form onSubmit={submit} className="card p-8 w-full max-w-sm space-y-5 relative z-10">
-        <div className="text-center mb-4">
-          <div className="flex justify-center mb-4">
-            <Logo height={40} />
+      <div className="w-full max-w-sm space-y-6 relative z-10">
+        <form onSubmit={submit} className="card p-8 w-full space-y-5">
+          <div className="text-center mb-4">
+            <div className="flex justify-center mb-4">
+              <Logo height={40} />
+            </div>
+            <p className="text-sm text-muted mt-1">Sign in to continue.</p>
           </div>
-          <p className="text-sm text-muted mt-1">Sign in to continue.</p>
-        </div>
-        <label className="block">
-          <span className="text-xs text-muted">Username</span>
-          <input
-            value={u}
-            onChange={(e) => setU(e.target.value)}
-            autoFocus
-            autoComplete="username"
-            className="input mt-1"
-          />
-        </label>
-        <label className="block">
-          <span className="text-xs text-muted">Password</span>
-          <input
-            type="password"
-            value={p}
-            onChange={(e) => setP(e.target.value)}
-            autoComplete="current-password"
-            className="input mt-1"
-          />
-        </label>
-        {err && <div className="text-sm text-red-500">{err}</div>}
-        <button type="submit" disabled={busy} className="btn-primary w-full">
-          {busy ? "Signing in…" : "Sign in"}
-        </button>
-      </form>
+          <label className="block">
+            <span className="text-xs text-muted">Username</span>
+            <input
+              value={u}
+              onChange={(e) => setU(e.target.value)}
+              autoFocus
+              autoComplete="username"
+              className="input mt-1"
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs text-muted">Password</span>
+            <input
+              type="password"
+              value={p}
+              onChange={(e) => setP(e.target.value)}
+              autoComplete="current-password"
+              className="input mt-1"
+            />
+          </label>
+          {err && <div className="text-sm text-red-500">{err}</div>}
+          <button type="submit" disabled={busy} className="btn-primary w-full">
+            {busy ? "Signing in…" : "Sign in"}
+          </button>
+        </form>
+
+        <PartnerList />
+      </div>
     </div>
   );
 }
